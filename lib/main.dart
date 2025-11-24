@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:quiropractico_front/config/router/app_router.dart';
 import 'package:quiropractico_front/config/theme/app_theme.dart';
+import 'package:quiropractico_front/providers/agenda_provider.dart';
 import 'package:quiropractico_front/providers/auth_provider.dart';
 import 'package:quiropractico_front/providers/clients_provider.dart';
 import 'package:quiropractico_front/services/local_storage.dart';
@@ -13,7 +14,9 @@ void main() async{
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
-        ChangeNotifierProvider(create: (_) => ClientsProvider()),      ],
+        ChangeNotifierProvider(create: (_) => ClientsProvider()),
+        ChangeNotifierProvider(create: (_) => AgendaProvider()),
+      ],
       child: const MyApp(),
     )
   );

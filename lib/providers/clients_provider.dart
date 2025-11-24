@@ -11,12 +11,46 @@ class ClientsProvider extends ChangeNotifier {
   List<Cliente> clients = [];
   bool isLoading = true;
 
-  ClientsProvider() {
-    getClients(); 
-  }
+  int currentPage = 0;
+  int pageSize = 10;
+  int totalPages = 0;
+  int totalElements = 0;
 
-  Future<void> getClients() async {
+  ClientsProvider() {
+    getPaginatedClients(); 
+  }
+  Future<bool> createClient(String nombre, String apellidos, String telefono, String? email, String? direccion) async {
+    try {
+      final token = LocalStorage.getToken();
+      
+      final data = {
+        "nombre": nombre,
+        "apellidos": apellidos,
+        "telefono": telefono,
+        "email": email,
+        "direccion": direccion
+      };
+
+      final response = await _dio.post(
+        '$_baseUrl/clientes',
+        data: data,
+        options: Options(headers: {'Authorization': 'Bearer $token'})
+      );
+
+      if (response.statusCode == 201) {
+        getPaginatedClients(page: 0);
+        return true;
+      }
+      return false;
+
+    } catch (e) {
+      print('Error creando cliente: $e');
+      return false;
+    }
+  }
+  Future<void> getPaginatedClients({int page = 0}) async {
     isLoading = true;
+    currentPage = page;
     notifyListeners();
 
     try {
@@ -24,12 +58,19 @@ class ClientsProvider extends ChangeNotifier {
       
       final response = await _dio.get(
         '$_baseUrl/clientes',
+        queryParameters: {
+          'page': page,
+          'size': pageSize,
+          'sort': 'id_cliente,desc' 
+        },
         options: Options(headers: {'Authorization': 'Bearer $token'})
       );
 
-      final List<dynamic> data = response.data;
-      clients = data.map((json) => Cliente.fromJson(json)).toList();
+      final List<dynamic> data = response.data['content'];
+      totalPages = response.data['totalPages'];
+      totalElements = response.data['totalElements'];
 
+      clients = data.map((json) => Cliente.fromJson(json)).toList();
     } catch (e) {
       print('Error cargando clientes: $e');
       // Aquí podrías manejar errores (mostrar mensaje, etc.)
@@ -39,6 +80,17 @@ class ClientsProvider extends ChangeNotifier {
     }
   }
   
+  void nextPage() {
+    if (currentPage < totalPages - 1) {
+      getPaginatedClients(page: currentPage + 1);
+    }
+  }
+
+  void prevPage() {
+    if (currentPage > 0) {
+      getPaginatedClients(page: currentPage - 1);
+    }
+  }
 
   List<Cliente> filterClients(String query) {
     if (query.isEmpty) return clients;

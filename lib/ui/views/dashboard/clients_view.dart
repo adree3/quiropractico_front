@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:quiropractico_front/config/theme/app_theme.dart';
 import 'package:quiropractico_front/providers/clients_provider.dart';
-
+import 'package:quiropractico_front/ui/modals/client_modal.dart';
 class ClientsView extends StatelessWidget {
   const ClientsView({super.key});
 
@@ -40,7 +40,10 @@ class ClientsView extends StatelessWidget {
             const SizedBox(width: 10),
             ElevatedButton.icon(
               onPressed: () {
-                // Abrir modal de crear cliente (Próximo paso)
+                showDialog(
+                  context: context,
+                  builder: (context) => const ClientModal(),
+                );
               },
               icon: const Icon(Icons.add),
               label: const Text('Nuevo'),
@@ -64,7 +67,9 @@ class ClientsView extends StatelessWidget {
                           DataColumn(label: Text('Teléfono')),
                           DataColumn(label: Text('Email')),
                           DataColumn(label: Text('Acciones')),
+                          
                         ],
+                        
                         rows: clientes.map((cliente) {
                           return DataRow(cells: [
                             DataCell(Text('${cliente.nombre} ${cliente.apellidos}')),
@@ -92,6 +97,57 @@ class ClientsView extends StatelessWidget {
                   ),
           ),
         ),
+        const SizedBox(height: 10),
+        //Paginación
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(10),
+            boxShadow: [
+              BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 5, offset: const Offset(0, 2))
+            ]
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              // Información de registros
+              Text(
+                'Total: ${clientsProvider.totalElements} pacientes',
+                style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.bold),
+              ),
+              const Spacer(),
+              
+              // Botón Anterior
+              IconButton(
+                onPressed: clientsProvider.currentPage > 0 
+                    ? () => clientsProvider.prevPage() 
+                    : null,
+                icon: const Icon(Icons.chevron_left),
+                tooltip: 'Anterior',
+              ),
+
+              // Indicador de Página
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                child: Text(
+                  'Página ${clientsProvider.currentPage + 1} de ${clientsProvider.totalPages > 0 ? clientsProvider.totalPages : 1}',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+
+              // Botón Siguiente
+              IconButton(
+                onPressed: clientsProvider.currentPage < clientsProvider.totalPages - 1
+                    ? () => clientsProvider.nextPage()
+                    : null,
+                icon: const Icon(Icons.chevron_right),
+                tooltip: 'Siguiente',
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 20),
       ],
     );
   }
