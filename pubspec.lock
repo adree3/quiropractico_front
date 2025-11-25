@@ -103,7 +103,7 @@ packages:
     source: hosted
     version: "5.0.0"
   flutter_localizations:
-    dependency: transitive
+    dependency: "direct main"
     description: flutter
     source: sdk
     version: "0.0.0"
@@ -435,7 +435,7 @@ packages:
     source: hosted
     version: "31.1.19"
   syncfusion_flutter_datepicker:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: syncfusion_flutter_datepicker
       sha256: bbd2135dcfed085fca2296a9b1492b2ecf1d288e5aa0758d8827ece58e26df0b

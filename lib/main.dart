@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:quiropractico_front/config/router/app_router.dart';
 import 'package:quiropractico_front/config/theme/app_theme.dart';
@@ -30,6 +31,13 @@ class MyApp extends StatelessWidget {
     final authProvider = Provider.of<AuthProvider>(context);
     final appRouter = AppRouter(authProvider);
     return MaterialApp.router(
+      locale: const Locale('es', 'ES'),
+      supportedLocales: const [Locale('es', 'ES')],
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
       title: 'Quiripráctico Valladolid',
       debugShowCheckedModeBanner: false,
       theme: AppTheme().getTheme(),

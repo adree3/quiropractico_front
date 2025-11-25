@@ -26,6 +26,9 @@ dependencies:
   # Iconos
   font_awesome_flutter: ^10.7.0
   syncfusion_flutter_calendar: ^31.1.19
+  syncfusion_flutter_datepicker: ^31.1.19
+  flutter_localizations:
+    sdk: flutter
 
 dev_dependencies:
   flutter_test:

@@ -12,9 +12,15 @@ class AgendaProvider extends ChangeNotifier {
   List<Cita> citas = [];
   bool isLoading = true;
   List<Usuario> quiropracticos = [];
-  
+  DateTime selectedDate = DateTime.now();
+
   AgendaProvider() {
-    getCitasDelDia(DateTime.now());
+    updateSelectedDate(DateTime.now());
+  }
+
+  Future<void> updateSelectedDate(DateTime date) async {
+    selectedDate = date;
+    await getCitasDelDia(date); 
   }
 
   Future<void> getCitasDelDia(DateTime fecha) async {
