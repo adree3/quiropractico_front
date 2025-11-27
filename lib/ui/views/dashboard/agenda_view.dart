@@ -56,13 +56,102 @@ class _AgendaViewState extends State<AgendaView> {
                           startHour: 8,
                           endHour: 21,
                           timeInterval: Duration(minutes: 30),
-                          timeIntervalHeight: 60,
+                          timeIntervalHeight: 70,
                           timeFormat: 'HH:mm',
                           timeRulerSize: 60,
                         ),
                         
                         dataSource: CitaDataSource(agendaProvider.citas),
                         
+                        appointmentBuilder: (BuildContext context, CalendarAppointmentDetails details) {
+                          final Cita cita = details.appointments.first;
+                          Color colorBorde;
+                          Color colorFondo;
+                          IconData iconoEstado;
+
+                          switch (cita.estado) {
+                            case 'completada':
+                              colorBorde = Colors.green;
+                              colorFondo = Colors.green.withOpacity(0.1);
+                              iconoEstado = Icons.check_circle;
+                              break;
+                            case 'cancelada':
+                              colorBorde = Colors.red;
+                              colorFondo = Colors.red.withOpacity(0.1);
+                              iconoEstado = Icons.cancel;
+                              break;
+                            case 'ausente':
+                              colorBorde = Colors.grey;
+                              colorFondo = Colors.grey.withOpacity(0.2);
+                              iconoEstado = Icons.person_off;
+                              break;
+                            default: // programada
+                              colorBorde = const Color(0xFF00AEEF);
+                              colorFondo = const Color(0xFF00AEEF).withOpacity(0.1);
+                              iconoEstado = Icons.access_time_filled;
+                          }
+
+                          return Container(
+                            decoration: BoxDecoration(
+                              color: colorFondo,
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border(
+                                left: BorderSide(color: colorBorde, width: 4),
+                              ),
+                            ),
+                            padding: const EdgeInsets.fromLTRB(8, 4, 4, 4),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        cita.nombreClienteCompleto,
+                                        style: TextStyle(
+                                          color: Colors.black87,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 13,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                        maxLines: 1,
+                                      ),
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: colorFondo,
+                                        borderRadius: BorderRadius.circular(4),
+                                        border:Border.all(color: colorBorde) 
+                                      ),
+                                      child: Text(
+                                        cita.estado.toUpperCase(),
+                                        style: TextStyle(
+                                          color: colorBorde, 
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.bold,
+                                          letterSpacing: 0.5
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                
+                                const SizedBox(height: 2),
+                                
+                                Text(
+                                  "Dr. ${cita.nombreQuiropractico}",
+                                  style: TextStyle(
+                                    color: Colors.black54,
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+
                         onTap: (CalendarTapDetails details) {
                           if (details.targetElement == CalendarElement.appointment || 
                               details.targetElement == CalendarElement.calendarCell) {

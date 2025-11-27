@@ -25,6 +25,10 @@ class CitaDetalleModal extends StatelessWidget {
     }
 
     return AlertDialog(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(15),
+        side: BorderSide(color: colorEstado, width: 2), 
+      ),
       title: Row(
         children: [
           const Text('Detalle de Cita'),
@@ -41,7 +45,7 @@ class CitaDetalleModal extends StatelessWidget {
         ],
       ),
       content: SizedBox(
-        width: 450,
+        width: AppTheme.dialogWidth,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -58,6 +62,8 @@ class CitaDetalleModal extends StatelessWidget {
                 children: [
                   _InfoRow(icon: Icons.person, label: "Paciente", value: cita.nombreClienteCompleto),
                   const Divider(height: 20),
+                  _InfoRow(icon: Icons.phone, label: "Telefono", value: cita.telefonoCliente),
+                  const Divider(height: 20),
                   _InfoRow(icon: Icons.medical_services, label: "Doctor", value: cita.nombreQuiropractico),
                   const Divider(height: 20),
                   _InfoRow(
@@ -65,6 +71,7 @@ class CitaDetalleModal extends StatelessWidget {
                     label: "Horario", 
                     value: "${dateFormat.format(cita.fechaHoraInicio)} - ${dateFormat.format(cita.fechaHoraFin)}"
                   ),
+
                 ],
               ),
             ),
@@ -96,6 +103,17 @@ class CitaDetalleModal extends StatelessWidget {
         ),
 
         if (cita.estado == 'programada') ...[
+          IconButton(
+            tooltip: 'Editar detalles',
+            icon: const Icon(Icons.edit, color: Colors.orange),
+            onPressed: () {
+              Navigator.pop(context);
+              showDialog(
+                context: context,
+                builder: (context) => CitaModal(citaExistente: cita), // Abrir edición
+              );
+            },
+          ),
           ElevatedButton.icon(
             onPressed: () async {
               final confirm = await showDialog(
@@ -151,6 +169,19 @@ class CitaDetalleModal extends StatelessWidget {
             ),
           ),
         ],
+        if (cita.estado == 'ausente')
+          OutlinedButton.icon(
+            onPressed: () {
+              Navigator.pop(context);
+              showDialog(
+                context: context,
+                builder: (context) => CitaModal(citaExistente: cita),
+              );
+            },
+            icon: const Icon(Icons.edit, size: 18),
+            label: const Text('Editar / Justificar'),
+            style: OutlinedButton.styleFrom(foregroundColor: Colors.orange, side: const BorderSide(color: Colors.orange)),
+          ),
         if (cita.estado == 'cancelada') 
           ElevatedButton.icon(
             onPressed: () {

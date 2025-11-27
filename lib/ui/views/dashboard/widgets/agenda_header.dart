@@ -18,7 +18,10 @@ class AgendaHeader extends StatelessWidget {
     final hoy = DateTime.now();
 
     final tituloMes = DateFormat('MMMM yyyy', 'es_ES').format(fechaActual).toUpperCase();
+    final bool mostrarBotonHoy = !isSameDay(fechaActual, hoy);
+    
     const double buttonHeight = 42.0;
+    const double sideWidth = 100.0;
 
     return Column(
       children: [
@@ -43,7 +46,7 @@ class AgendaHeader extends StatelessWidget {
             children: [
               // Cita
               SizedBox(
-                width: 80,
+                width: sideWidth,
                 child: Align(
                   alignment: Alignment.centerLeft,
                   child: ElevatedButton.icon(
@@ -89,21 +92,41 @@ class AgendaHeader extends StatelessWidget {
 
               // CALENDARIO
               SizedBox(
-                width: 80,
-                child: Align(
-                  alignment: Alignment.centerRight,
-                  child: IconButton.filledTonal(
-                    onPressed: () => _abrirPickerNativo(context, provider),
-                    icon: const Icon(Icons.calendar_month_outlined),
-                    iconSize: 22,
-                    tooltip: "Seleccionar fecha",
-                    style: IconButton.styleFrom(
-                      backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
-                      foregroundColor: AppTheme.primaryColor,
-                      fixedSize: const Size(buttonHeight, buttonHeight),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))
+                width: sideWidth,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    
+                    // Volver a Hoy
+                    if (mostrarBotonHoy) ...[
+                      IconButton(
+                        onPressed: () => provider.updateSelectedDate(hoy),
+                        icon: const Icon(Icons.reply),
+                        tooltip: "Volver al día de hoy",
+                        color: Colors.grey[600],
+                        style: IconButton.styleFrom(
+                          backgroundColor: Colors.grey[100], 
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          fixedSize: const Size(buttonHeight, buttonHeight),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                    ],
+
+                    // Botón Calendario
+                    IconButton.filledTonal(
+                      onPressed: () => _abrirPickerNativo(context, provider),
+                      icon: const Icon(Icons.calendar_month_outlined),
+                      iconSize: 22,
+                      tooltip: "Seleccionar fecha",
+                      style: IconButton.styleFrom(
+                        backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
+                        foregroundColor: AppTheme.primaryColor,
+                        fixedSize: const Size(buttonHeight, buttonHeight),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))
+                      ),
                     ),
-                  ),
+                  ],
                 ),
               ),
             ],
@@ -125,6 +148,9 @@ class AgendaHeader extends StatelessWidget {
       locale: const Locale('es', 'ES'),
       initialEntryMode: DatePickerEntryMode.calendarOnly,
       helpText: '', 
+      selectableDayPredicate: (DateTime date) {
+        return date.weekday != DateTime.saturday && date.weekday != DateTime.sunday;
+      },
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(

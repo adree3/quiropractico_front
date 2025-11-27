@@ -171,4 +171,42 @@ class AgendaProvider extends ChangeNotifier {
       return 'Error de conexión';
     }
   }
+
+  List<Map<String, String>> huecosDisponibles = [];
+
+  Future<void> cargarHuecos(int idQuiro, DateTime fecha,{int? idCitaExcluir}) async {
+    huecosDisponibles = [];
+    notifyListeners();
+
+    try {
+      final token = LocalStorage.getToken();
+      final fechaStr = "${fecha.year}-${fecha.month.toString().padLeft(2, '0')}-${fecha.day.toString().padLeft(2, '0')}";
+
+      final Map<String, dynamic> params = {
+        'idQuiro': idQuiro, 
+        'fecha': fechaStr
+      };
+
+      if (idCitaExcluir != null) {
+        params['idCitaExcluir'] = idCitaExcluir;
+      }
+
+      final response = await _dio.get(
+        '$_baseUrl/citas/disponibilidad',
+        queryParameters: params,
+        options: Options(headers: {'Authorization': 'Bearer $token'})
+      );
+      final List<dynamic> data = response.data;
+      huecosDisponibles = data.map((json) => {
+        'horaInicio': json['horaInicio'].toString(),
+        'horaFin': json['horaFin'].toString(),
+        'texto': json['textoMostrar'].toString()
+      }).toList();
+
+      notifyListeners();
+
+    } catch (e) {
+      print('Error cargando huecos: $e');
+    }
+  }
 }

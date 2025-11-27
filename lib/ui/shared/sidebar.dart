@@ -9,6 +9,7 @@ class Sidebar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final String location = GoRouterState.of(context).uri.toString();
     return Container(
       width: 250,
       color: Colors.white,
@@ -42,19 +43,22 @@ class Sidebar extends StatelessWidget {
           // OPCIONES DEL MENÚ
           Expanded(
             child: ListView(
+              padding: const EdgeInsets.symmetric(horizontal: 10),
               children: [
                 _SidebarItem(
                   icon: Icons.calendar_month_outlined, 
                   title: 'Agenda',
+                  isActive: location == '/agenda',
                   onTap: () => context.go('/agenda'),
                 ),
                 _SidebarItem(
                   icon: Icons.people_alt_outlined, 
                   title: 'Pacientes',
+                  isActive: location == '/pacientes',
                   onTap: () => context.go('/pacientes'),
                 ),
                 const _SidebarItem(icon: Icons.payment_outlined, title: 'Pagos y Bonos'),
-                const Divider(),
+                const Divider(height: 30, color: Colors.grey),
                 const _SidebarItem(icon: Icons.settings_outlined, title: 'Configuración'),
               ],
             ),
@@ -83,22 +87,51 @@ class Sidebar extends StatelessWidget {
 class _SidebarItem extends StatelessWidget {
   final IconData icon;
   final String title;
+  final bool isActive;
   final VoidCallback? onTap;
 
-  const _SidebarItem({required this.icon, required this.title, this.onTap});
+  const _SidebarItem({required this.icon, required this.title,this.isActive = false, this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      leading: Icon(icon, color: AppTheme.secondaryColor),
-      title: Text(
-        title,
-        style: const TextStyle(color: AppTheme.secondaryColor, fontWeight: FontWeight.w500),
+    final color = isActive ? AppTheme.primaryColor : Colors.grey[600];
+    final fontWeight = isActive ? FontWeight.bold : FontWeight.normal;
+    final bg = isActive ? AppTheme.primaryColor.withOpacity(0.1) : Colors.transparent;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4), // Espacio entre botones
+      child: Material( // Material para efecto de clic (InkWell)
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(10),
+          hoverColor: AppTheme.primaryColor.withOpacity(0.05), // Hover muy suave
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200), // Animación suave
+            decoration: BoxDecoration(
+              color: bg,
+              borderRadius: BorderRadius.circular(10), // Bordes redondeados modernos
+              // Opcional: Borde izquierdo si te gusta ese estilo
+              // border: isActive ? Border(left: BorderSide(color: AppTheme.primaryColor, width: 3)) : null
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              children: [
+                Icon(icon, color: color, size: 22),
+                const SizedBox(width: 15),
+                Text(
+                  title,
+                  style: TextStyle(
+                    color: color, 
+                    fontWeight: fontWeight,
+                    fontSize: 15
+                  ),
+                ),
+                
+              ],
+            ),
+          ),
+        ),
       ),
-      hoverColor: AppTheme.primaryColor.withOpacity(0.1), // Efecto hover sutil
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 5),
-      onTap: onTap ?? () {}, 
     );
   }
 }

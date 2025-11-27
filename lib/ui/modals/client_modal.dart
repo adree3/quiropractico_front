@@ -26,7 +26,7 @@ class _ClientModalState extends State<ClientModal> {
     return AlertDialog(
       title: const Text('Nuevo Paciente', style: TextStyle(fontWeight: FontWeight.bold)),
       content: SizedBox(
-        width: 500,
+        width: AppTheme.dialogWidth,
         child: Form(
           key: _formKey,
           autovalidateMode: AutovalidateMode.onUserInteraction,

@@ -4,11 +4,11 @@ import 'package:google_fonts/google_fonts.dart';
 class AppTheme {
   // Color principal
   static const Color primaryColor = Color(0xFF00AEEF);
-  
+  static const double dialogWidth = 500.0;
   // Colores secundarios y de fondo
-  static const Color secondaryColor = Color(0xFF808080); // Gris elegante
-  static const Color scaffoldBackgroundColor = Color(0xFFF9F9F9); // Blanco "roto" 
-  static const Color errorColor = Color(0xFFE57373); // Rojo suave
+  static const Color secondaryColor = Color(0xFF808080);
+  static const Color scaffoldBackgroundColor = Color(0xFFF9F9F9);
+  static const Color errorColor = Color(0xFFE57373);
 
   ThemeData getTheme() {
     final colorScheme = ColorScheme.fromSeed(
