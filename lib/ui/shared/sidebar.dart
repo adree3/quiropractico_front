@@ -48,18 +48,31 @@ class Sidebar extends StatelessWidget {
                 _SidebarItem(
                   icon: Icons.calendar_month_outlined, 
                   title: 'Agenda',
-                  isActive: location == '/agenda',
+                  isActive: location.startsWith('/agenda'),
                   onTap: () => context.go('/agenda'),
                 ),
                 _SidebarItem(
                   icon: Icons.people_alt_outlined, 
                   title: 'Pacientes',
-                  isActive: location == '/pacientes',
+                  isActive: location.startsWith('/pacientes'),
                   onTap: () => context.go('/pacientes'),
                 ),
-                const _SidebarItem(icon: Icons.payment_outlined, title: 'Pagos y Bonos'),
+                
+                _SidebarItem(
+                  icon: Icons.payment_outlined, 
+                  title: 'Pagos y Bonos',
+                  isActive: location.startsWith('/pagos'),
+                  onTap: () {},
+                ),
+                
                 const Divider(height: 30, color: Colors.grey),
-                const _SidebarItem(icon: Icons.settings_outlined, title: 'Configuración'),
+                
+                _SidebarItem(
+                  icon: Icons.settings_outlined, 
+                  title: 'Configuración',
+                  isActive: location.startsWith('/configuracion'),
+                  onTap: () {},
+                ),
               ],
             ),
           ),
@@ -98,20 +111,18 @@ class _SidebarItem extends StatelessWidget {
     final fontWeight = isActive ? FontWeight.bold : FontWeight.normal;
     final bg = isActive ? AppTheme.primaryColor.withOpacity(0.1) : Colors.transparent;
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4), // Espacio entre botones
-      child: Material( // Material para efecto de clic (InkWell)
+      padding: const EdgeInsets.symmetric(vertical: 4), 
+      child: Material( 
         color: Colors.transparent,
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(10),
-          hoverColor: AppTheme.primaryColor.withOpacity(0.05), // Hover muy suave
+          hoverColor: AppTheme.primaryColor.withOpacity(0.05),
           child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200), // Animación suave
+            duration: const Duration(milliseconds: 200),
             decoration: BoxDecoration(
               color: bg,
-              borderRadius: BorderRadius.circular(10), // Bordes redondeados modernos
-              // Opcional: Borde izquierdo si te gusta ese estilo
-              // border: isActive ? Border(left: BorderSide(color: AppTheme.primaryColor, width: 3)) : null
+              borderRadius: BorderRadius.circular(10), 
             ),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Row(
@@ -126,6 +137,10 @@ class _SidebarItem extends StatelessWidget {
                     fontSize: 15
                   ),
                 ),
+                if (isActive) ...[
+                  const Spacer(),
+                  Icon(Icons.arrow_forward_ios, size: 12, color: color),
+                ]
                 
               ],
             ),

@@ -271,12 +271,79 @@ class _CitaModalState extends State<CitaModal> {
                 const SizedBox(height: 15),
 
                 // PACIENTE
-                DropdownButtonFormField<Cliente>(
-                  decoration: const InputDecoration(labelText: 'Paciente', prefixIcon: Icon(Icons.person)),
-                  value: selectedCliente,
-                  items: clientsProvider.clients.map((c) => DropdownMenuItem(value: c, child: Text("${c.nombre} ${c.apellidos}"))).toList(),
-                  onChanged: (val) => setState(() => selectedCliente = val),
-                  validator: (val) => val == null ? 'Selecciona un paciente' : null,
+                Autocomplete<Cliente>(
+                  displayStringForOption: (Cliente option) => "${option.nombre} ${option.apellidos} (${option.telefono})",
+
+                  // Lógica de Búsqueda
+                  optionsBuilder: (TextEditingValue textEditingValue) async {
+                    if (textEditingValue.text.isEmpty) {
+                      return const Iterable<Cliente>.empty();
+                    }
+                    return await clientsProvider.searchClientesByName(textEditingValue.text);
+                  },
+
+                  onSelected: (Cliente selection) {
+                    setState(() {
+                      selectedCliente = selection;
+                    });
+                  },
+
+                  // Diseño del Input 
+                  fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
+
+                    if (selectedCliente != null && controller.text.isEmpty) {
+                      controller.text = "${selectedCliente!.nombre} ${selectedCliente!.apellidos} (${selectedCliente!.telefono})";
+                    }
+
+                    return TextFormField(
+                      controller: controller,
+                      focusNode: focusNode,
+                      decoration: InputDecoration(
+                        labelText: 'Paciente (Nombre o Teléfono)',
+                        prefixIcon: const Icon(Icons.person_search),
+                        suffixIcon: selectedCliente != null 
+                            ? const Icon(Icons.check_circle, color: Colors.green, size: 20) 
+                            : null,
+                      ),
+                      validator: (value) {
+                        if (selectedCliente == null) return 'Debes buscar y seleccionar un paciente';
+                        return null;
+                      },
+                    );
+                  },
+
+                  // Diseño de la Lista de Resultados
+                  optionsViewBuilder: (context, onSelected, options) {
+                    return Align(
+                      alignment: Alignment.topLeft,
+                      child: Material(
+                        elevation: 4,
+                        borderRadius: BorderRadius.circular(10),
+                        child: Container(
+                          width: 400,
+                          constraints: const BoxConstraints(maxHeight: 200),
+                          color: Colors.white,
+                          child: ListView.builder(
+                            padding: EdgeInsets.zero,
+                            itemCount: options.length,
+                            itemBuilder: (BuildContext context, int index) {
+                              final Cliente option = options.elementAt(index);
+                              return ListTile(
+                                leading: const CircleAvatar(
+                                  radius: 15, 
+                                  backgroundColor: AppTheme.primaryColor, 
+                                  child: Icon(Icons.person, size: 16, color: Colors.white)
+                                ),
+                                title: Text("${option.nombre} ${option.apellidos}"),
+                                subtitle: Text(option.telefono),
+                                onTap: () => onSelected(option),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                    );
+                  },
                 ),
                 const SizedBox(height: 15),
 

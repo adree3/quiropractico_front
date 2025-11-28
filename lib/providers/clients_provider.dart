@@ -10,6 +10,8 @@ class ClientsProvider extends ChangeNotifier {
   
   List<Cliente> clients = [];
   bool isLoading = true;
+  bool isSearching = false; 
+  String currentSearchTerm = '';
 
   int currentPage = 0;
   int pageSize = 10;
@@ -82,13 +84,21 @@ class ClientsProvider extends ChangeNotifier {
   
   void nextPage() {
     if (currentPage < totalPages - 1) {
-      getPaginatedClients(page: currentPage + 1);
+      if (isSearching) {
+        searchGlobal(currentSearchTerm, page: currentPage + 1);
+      } else {
+        getPaginatedClients(page: currentPage + 1);
+      }
     }
   }
 
   void prevPage() {
     if (currentPage > 0) {
-      getPaginatedClients(page: currentPage - 1);
+      if (isSearching) {
+        searchGlobal(currentSearchTerm, page: currentPage - 1);
+      } else {
+        getPaginatedClients(page: currentPage - 1);
+      }
     }
   }
 
@@ -99,5 +109,68 @@ class ClientsProvider extends ChangeNotifier {
       c.apellidos.toLowerCase().contains(query.toLowerCase()) ||
       c.telefono.contains(query)
     ).toList();
+  }
+
+  Future<List<Cliente>> searchClientesByName(String query) async {
+    if (query.isEmpty) return [];
+
+    try {
+      final token = LocalStorage.getToken();
+      
+      final response = await _dio.get(
+        '$_baseUrl/clientes/buscar',
+        queryParameters: {'texto': query}, 
+        options: Options(headers: {'Authorization': 'Bearer $token'})
+      );
+
+      final List<dynamic> data = response.data; 
+      
+      return data.map((json) => Cliente.fromJson(json)).toList();
+
+    } catch (e) {
+      print('Error buscando clientes: $e');
+      return [];
+    }
+  }
+
+  // Barra de busqueda
+  Future<void> searchGlobal(String query, {int page = 0}) async {
+    if (query.isEmpty) {
+      await getPaginatedClients(page: 0);
+      return;
+    }
+
+    isLoading = true;
+    isSearching = true;
+    currentSearchTerm = query;
+    currentPage = page;
+    notifyListeners();
+
+    try {
+      final token = LocalStorage.getToken();
+      
+      final response = await _dio.get(
+        '$_baseUrl/clientes/buscar-complejo',
+        queryParameters: {
+          'texto': query,
+          'page': page,     
+          'size': pageSize, 
+        },
+        options: Options(headers: {'Authorization': 'Bearer $token'})
+      );
+
+      final List<dynamic> data = response.data['content'];
+      
+      totalPages = response.data['totalPages'];
+      totalElements = response.data['totalElements'];
+      
+      clients = data.map((json) => Cliente.fromJson(json)).toList();
+
+    } catch (e) {
+      print('Error en búsqueda global: $e');
+    } finally {
+      isLoading = false;
+      notifyListeners();
+    }
   }
 }

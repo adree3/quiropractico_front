@@ -1,10 +1,36 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:quiropractico_front/config/theme/app_theme.dart';
 import 'package:quiropractico_front/providers/clients_provider.dart';
 import 'package:quiropractico_front/ui/modals/client_modal.dart';
-class ClientsView extends StatelessWidget {
+import 'package:go_router/go_router.dart';
+
+class ClientsView extends StatefulWidget {
   const ClientsView({super.key});
+
+  @override
+  State<ClientsView> createState() => _ClientsViewState();
+}
+
+class _ClientsViewState extends State<ClientsView> {
+  Timer? _debounce;
+  final searchCtrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    searchCtrl.dispose();
+    super.dispose();
+  }
+
+  void _onSearchChanged(String query) {
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+
+    _debounce = Timer(const Duration(milliseconds: 500), () {
+      Provider.of<ClientsProvider>(context, listen: false).searchGlobal(query);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -14,7 +40,7 @@ class ClientsView extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Buscador y titulo
+        // CABECERA
         Row(
           children: [
             Text(
@@ -22,22 +48,32 @@ class ClientsView extends StatelessWidget {
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)
             ),
             const Spacer(),
-            // Buscador pequeño
+            
+            // BUSCADOR
             SizedBox(
-              width: 250,
+              width: 300,
               child: TextField(
-                decoration: const InputDecoration(
-                  hintText: 'Buscar por nombre...',
-                  prefixIcon: Icon(Icons.search),
+                controller: searchCtrl,
+                decoration: InputDecoration(
+                  hintText: 'Nombre, Apellido o Teléfono...',
+                  prefixIcon: const Icon(Icons.search),
                   fillColor: Colors.white,
                   filled: true,
+                  
+                  suffixIcon: IconButton(
+                    icon: const Icon(Icons.clear, size: 18),
+                    onPressed: () {
+                      searchCtrl.clear();
+                      _debounce?.cancel(); 
+                      Provider.of<ClientsProvider>(context, listen: false).searchGlobal('');
+                    },
+                  ),
                 ),
-                onChanged: (value) {
-                  // Aquí implementaríamos el filtrado visual luego
-                },
+                onChanged: _onSearchChanged,
               ),
             ),
             const SizedBox(width: 10),
+            
             ElevatedButton.icon(
               onPressed: () {
                 showDialog(
@@ -53,100 +89,100 @@ class ClientsView extends StatelessWidget {
         
         const SizedBox(height: 20),
 
-        // TABLA DE DATOS
+        // TABLA
         Expanded(
           child: Card(
             child: clientsProvider.isLoading
                 ? const Center(child: CircularProgressIndicator()) 
-                : SizedBox(
-                    width: double.infinity,
-                    child: SingleChildScrollView(
-                      child: DataTable(
-                        columns: const [
-                          DataColumn(label: Text('Nombre')),
-                          DataColumn(label: Text('Teléfono')),
-                          DataColumn(label: Text('Email')),
-                          DataColumn(label: Text('Acciones')),
-                          
-                        ],
-                        
-                        rows: clientes.map((cliente) {
-                          return DataRow(cells: [
-                            DataCell(Text('${cliente.nombre} ${cliente.apellidos}')),
-                            DataCell(Text(cliente.telefono)),
-                            DataCell(Text(cliente.email ?? '-')),
-                            DataCell(
-                              Row(
-                                children: [
-                                  IconButton(
-                                    icon: const Icon(Icons.edit_outlined, color: AppTheme.primaryColor),
-                                    onPressed: () {},
-                                  ),
-                                  IconButton(
-                                    icon: const Icon(Icons.history, color: AppTheme.secondaryColor),
-                                    tooltip: 'Ver Historial',
-                                    onPressed: () {}, 
-                                  ),
-                                ],
-                              )
-                            ),
-                          ]);
-                        }).toList(),
+                : clientes.isEmpty 
+                    ? const Center(child: Text("No se encontraron pacientes"))
+                    : SizedBox(
+                        width: double.infinity,
+                        child: SingleChildScrollView(
+                          child: DataTable(
+                            columns: const [
+                              DataColumn(label: Text('Nombre')),
+                              DataColumn(label: Text('Teléfono')),
+                              DataColumn(label: Text('Acciones')),
+                            ],
+                            rows: clientes.map((cliente) {
+                              return DataRow(cells: [
+                                DataCell(Text('${cliente.nombre} ${cliente.apellidos}')),
+                                DataCell(Text(cliente.telefono)),
+                                DataCell(
+                                  Row(
+                                    children: [
+                                      IconButton(
+                                        icon: const Icon(Icons.edit_outlined, color: AppTheme.primaryColor),
+                                        tooltip: 'Editar',
+                                        onPressed: () {
+                                          context.go('/pacientes/${cliente.idCliente}');
+                                        },
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(Icons.visibility, color: AppTheme.secondaryColor),
+                                        tooltip: 'Ver Ficha',
+                                        onPressed: () {
+                                          context.go('/pacientes/${cliente.idCliente}');
+                                        }, 
+                                      ),
+                                    ],
+                                  )
+                                ),
+                              ]);
+                            }).toList(),
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
           ),
         ),
+
         const SizedBox(height: 10),
-        //Paginación
+
+        // PAGINACIÓN
+
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(10),
-            boxShadow: [
-              BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 5, offset: const Offset(0, 2))
-            ]
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              // Información de registros
-              Text(
-                'Total: ${clientsProvider.totalElements} pacientes',
-                style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.bold),
-              ),
-              const Spacer(),
-              
-              // Botón Anterior
-              IconButton(
-                onPressed: clientsProvider.currentPage > 0 
-                    ? () => clientsProvider.prevPage() 
-                    : null,
-                icon: const Icon(Icons.chevron_left),
-                tooltip: 'Anterior',
-              ),
-
-              // Indicador de Página
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-                child: Text(
-                  'Página ${clientsProvider.currentPage + 1} de ${clientsProvider.totalPages > 0 ? clientsProvider.totalPages : 1}',
-                  style: const TextStyle(fontWeight: FontWeight.bold),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(10),
+              boxShadow: [
+                BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 5, offset: const Offset(0, 2))
+              ]
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Text(
+                  'Mostrando ${clientsProvider.clients.length} de ${clientsProvider.totalElements} registros',
+                  style: const TextStyle(color: Colors.grey),
                 ),
-              ),
-
-              // Botón Siguiente
-              IconButton(
-                onPressed: clientsProvider.currentPage < clientsProvider.totalPages - 1
-                    ? () => clientsProvider.nextPage()
-                    : null,
-                icon: const Icon(Icons.chevron_right),
-                tooltip: 'Siguiente',
-              ),
-            ],
-          ),
-        ),
+                const Spacer(),
+                IconButton(
+                  onPressed: clientsProvider.currentPage > 0 
+                      ? () => clientsProvider.prevPage() 
+                      : null,
+                  icon: const Icon(Icons.chevron_left),
+                  tooltip: 'Anterior',
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  child: Text(
+                    'Página ${clientsProvider.currentPage + 1} de ${clientsProvider.totalPages > 0 ? clientsProvider.totalPages : 1}',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+                IconButton(
+                  onPressed: clientsProvider.currentPage < clientsProvider.totalPages - 1
+                      ? () => clientsProvider.nextPage()
+                      : null,
+                  icon: const Icon(Icons.chevron_right),
+                  tooltip: 'Siguiente',
+                ),
+              ],
+            ),
+          ),  
+          
         const SizedBox(height: 20),
       ],
     );

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
 import 'package:quiropractico_front/providers/auth_provider.dart';
 import 'package:quiropractico_front/ui/layouts/dashboard_layout.dart';
 import 'package:quiropractico_front/ui/views/auth/login_view.dart';
 import 'package:quiropractico_front/ui/views/dashboard/agenda_view.dart';
+import 'package:quiropractico_front/ui/views/dashboard/cliente_detalle_view.dart';
 import 'package:quiropractico_front/ui/views/dashboard/clients_view.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -55,7 +55,13 @@ class AppRouter {
             path: '/pacientes',
             builder: (context, state) => const ClientsView(),
           ),
-          // Aquí añadiremos /pagos, /configuracion, etc.
+          GoRoute(
+            path: '/pacientes/:uid', // :uid es el placeholder
+            builder: (context, state) {
+              final String id = state.pathParameters['uid'] ?? '0';
+              return ClienteDetalleView(idCliente: int.parse(id));
+            },
+          ),
         ],
       ),
     ],
