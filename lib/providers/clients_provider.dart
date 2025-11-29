@@ -173,4 +173,25 @@ class ClientsProvider extends ChangeNotifier {
       notifyListeners();
     }
   }
+
+  // Borrado Lógico
+  Future<bool> deleteClient(int idCliente) async {
+    try {
+      final token = LocalStorage.getToken();
+      await _dio.delete(
+        '$_baseUrl/clientes/$idCliente', 
+        options: Options(headers: {'Authorization': 'Bearer $token'})
+      );
+      
+      if (isSearching) {
+        searchGlobal(currentSearchTerm, page: currentPage);
+      } else {
+        getPaginatedClients(page: currentPage);
+      }
+      return true;
+    } catch (e) {
+      print('Error borrando cliente: $e');
+      return false;
+    }
+  }
 }
