@@ -10,6 +10,10 @@ class Sidebar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final String location = GoRouterState.of(context).uri.toString();
+    final authProvider = Provider.of<AuthProvider>(context);
+    final String? userRole = authProvider.role; 
+    final bool isAdminOrQuiro = userRole == 'admin' || userRole == 'quiropráctico';
+    
     return Container(
       width: 250,
       color: Colors.white,
@@ -65,14 +69,16 @@ class Sidebar extends StatelessWidget {
                   onTap: () {},
                 ),
                 
-                const Divider(height: 30, color: Colors.grey),
+                if (isAdminOrQuiro) ...[
+                   const Divider(height: 30, color: Colors.grey),
                 
-                _SidebarItem(
-                  icon: Icons.settings_outlined, 
-                  title: 'Configuración',
-                  isActive: location.startsWith('/configuracion'),
-                  onTap: () {},
-                ),
+                   _SidebarItem(
+                     icon: Icons.settings_outlined, 
+                     title: 'Configuración',
+                     isActive: location.startsWith('/configuracion'),
+                     onTap: () => context.go('/configuracion'), // (Asegúrate de crear la ruta luego)
+                   ),
+                ]
               ],
             ),
           ),

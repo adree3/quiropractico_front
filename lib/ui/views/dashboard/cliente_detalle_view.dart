@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:quiropractico_front/config/theme/app_theme.dart';
 import 'package:quiropractico_front/providers/client_detail_provider.dart';
+import 'package:quiropractico_front/ui/modals/client_modal.dart';
 import 'package:quiropractico_front/ui/modals/venta_bono_modal.dart';
 import 'package:quiropractico_front/ui/modals/vincular_familiar_modal.dart';
 
@@ -139,8 +140,14 @@ class _Content extends StatelessWidget {
                 ),
                 const SizedBox(width: 15),
                 OutlinedButton.icon(
-                  onPressed: () {
-                    // TODO: Abrir modal de editar cliente (reutilizando ClientModal)
+                  onPressed: () async {
+                    final refresh = await showDialog(
+                      context: context, 
+                      builder: (_) => ClientModal(clienteExistente: cliente)
+                    );
+                    if (refresh == true) {
+                      provider.loadFullData(cliente.idCliente);
+                    }
                   },
                   icon: const Icon(Icons.edit), 
                   label: const Text("Editar Datos")

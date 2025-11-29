@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:quiropractico_front/config/theme/app_theme.dart';
+import 'package:quiropractico_front/models/cliente.dart';
 import 'package:quiropractico_front/providers/clients_provider.dart';
 
 class ClientModal extends StatefulWidget {
-  const ClientModal({super.key});
-
+  final Cliente? clienteExistente;
+  
+  const ClientModal({super.key, this.clienteExistente});
+  
   @override
   State<ClientModal> createState() => _ClientModalState();
 }
@@ -19,12 +22,30 @@ class _ClientModalState extends State<ClientModal> {
   final emailCtrl = TextEditingController();
   final direccionCtrl = TextEditingController();
   
+  bool get isEditing => widget.clienteExistente != null;
+
+  @override
+  void initState() {
+    super.initState();
+    if (isEditing) {
+      final c = widget.clienteExistente!;
+      nombreCtrl.text = c.nombre;
+      apellidosCtrl.text = c.apellidos;
+      telefonoCtrl.text = c.telefono;
+      emailCtrl.text = c.email ?? '';
+      direccionCtrl.text = c.direccion ?? '';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final clientsProvider = Provider.of<ClientsProvider>(context, listen: false);
 
     return AlertDialog(
-      title: const Text('Nuevo Paciente', style: TextStyle(fontWeight: FontWeight.bold)),
+      title: Text(
+        isEditing ? 'Editar Paciente' : 'Nuevo Paciente', 
+        style: const TextStyle(fontWeight: FontWeight.bold)
+      ),
       content: SizedBox(
         width: AppTheme.dialogWidth,
         child: Form(
@@ -74,16 +95,14 @@ class _ClientModalState extends State<ClientModal> {
                   controller: emailCtrl,
                   keyboardType: TextInputType.emailAddress,
                   decoration: const InputDecoration(
-                    labelText: 'Email *', 
+                    labelText: 'Email', 
                     prefixIcon: Icon(Icons.email_outlined),
                     hintText: 'ej. usuario@dominio.com'
                   ),
                   validator: (value) {
-                    if (value == null || value.trim().isEmpty) return 'El email es obligatorio';
-                    final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
-                    
-                    if (!emailRegex.hasMatch(value.trim())) {
-                      return 'Introduce un email válido (falta @ o .com)';
+                    if (value != null && value.isNotEmpty) {
+                      final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+                      if (!emailRegex.hasMatch(value.trim())) return 'Email inválido';
                     }
                     return null;
                   },
@@ -114,21 +133,34 @@ class _ClientModalState extends State<ClientModal> {
             if (_formKey.currentState!.validate()) {
               
               FocusScope.of(context).unfocus(); 
+              bool success;
 
-              final success = await clientsProvider.createClient(
-                nombreCtrl.text.trim(),
-                apellidosCtrl.text.trim(),
-                telefonoCtrl.text.trim(),
-                emailCtrl.text.trim(), 
-                direccionCtrl.text.isEmpty ? null : direccionCtrl.text.trim(),
-              );
+              if (isEditing) {
+                success = await clientsProvider.updateClient(
+                  widget.clienteExistente!.idCliente,
+                  nombreCtrl.text.trim(),
+                  apellidosCtrl.text.trim(),
+                  telefonoCtrl.text.trim(),
+                  emailCtrl.text.isEmpty ? null : emailCtrl.text.trim(), 
+                  direccionCtrl.text.isEmpty ? null : direccionCtrl.text.trim(),
+                );
+              } else {
+                // CREAR
+                success = await clientsProvider.createClient(
+                  nombreCtrl.text.trim(),
+                  apellidosCtrl.text.trim(),
+                  telefonoCtrl.text.trim(),
+                  emailCtrl.text.isEmpty ? null : emailCtrl.text.trim(), 
+                  direccionCtrl.text.isEmpty ? null : direccionCtrl.text.trim(),
+                );
+              }
 
               if (context.mounted) {
                 if (success) {
-                  Navigator.of(context).pop();
+                  Navigator.of(context).pop(true);
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Paciente creado correctamente'), 
+                    SnackBar(
+                      content: Text(isEditing ? 'Paciente actualizado' : 'Paciente creado'),
                       backgroundColor: Colors.green
                     ),
                   );
@@ -143,7 +175,7 @@ class _ClientModalState extends State<ClientModal> {
               }
             }
           },
-          child: const Text('Guardar Paciente'),
+          child: Text(isEditing ? 'Guardar Cambios' : 'Guardar Paciente'),
         ),
       ],
     );

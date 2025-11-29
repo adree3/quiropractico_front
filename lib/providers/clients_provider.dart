@@ -11,6 +11,8 @@ class ClientsProvider extends ChangeNotifier {
   List<Cliente> clients = [];
   bool isLoading = true;
   bool isSearching = false; 
+  bool filterActive = true;
+
   String currentSearchTerm = '';
 
   int currentPage = 0;
@@ -61,6 +63,7 @@ class ClientsProvider extends ChangeNotifier {
       final response = await _dio.get(
         '$_baseUrl/clientes',
         queryParameters: {
+          'activo': filterActive,
           'page': page,
           'size': pageSize,
           'sort': 'id_cliente,desc' 
@@ -75,7 +78,6 @@ class ClientsProvider extends ChangeNotifier {
       clients = data.map((json) => Cliente.fromJson(json)).toList();
     } catch (e) {
       print('Error cargando clientes: $e');
-      // Aquí podrías manejar errores (mostrar mensaje, etc.)
     } finally {
       isLoading = false;
       notifyListeners();
@@ -191,6 +193,58 @@ class ClientsProvider extends ChangeNotifier {
       return true;
     } catch (e) {
       print('Error borrando cliente: $e');
+      return false;
+    }
+  }
+
+  void toggleFilter(bool isActive) {
+    filterActive = isActive;
+    getPaginatedClients(page: 0);
+  }
+  
+  // Editar Cliente
+  Future<bool> updateClient(int id, String nombre, String apellidos, String telefono, String? email, String? direccion) async {
+    try {
+      final token = LocalStorage.getToken();
+      final data = { "nombre": nombre, "apellidos": apellidos, "telefono": telefono, "email": email, "direccion": direccion };
+
+      final response = await _dio.put( 
+        '$_baseUrl/clientes/$id',
+        data: data,
+        options: Options(headers: {'Authorization': 'Bearer $token'})
+      );
+
+      if (response.statusCode == 200) {
+        final index = clients.indexWhere((c) => c.idCliente == id);
+        if (index != -1) {
+           clients[index] = Cliente.fromJson(response.data);
+           notifyListeners();
+        }
+        return true;
+      }
+      return false;
+    } catch (e) {
+      print('Error editando: $e');
+      return false;
+    }
+  }
+
+  Future<bool> recoverClient(int idCliente) async {
+    try {
+      final token = LocalStorage.getToken();
+      await _dio.put(
+        '$_baseUrl/clientes/$idCliente/recuperar', 
+        options: Options(headers: {'Authorization': 'Bearer $token'})
+      );
+      
+      if (isSearching) {
+        searchGlobal(currentSearchTerm, page: currentPage);
+      } else {
+        getPaginatedClients(page: currentPage);
+      }
+      return true;
+    } catch (e) {
+      print('Error recuperando cliente: $e');
       return false;
     }
   }

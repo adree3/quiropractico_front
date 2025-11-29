@@ -9,6 +9,7 @@ class AuthProvider extends ChangeNotifier {
   AuthStatus authStatus = AuthStatus.checking;
   final Dio _dio = Dio();
   final String _baseUrl = 'http://localhost:8080/api';
+  String? role;
 
   AuthProvider() {
     isAuthenticated();
@@ -27,8 +28,11 @@ class AuthProvider extends ChangeNotifier {
 
       if (response.statusCode == 200) {
         final String token = response.data['token'];
+        final String userRole = response.data['rol'];
         await LocalStorage.saveToken(token);
+        await LocalStorage.saveRole(userRole);
         
+        role = userRole;
         authStatus = AuthStatus.authenticated;
         notifyListeners();
         return true;
@@ -50,12 +54,14 @@ class AuthProvider extends ChangeNotifier {
 
   Future<void> isAuthenticated() async {
     final token = LocalStorage.getToken();
+    final storedRole = LocalStorage.getRole();
 
     if (token == null) {
       authStatus = AuthStatus.notAuthenticated;
       notifyListeners();
       return;
     }
+    role = storedRole;
     authStatus = AuthStatus.authenticated;
     notifyListeners();
   }

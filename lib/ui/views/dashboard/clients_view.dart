@@ -73,6 +73,29 @@ class _ClientsViewState extends State<ClientsView> {
               ),
             ),
             const SizedBox(width: 10),
+
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.grey[300]!)
+              ),
+              child: DropdownButton<bool>(
+                value: clientsProvider.filterActive,
+                underline: const SizedBox(),
+                icon: const Icon(Icons.filter_list, size: 18),
+                items: const [
+                  DropdownMenuItem(value: true, child: Text("Activos")),
+                  DropdownMenuItem(value: false, child: Text("Papelera")),
+                ],
+                onChanged: (val) {
+                  if (val != null) clientsProvider.toggleFilter(val);
+                },
+              ),
+            ),
+            
+            const SizedBox(width: 10),
             
             ElevatedButton.icon(
               onPressed: () {
@@ -172,27 +195,46 @@ class _ClientsViewState extends State<ClientsView> {
                                                 ),
                                                 // Eliminar
                                                 IconButton(
-                                                  icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
-                                                  tooltip: 'Eliminar',
+                                                  icon: Icon(
+                                                    clientsProvider.filterActive 
+                                                        ? Icons.delete_outline 
+                                                        : Icons.restore_from_trash,
+                                                    color: clientsProvider.filterActive 
+                                                        ? Colors.redAccent 
+                                                        : Colors.green,
+                                                  ),
+                                                  tooltip: clientsProvider.filterActive ? 'Eliminar' : 'Reactivar',
                                                   onPressed: () async {
+                                                    final isDeleting = clientsProvider.filterActive;
+                                                    final title = isDeleting ? "¿Eliminar paciente?" : "¿Reactivar paciente?";
+                                                    final content = isDeleting 
+                                                        ? "Se moverá a la papelera." 
+                                                        : "Volverá a aparecer en la lista de activos y agenda.";
+                                                    final actionBtn = isDeleting ? "Eliminar" : "Reactivar";
+                                                    final actionColor = isDeleting ? Colors.red : Colors.green;
                                                     final confirm = await showDialog(
+                                                      
                                                       context: context, 
                                                       builder: (ctx) => AlertDialog(
-                                                        title: const Text("¿Eliminar paciente?"),
-                                                        content: Text("Se ocultará a ${cliente.nombre} de la lista."),
+                                                        title: Text(title),
+                                                        content: Text(content),
                                                         actions: [
                                                           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Cancelar")),
                                                           ElevatedButton(
                                                             onPressed: () => Navigator.pop(ctx, true), 
-                                                            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
-                                                            child: const Text("Eliminar")
+                                                            style: ElevatedButton.styleFrom(backgroundColor: actionColor, foregroundColor: Colors.white),
+                                                            child: Text(actionBtn)
                                                           ),
                                                         ],
                                                       )
                                                     );
 
                                                     if (confirm == true) {
-                                                      await clientsProvider.deleteClient(cliente.idCliente);
+                                                      if (isDeleting) {
+                                                        await clientsProvider.deleteClient(cliente.idCliente);
+                                                      } else {
+                                                        await clientsProvider.recoverClient(cliente.idCliente);
+                                                      }
                                                     }
                                                   },
                                                 ),

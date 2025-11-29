@@ -21,5 +21,17 @@ class LocalStorage {
   // Borrar Token (Logout)
   static Future<void> deleteToken() async {
     await prefs.remove('token');
+    await prefs.remove('role');
   }
+
+  // Guardar Rol
+  static Future<void> saveRole(String role) async {
+    await prefs.setString('role', role);
+  }
+
+  // Leer Rol
+  static String? getRole() {
+    return prefs.getString('role');
+  }
+ 
 }
