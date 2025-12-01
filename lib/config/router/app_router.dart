@@ -3,6 +3,8 @@ import 'package:go_router/go_router.dart';
 import 'package:quiropractico_front/providers/auth_provider.dart';
 import 'package:quiropractico_front/ui/layouts/dashboard_layout.dart';
 import 'package:quiropractico_front/ui/views/auth/login_view.dart';
+import 'package:quiropractico_front/ui/views/config/configuracion_view.dart';
+import 'package:quiropractico_front/ui/views/config/services_view.dart';
 import 'package:quiropractico_front/ui/views/dashboard/agenda_view.dart';
 import 'package:quiropractico_front/ui/views/dashboard/cliente_detalle_view.dart';
 import 'package:quiropractico_front/ui/views/dashboard/clients_view.dart';
@@ -56,11 +58,25 @@ class AppRouter {
             builder: (context, state) => const ClientsView(),
           ),
           GoRoute(
-            path: '/pacientes/:uid', // :uid es el placeholder
+            path: '/pacientes/:uid',
             builder: (context, state) {
               final String id = state.pathParameters['uid'] ?? '0';
               return ClienteDetalleView(idCliente: int.parse(id));
             },
+          ),
+          GoRoute(
+            path: '/configuracion',
+            builder: (context, state) => const ConfiguracionView(),
+            routes: [
+              GoRoute(
+                path: 'servicios',
+                builder: (context, state) => const ServicesView(), 
+              ),
+              GoRoute(
+                path: 'usuarios',
+                builder: (context, state) => const SizedBox(),
+              ),
+            ]
           ),
         ],
       ),

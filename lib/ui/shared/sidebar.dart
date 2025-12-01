@@ -76,7 +76,7 @@ class Sidebar extends StatelessWidget {
                      icon: Icons.settings_outlined, 
                      title: 'Configuración',
                      isActive: location.startsWith('/configuracion'),
-                     onTap: () => context.go('/configuracion'), // (Asegúrate de crear la ruta luego)
+                     onTap: () => context.go('/configuracion'), 
                    ),
                 ]
               ],

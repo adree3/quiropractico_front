@@ -6,6 +6,7 @@ import 'package:quiropractico_front/config/theme/app_theme.dart';
 import 'package:quiropractico_front/providers/agenda_provider.dart';
 import 'package:quiropractico_front/providers/auth_provider.dart';
 import 'package:quiropractico_front/providers/clients_provider.dart';
+import 'package:quiropractico_front/providers/services_provider.dart';
 import 'package:quiropractico_front/providers/ventas_provider.dart';
 import 'package:quiropractico_front/services/local_storage.dart';
 
@@ -19,6 +20,7 @@ void main() async{
         ChangeNotifierProvider(create: (_) => ClientsProvider()),
         ChangeNotifierProvider(create: (_) => AgendaProvider()),
         ChangeNotifierProvider(create: (_) => VentasProvider()),
+        ChangeNotifierProvider(create: (_) => ServicesProvider()),
       ],
       child: const MyApp(),
     )
