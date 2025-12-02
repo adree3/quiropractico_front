@@ -190,7 +190,7 @@ class _ClientsViewState extends State<ClientsView> {
                                                 // Ver/Editar
                                                 IconButton(
                                                   icon: const Icon(Icons.visibility_outlined, color: AppTheme.primaryColor),
-                                                  tooltip: 'Ver Ficha',
+                                                  tooltip: 'Detalles del paciente',
                                                   onPressed: () => context.go('/pacientes/${cliente.idCliente}'),
                                                 ),
                                                 // Eliminar

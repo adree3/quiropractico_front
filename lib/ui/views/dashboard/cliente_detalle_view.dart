@@ -53,20 +53,18 @@ class _Content extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Navegación
-        Padding(
-          padding: const EdgeInsets.only(bottom: 15),
-          child: ElevatedButton.icon(
-            onPressed: () => context.go('/pacientes'),
-            icon: const Icon(Icons.arrow_back, size: 18),
-            label: const Text("Volver al listado"),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white,
-              foregroundColor: Colors.black87,
-              elevation: 0,
-              side: const BorderSide(color: Colors.grey),
+        Row(
+          children: [
+            IconButton(
+              icon: const Icon(Icons.arrow_back), 
+              onPressed: () => context.go('/pacientes'),
+              tooltip: 'Volver',
             ),
-          ),
+            const SizedBox(width: 10),
+            const Text("Detalles del Paciente", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+          ],
         ),
+            
 
         // 2. Card info cliente
         Card(

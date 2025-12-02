@@ -7,6 +7,7 @@ import 'package:quiropractico_front/models/cliente.dart';
 import 'package:quiropractico_front/models/usuario.dart';
 import 'package:quiropractico_front/providers/agenda_provider.dart';
 import 'package:quiropractico_front/providers/clients_provider.dart';
+import 'package:quiropractico_front/ui/modals/venta_bono_modal.dart';
 
 class CitaModal extends StatefulWidget {
   final DateTime? selectedDate;
@@ -445,9 +446,116 @@ class _CitaModalState extends State<CitaModal> {
                         SnackBar(content: Text(isEditing ? 'Cita actualizada' : 'Cita creada'), backgroundColor: Colors.green)
                       );
                     } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(error), backgroundColor: Colors.red)
-                      );
+                      if (error.toLowerCase().contains("no tiene bonos") || error.toLowerCase().contains("saldo")) {
+                        
+                        // Diálogo
+                        final quiereComprar = await showDialog<bool>(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                            contentPadding: EdgeInsets.zero,
+                            content: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                // CABECERA VISUAL
+                                Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.symmetric(vertical: 30),
+                                  decoration: BoxDecoration(
+                                    color: Colors.orange.shade50, // Fondo naranja muy suave
+                                    borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                                  ),
+                                  child: Column(
+                                    children: [
+                                      Icon(Icons.account_balance_wallet_outlined, size: 60, color: Colors.orange.shade800),
+                                      const SizedBox(height: 10),
+                                      Text(
+                                        "Saldo Insuficiente",
+                                        style: TextStyle(
+                                          fontSize: 20, 
+                                          fontWeight: FontWeight.bold, 
+                                          color: Colors.orange.shade900
+                                        )
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                
+                                // MENSAJE EXPLICATIVO
+                                Padding(
+                                  padding: const EdgeInsets.all(25),
+                                  child: Text(
+                                    "El paciente no dispone de sesiones activas para asignar esta cita.\n\n¿Quieres realizar una venta ahora mismo?",
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(fontSize: 15, color: Colors.grey[700], height: 1.5),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            
+                            // ACCIONES
+                            actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                            actionsAlignment: MainAxisAlignment.center, // Centrados
+                            actions: [
+                              // Cancelar
+                              TextButton(
+                                onPressed: () => Navigator.pop(ctx, false), 
+                                style: TextButton.styleFrom(foregroundColor: Colors.grey),
+                                child: const Text("No, cancelar")
+                              ),
+                              const SizedBox(width: 10),
+                              
+                              // Comprar
+                              ElevatedButton.icon(
+                                onPressed: () => Navigator.pop(ctx, true), 
+                                icon: const Icon(Icons.shopping_cart),
+                                label: const Text("Vender Bono"),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.green, 
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 12),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))
+                                ),
+                              ),
+                            ],
+                          )
+                        );
+
+                        if (quiereComprar == true && context.mounted) {
+                          // Abrir Modal de Venta
+                          final ventaExitosa = await showDialog<bool>(
+                            context: context,
+                            builder: (_) => VentaBonoModal(cliente: selectedCliente!)
+                          );
+
+                          // Si compró, REINTENTAMOS LA CITA automáticamente
+                          if (ventaExitosa == true && context.mounted) {
+                             ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Bono comprado. Reintentando cita...'), backgroundColor: Colors.blue));
+                             
+                             // Llamada recursiva al backend
+                             final reintentoError = await agendaProvider.crearCita(
+                                selectedCliente!.idCliente,
+                                selectedQuiro!.idUsuario,
+                                inicioFinal,
+                                finFinal,
+                                notasCtrl.text
+                             );
+
+                             if (context.mounted) {
+                               if (reintentoError == null) {
+                                 Navigator.pop(context);
+                                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Cita agendada correctamente'), backgroundColor: Colors.green));
+                               } else {
+                                 ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(reintentoError), backgroundColor: Colors.red));
+                               }
+                             }
+                          }
+                        }
+
+                      } else {
+
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error), backgroundColor: Colors.red));
+                      }
                     }
                   }
                 }

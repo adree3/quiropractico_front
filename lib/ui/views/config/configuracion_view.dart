@@ -46,10 +46,7 @@ class ConfiguracionView extends StatelessWidget {
                 description: 'Da de alta nuevos doctores o recepcionistas.',
                 icon: Icons.people_outline,
                 color: Colors.orange,
-                onTap: () {
-                   // context.go('/configuracion/usuarios');
-                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Próximamente")));
-                },
+                onTap: () => context.go('/configuracion/usuarios'),
               ),
 
               // HORARIOS
@@ -58,9 +55,7 @@ class ConfiguracionView extends StatelessWidget {
                 description: 'Define cuándo trabaja cada doctor.',
                 icon: Icons.access_time,
                 color: Colors.purple,
-                onTap: () {
-                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Próximamente")));
-                },
+                onTap: () => context.go('/configuracion/horarios'),
               ),
             ],
           ),

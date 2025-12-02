@@ -12,7 +12,7 @@ class DashboardLayout extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final bool esPantallaPequena = constraints.maxWidth < 950;
+        final bool esPantallaPequena = constraints.maxWidth < 1025;
 
         return Scaffold(
           backgroundColor: const Color(0xFFF3F4F6),

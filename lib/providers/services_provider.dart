@@ -7,53 +7,44 @@ class ServicesProvider extends ChangeNotifier {
   final Dio _dio = Dio();
   final String _baseUrl = 'http://localhost:8080/api';
 
-  List<Servicio> _serviciosRaw = [];
+  List<Servicio> servicios = [];
   bool isLoading = true;
-  String filterType = 'todos';
+  bool? filterActive = true;
 
   ServicesProvider() {
     loadServices();
   }
 
-  // Obtener lista filtrada y ordenada
-  List<Servicio> get servicios {
-    List<Servicio> lista = _serviciosRaw.where((s) {
-      if (filterType == 'todos') return true;
-      if (filterType == 'sesion') return s.sesiones == null;
-      if (filterType == 'bono') return s.sesiones != null;
-      return true;
-    }).toList();
-
-    lista.sort((a, b) {
-
-      bool aEsSesion = a.sesiones == null;
-      bool bEsSesion = b.sesiones == null;
-      if (aEsSesion && !bEsSesion) return -1;
-      if (!aEsSesion && bEsSesion) return 1;
-
-      if (a.activo && !b.activo) return -1;
-      if (!a.activo && b.activo) return 1;
-
-      return b.idServicio.compareTo(a.idServicio);
-    });
-
-    return lista;
-  }
-
+  // Cargar servicios ordenados
   Future<void> loadServices() async {
     isLoading = true;
     notifyListeners();
 
     try {
       final token = LocalStorage.getToken();
+      final Map<String, dynamic> params = {};
+      if (filterActive != null) {
+        params['activo'] = filterActive;
+      }
+
       final response = await _dio.get(
-        '$_baseUrl/servicios',
+        '$_baseUrl/servicios', 
+        queryParameters: params,
         options: Options(headers: {'Authorization': 'Bearer $token'})
       );
 
       final List<dynamic> data = response.data;
-      _serviciosRaw = data.map((e) => Servicio.fromJson(e)).toList();
+      List<Servicio> tempList = data.map((e) => Servicio.fromJson(e)).toList();
+      tempList.sort((a, b) {
+        bool aEsSesion = a.sesiones == null;
+        bool bEsSesion = b.sesiones == null;
+        
+        if (aEsSesion && !bEsSesion) return -1;
+        if (!aEsSesion && bEsSesion) return 1;
 
+        return b.idServicio.compareTo(a.idServicio);
+      });
+      servicios = tempList;
     } catch (e) {
       print('Error cargando servicios: $e');
     } finally {
@@ -62,10 +53,10 @@ class ServicesProvider extends ChangeNotifier {
     }
   }
 
-  // FILTRO
-  void setFilter(String tipo) {
-    filterType = tipo;
-    notifyListeners();
+  // Filro de activos/inactivos/todos
+  void setFilter(bool? active) {
+    filterActive = active;
+    loadServices();
   }
 
   // CREAR
