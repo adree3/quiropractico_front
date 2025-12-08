@@ -10,6 +10,8 @@ import 'package:quiropractico_front/ui/views/config/users_view.dart';
 import 'package:quiropractico_front/ui/views/dashboard/agenda_view.dart';
 import 'package:quiropractico_front/ui/views/dashboard/cliente_detalle_view.dart';
 import 'package:quiropractico_front/ui/views/dashboard/clients_view.dart';
+import 'package:quiropractico_front/ui/views/dashboard/home_view.dart';
+import 'package:quiropractico_front/ui/views/dashboard/payments_view.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
 final GlobalKey<NavigatorState> _shellNavigatorKey = GlobalKey<NavigatorState>();
@@ -27,13 +29,18 @@ class AppRouter {
     redirect: (context, state) {
       final isGoingToLogin = state.matchedLocation == '/login';
       final authStatus = authProvider.authStatus;
+      final role = authProvider.role;
 
       if (authStatus == AuthStatus.notAuthenticated && !isGoingToLogin) {
         return '/login';
       }
 
       if (authStatus == AuthStatus.authenticated && isGoingToLogin) {
-        return '/agenda';
+        if (role == 'admin' || role == 'quiropráctico') {
+           return '/dashboard';
+        } else {
+           return '/agenda';
+        }
       }
 
       return null; 
@@ -52,6 +59,10 @@ class AppRouter {
         },
         routes: [
           GoRoute(
+             path: '/dashboard',
+             builder: (context, state) => const HomeView(),
+           ),
+          GoRoute(
             path: '/agenda',
             builder: (context, state) => const AgendaView(),
           ),
@@ -65,6 +76,10 @@ class AppRouter {
               final String id = state.pathParameters['uid'] ?? '0';
               return ClienteDetalleView(idCliente: int.parse(id));
             },
+          ),
+          GoRoute(
+            path: '/pagos',
+            builder: (context, state) => const PaymentsView(), // <--- CONECTAR AQUÍ
           ),
           GoRoute(
             path: '/configuracion',

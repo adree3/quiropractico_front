@@ -17,14 +17,14 @@ class VentaBonoModal extends StatefulWidget {
 class _VentaBonoModalState extends State<VentaBonoModal> {
   final _formKey = GlobalKey<FormState>();
   
-  Servicio? selectedBono;
+  Servicio? selectedServicio;
   String selectedMetodo = 'transferencia';
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<VentasProvider>(context, listen: false).loadBonos();
+      Provider.of<VentasProvider>(context, listen: false).loadServiciosDisponibles();
     });
   }
 
@@ -36,9 +36,13 @@ class _VentaBonoModalState extends State<VentaBonoModal> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
       title: Row(
         children: [
-          const Icon(Icons.shopping_cart, color: Colors.green),
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(color: Colors.green.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+            child: const Icon(Icons.shopping_cart, color: Colors.green),
+          ),
           const SizedBox(width: 10),
-          Text('Venta para ${widget.cliente.nombre}', style: const TextStyle(fontWeight: FontWeight.bold)),
+          const Text('Nueva Venta', style: TextStyle(fontWeight: FontWeight.bold)),
         ],
       ),
       content: SizedBox(
@@ -47,23 +51,37 @@ class _VentaBonoModalState extends State<VentaBonoModal> {
           key: _formKey,
           child: Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Text("Cliente: ${widget.cliente.nombre} ${widget.cliente.apellidos}", style: const TextStyle(color: Colors.grey)),
+              const SizedBox(height: 20),
               // SELECTOR DE BONO
               DropdownButtonFormField<Servicio>(
+                isExpanded: true,
                 decoration: const InputDecoration(
-                  labelText: 'Seleccionar Bono',
+                  labelText: 'Seleccionar Servicio',
                   prefixIcon: Icon(Icons.card_giftcard),
                   border: OutlineInputBorder(),
                 ),
-                value: selectedBono,
-                items: ventasProvider.bonosDisponibles.map((servicio) {
+                value: selectedServicio,
+                items: ventasProvider.listaServicios.map((servicio) {
+                  final texto = "${servicio.nombreServicio}  |  ${servicio.precio}€";
                   return DropdownMenuItem(
                     value: servicio,
-                    child: Text("${servicio.nombreServicio} - ${servicio.precio}€"),
+                    child: Text(
+                      texto,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 14),
+                    ),
                   );
                 }).toList(),
-                onChanged: (val) => setState(() => selectedBono = val),
+                onChanged: (val) => setState(() => selectedServicio = val),
                 validator: (val) => val == null ? 'Selecciona un producto' : null,
+                hint: ventasProvider.listaServicios.isEmpty 
+                    ? const Text("Cargando...") 
+                    : (ventasProvider.listaServicios.isEmpty 
+                        ? const Text("No hay servicios activos", style: TextStyle(color: Colors.red))
+                        : const Text("Selecciona una opción")),
               ),
               
               const SizedBox(height: 20),
@@ -87,7 +105,7 @@ class _VentaBonoModalState extends State<VentaBonoModal> {
               const SizedBox(height: 30),
 
               // RESUMEN TOTAL
-              if (selectedBono != null)
+              if (selectedServicio != null)
                 Container(
                   padding: const EdgeInsets.all(15),
                   decoration: BoxDecoration(
@@ -100,7 +118,7 @@ class _VentaBonoModalState extends State<VentaBonoModal> {
                     children: [
                       const Text("TOTAL A COBRAR:", style: TextStyle(fontWeight: FontWeight.bold)),
                       Text(
-                        "${selectedBono!.precio} €", 
+                        "${selectedServicio!.precio} €", 
                         style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.green)
                       ),
                     ],
@@ -110,6 +128,7 @@ class _VentaBonoModalState extends State<VentaBonoModal> {
           ),
         ),
       ),
+      actionsPadding: const EdgeInsets.all(20),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context, false),
@@ -122,7 +141,7 @@ class _VentaBonoModalState extends State<VentaBonoModal> {
               if (_formKey.currentState!.validate()) {
                 final success = await ventasProvider.venderBono(
                   widget.cliente.idCliente,
-                  selectedBono!.idServicio,
+                  selectedServicio!.idServicio,
                   selectedMetodo
                 );
 

@@ -6,8 +6,11 @@ import 'package:quiropractico_front/config/theme/app_theme.dart';
 import 'package:quiropractico_front/providers/agenda_provider.dart';
 import 'package:quiropractico_front/providers/auth_provider.dart';
 import 'package:quiropractico_front/providers/clients_provider.dart';
+import 'package:quiropractico_front/providers/historial_provider.dart';
 import 'package:quiropractico_front/providers/horarios_provider.dart';
+import 'package:quiropractico_front/providers/payments_provider.dart';
 import 'package:quiropractico_front/providers/services_provider.dart';
+import 'package:quiropractico_front/providers/stats_provider.dart';
 import 'package:quiropractico_front/providers/ventas_provider.dart';
 import 'package:quiropractico_front/providers/users_provider.dart';
 import 'package:quiropractico_front/services/local_storage.dart';
@@ -25,6 +28,9 @@ void main() async{
         ChangeNotifierProvider(create: (_) => ServicesProvider()),
         ChangeNotifierProvider(create: (_) => UsersProvider()),
         ChangeNotifierProvider(create: (_) => HorariosProvider()),
+        ChangeNotifierProvider(create: (_) => PaymentsProvider()),
+        ChangeNotifierProvider(create: (_) => HistorialProvider()),
+        ChangeNotifierProvider(create: (_) => StatsProvider()),
       ],
       child: const MyApp(),
     )

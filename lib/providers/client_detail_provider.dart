@@ -64,13 +64,11 @@ class ClientDetailProvider extends ChangeNotifier {
         options: Options(headers: {'Authorization': 'Bearer $token'})
       );
 
-      // Actualizamos la lista de familiares si funciona
       final respFamilia = await _dio.get(
         '$_baseUrl/clientes/${cliente!.idCliente}/familiares', 
         options: Options(headers: {'Authorization': 'Bearer $token'})
       );
       
-      // Actualizamos la lista local usando el Modelo
       familiares = (respFamilia.data as List).map((e) => Familiar.fromJson(e)).toList();
       notifyListeners();
       
@@ -78,6 +76,29 @@ class ClientDetailProvider extends ChangeNotifier {
 
     } catch (e) {
       print('Error vinculando familiar: $e');
+      return false;
+    }
+  }
+
+  Future<bool> desvincularFamiliar(int idGrupo) async {
+    try {
+      final token = LocalStorage.getToken();
+      await _dio.delete(
+        '$_baseUrl/clientes/familiares/$idGrupo',
+        options: Options(headers: {'Authorization': 'Bearer $token'})
+      );
+
+      final respFamilia = await _dio.get(
+        '$_baseUrl/clientes/${cliente!.idCliente}/familiares', 
+        options: Options(headers: {'Authorization': 'Bearer $token'})
+      );
+      
+      familiares = (respFamilia.data as List).map((e) => Familiar.fromJson(e)).toList();
+      notifyListeners();
+      
+      return true;
+    } catch (e) {
+      print('Error desvinculando: $e');
       return false;
     }
   }

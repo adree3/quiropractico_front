@@ -22,4 +22,16 @@ class Servicio {
       activo: json['activo']?? true,
     );
   }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is Servicio && other.idServicio == idServicio;
+  }
+
+  @override
+  int get hashCode => idServicio.hashCode;
+  
+  @override
+  String toString() => nombreServicio;
 }

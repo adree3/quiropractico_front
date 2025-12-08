@@ -49,7 +49,7 @@ class AgendaProvider extends ChangeNotifier {
     }
   }
 
-  Future<String?> crearCita(int idCliente, int idQuiropractico, DateTime inicio, DateTime fin, String notas) async {
+  Future<String?> crearCita(int idCliente, int idQuiropractico, DateTime inicio, DateTime fin, String notas, {int? idBonoAUtilizar}) async {
     try {
       final token = LocalStorage.getToken();
       
@@ -58,7 +58,8 @@ class AgendaProvider extends ChangeNotifier {
         "idQuiropractico": idQuiropractico,
         "fechaHoraInicio": inicio.toIso8601String(),
         "fechaHoraFin": fin.toIso8601String(),
-        "notasRecepcion": notas
+        "notasRecepcion": notas,
+        "idBonoAUtilizar": idBonoAUtilizar
       };
 
       final response = await _dio.post(

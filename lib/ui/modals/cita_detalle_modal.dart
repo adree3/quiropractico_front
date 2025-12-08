@@ -5,6 +5,7 @@ import 'package:quiropractico_front/config/theme/app_theme.dart';
 import 'package:quiropractico_front/models/cita.dart';
 import 'package:quiropractico_front/providers/agenda_provider.dart';
 import 'package:quiropractico_front/ui/modals/cita_modal.dart';
+import 'package:quiropractico_front/ui/modals/clinica_note_modal.dart';
 
 class CitaDetalleModal extends StatelessWidget {
   final Cita cita;
@@ -64,14 +65,11 @@ class CitaDetalleModal extends StatelessWidget {
                   const Divider(height: 20),
                   _InfoRow(icon: Icons.phone, label: "Telefono", value: cita.telefonoCliente),
                   const Divider(height: 20),
+                  _InfoRow(icon: Icons.payment, label: "Método de Pago", value: cita.infoPago),
+                  const Divider(height: 20),
                   _InfoRow(icon: Icons.medical_services, label: "Doctor", value: cita.nombreQuiropractico),
                   const Divider(height: 20),
-                  _InfoRow(
-                    icon: Icons.access_time, 
-                    label: "Horario", 
-                    value: "${dateFormat.format(cita.fechaHoraInicio)} - ${dateFormat.format(cita.fechaHoraFin)}"
-                  ),
-
+                  _InfoRow(icon: Icons.access_time, label: "Horario", value: "${dateFormat.format(cita.fechaHoraInicio)} - ${dateFormat.format(cita.fechaHoraFin)}"),
                 ],
               ),
             ),
@@ -114,6 +112,27 @@ class CitaDetalleModal extends StatelessWidget {
               );
             },
           ),
+
+          /*if (cita.estado != 'cancelada')
+          ElevatedButton.icon(
+            onPressed: () {
+              Navigator.pop(context); 
+              showDialog(
+                context: context,
+                builder: (_) => ClinicalNoteModal(
+                  idCita: cita.idCita,
+                  pacienteNombre: cita.nombreClienteCompleto,
+                )
+              );
+            },
+            icon: const Icon(Icons.description, size: 18),
+            label: const Text("Notas S.O.A.P."),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blueGrey,
+              foregroundColor: Colors.white,
+            ),
+          ),
+          */
           ElevatedButton.icon(
             onPressed: () async {
               final confirm = await showDialog(

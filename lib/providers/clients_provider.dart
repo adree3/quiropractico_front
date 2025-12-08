@@ -248,4 +248,24 @@ class ClientsProvider extends ChangeNotifier {
       return false;
     }
   }
+
+  Future<Cliente?> getClientePorId(int id) async {
+    try {
+      try {
+        return clients.firstWhere((c) => c.idCliente == id);
+      } catch (_) {
+      }
+
+      final token = LocalStorage.getToken();
+      final response = await _dio.get(
+        '$_baseUrl/clientes/$id',
+        options: Options(headers: {'Authorization': 'Bearer $token'})
+      );
+
+      return Cliente.fromJson(response.data);
+    } catch (e) {
+      print('Error cargando cliente individual: $e');
+      return null;
+    }
+  }
 }

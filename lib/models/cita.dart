@@ -9,6 +9,7 @@ class Cita {
   final DateTime fechaHoraFin;
   final String estado;
   final String? notas;
+  final String infoPago;
 
   Cita({
     required this.idCita,
@@ -21,6 +22,7 @@ class Cita {
     required this.fechaHoraFin,
     required this.estado,
     this.notas,
+    required this.infoPago,
   });
 
   factory Cita.fromJson(Map<String, dynamic> json) {
@@ -35,6 +37,7 @@ class Cita {
       fechaHoraFin: DateTime.parse(json['fechaHoraFin']),
       estado: json['estado'],
       notas: json['notasRecepcion'],
+      infoPago: json['infoPago'] ?? 'Desconocido',
     );
   }
 }

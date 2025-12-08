@@ -49,6 +49,13 @@ class Sidebar extends StatelessWidget {
             child: ListView(
               padding: const EdgeInsets.symmetric(horizontal: 10),
               children: [
+                if (isAdminOrQuiro) 
+                _SidebarItem(
+                  icon: Icons.dashboard_outlined, 
+                  title: 'Inicio',
+                  isActive: location == '/dashboard',
+                  onTap: () => context.go('/dashboard'),
+                ),
                 _SidebarItem(
                   icon: Icons.calendar_month_outlined, 
                   title: 'Agenda',
@@ -64,9 +71,9 @@ class Sidebar extends StatelessWidget {
                 
                 _SidebarItem(
                   icon: Icons.payment_outlined, 
-                  title: 'Pagos y Bonos',
+                  title: 'Pagos',
                   isActive: location.startsWith('/pagos'),
-                  onTap: () {},
+                  onTap: () => context.go('/pagos'),
                 ),
                 
                 if (isAdminOrQuiro) ...[
@@ -74,7 +81,7 @@ class Sidebar extends StatelessWidget {
                 
                    _SidebarItem(
                      icon: Icons.settings_outlined, 
-                     title: 'Configuración',
+                     title: 'Panel',
                      isActive: location.startsWith('/configuracion'),
                      onTap: () => context.go('/configuracion'), 
                    ),

@@ -7,6 +7,7 @@ import 'package:quiropractico_front/models/cliente.dart';
 import 'package:quiropractico_front/models/usuario.dart';
 import 'package:quiropractico_front/providers/agenda_provider.dart';
 import 'package:quiropractico_front/providers/clients_provider.dart';
+import 'package:quiropractico_front/ui/modals/payment_selection_modal.dart';
 import 'package:quiropractico_front/ui/modals/venta_bono_modal.dart';
 
 class CitaModal extends StatefulWidget {
@@ -104,12 +105,20 @@ class _CitaModalState extends State<CitaModal> {
 
       // Actualizar estado visual de los dropdowns de Cliente y Doctor
       if (mounted) {
-        setState(() {
+        setState(() async {
           selectedQuiro = doctorInicial;
           if (isEditing) {
-            try {
-              selectedCliente = clientsProv.clients.firstWhere((c) => c.idCliente == widget.citaExistente!.idCliente);
-            } catch (_) {}
+            final idClienteDeLaCita = widget.citaExistente!.idCliente;
+
+            final clienteEncontrado = await clientsProv.getClientePorId(idClienteDeLaCita);
+            
+            if (mounted && clienteEncontrado != null) {
+              setState(() {
+                selectedCliente = clienteEncontrado;
+                if (fechaCtrl.text.isNotEmpty) { 
+                }
+              });
+            }
           }
         });
       }
@@ -292,7 +301,7 @@ class _CitaModalState extends State<CitaModal> {
                   // Diseño del Input 
                   fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
 
-                    if (selectedCliente != null && controller.text.isEmpty) {
+                    if (selectedCliente != null && controller.text.isEmpty && !focusNode.hasFocus) {
                       controller.text = "${selectedCliente!.nombre} ${selectedCliente!.apellidos} (${selectedCliente!.telefono})";
                     }
 
@@ -417,6 +426,20 @@ class _CitaModalState extends State<CitaModal> {
                 if (_formKey.currentState!.validate()) {
                   final inicioFinal = _joinDateTime(fechaSeleccionada, horaInicio);
                   final finFinal = _joinDateTime(fechaSeleccionada, horaFin);
+                  int? idBonoElegido;
+                  
+                  if (!isEditing) {
+                     final resultado = await showDialog(
+                        context: context,
+                        builder: (_) => PaymentSelectionModal(cliente: selectedCliente!)
+                     );
+
+                     if (resultado == null) return;
+                     
+                     if (resultado is int) {
+                        idBonoElegido = resultado;
+                     }
+                  }
 
                   String? error;
                   if (isEditing) {
@@ -435,7 +458,8 @@ class _CitaModalState extends State<CitaModal> {
                       selectedQuiro!.idUsuario,
                       inicioFinal,
                       finFinal,
-                      notasCtrl.text
+                      notasCtrl.text,
+                      idBonoAUtilizar: idBonoElegido
                     );
                   }
 

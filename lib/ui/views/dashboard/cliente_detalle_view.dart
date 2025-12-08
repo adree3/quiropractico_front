@@ -180,102 +180,106 @@ class _Content extends StatelessWidget {
                     children: [
                       // Historial Citas
                       provider.historialCitas.isEmpty
-                          ? const Center(child: Text("No hay citas registradas"))
-                          : ListView.builder(
-                              padding: const EdgeInsets.all(5),
-                              itemCount: provider.historialCitas.length,
-                              itemBuilder: (ctx, i) {
-                                final cita = provider.historialCitas[i];
-                                return Card(
-                                  margin: const EdgeInsets.only(bottom: 10),
-                                  elevation: 0,
-                                  color: Colors.white,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                    side: BorderSide(color: Colors.grey.shade200)
+                        ? const Center(child: Text("No hay citas registradas"))
+                        : ListView.builder(
+                            padding: const EdgeInsets.all(5),
+                            itemCount: provider.historialCitas.length,
+                            itemBuilder: (ctx, i) {
+                              final cita = provider.historialCitas[i];
+                              return Card(
+                                margin: const EdgeInsets.only(bottom: 10),
+                                elevation: 0,
+                                color: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  side: BorderSide(color: Colors.grey.shade200)
+                                ),
+                                child: ListTile(
+                                  leading: Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(8)),
+                                    child: const Icon(Icons.calendar_today, color: Colors.blue),
                                   ),
-                                  child: ListTile(
-                                    leading: Container(
-                                      padding: const EdgeInsets.all(8),
-                                      decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(8)),
-                                      child: const Icon(Icons.calendar_today, color: Colors.blue),
-                                    ),
-                                    title: Text(
-                                      DateFormat('dd/MM/yyyy  HH:mm').format(cita.fechaHoraInicio),
-                                      style: const TextStyle(fontWeight: FontWeight.bold)
-                                    ),
-                                    subtitle: Text("Dr. ${cita.nombreQuiropractico}"),
-                                    trailing: Chip(
-                                      backgroundColor: cita.estado == 'completada' ? Colors.green : 
-                                                       cita.estado == 'cancelada' ? Colors.red : 
-                                                       cita.estado == 'ausente' ? Colors.grey : Colors.blue,
-                                      padding: EdgeInsets.zero, 
-                                      labelPadding: const EdgeInsets.symmetric(horizontal: 8), 
-                                      
-                                      
-                                      
-                                      label: SizedBox(
-                                        width: 85, 
-                                        child: Text(
-                                          cita.estado.toUpperCase(),
-                                          textAlign: TextAlign.center,
-                                          style: const TextStyle(
-                                            color: Colors.white, 
-                                            fontSize: 10, 
-                                            fontWeight: FontWeight.bold,
-                                            letterSpacing: 0.5
-                                          ),
+                                  title: Text(
+                                    DateFormat('dd/MM/yyyy  HH:mm').format(cita.fechaHoraInicio),
+                                    style: const TextStyle(fontWeight: FontWeight.bold)
+                                  ),
+                                  subtitle: Text("Dr. ${cita.nombreQuiropractico}"),
+                                  trailing: Chip(
+                                    backgroundColor: cita.estado == 'completada' ? Colors.green : 
+                                                      cita.estado == 'cancelada' ? Colors.red : 
+                                                      cita.estado == 'ausente' ? Colors.grey : Colors.blue,
+                                    padding: EdgeInsets.zero, 
+                                    labelPadding: const EdgeInsets.symmetric(horizontal: 8), 
+                                    
+                                    
+                                    
+                                    label: SizedBox(
+                                      width: 85, 
+                                      child: Text(
+                                        cita.estado.toUpperCase(),
+                                        textAlign: TextAlign.center,
+                                        style: const TextStyle(
+                                          color: Colors.white, 
+                                          fontSize: 10, 
+                                          fontWeight: FontWeight.bold,
+                                          letterSpacing: 0.5
                                         ),
                                       ),
                                     ),
                                   ),
-                                );
-                              },
-                            ),
-
+                                ),
+                              );
+                            },
+                          ),
                       // Bonos
-                      provider.bonos.isEmpty 
-                          ? const Center(child: Text("El cliente no tiene bonos activos"))
-                          : ListView.builder(
-                              padding: const EdgeInsets.all(5),
-                              itemCount: provider.bonos.length,
-                              itemBuilder: (ctx, i) {
-                                final bono = provider.bonos[i];
-                                final caducidad = bono.fechaCaducidad != null 
-                                    ? DateFormat('dd/MM/yyyy').format(bono.fechaCaducidad!)
-                                    : 'Sin caducidad';
+                      Builder(
+                        builder: (context){
+                          final bonosActivos = provider.bonos.where((b) => b.sesionesRestantes > 0).toList();
+                          if (bonosActivos.isEmpty) {
+                            return const Center(child: Text("El cliente no tiene bonos activos con saldo"));
+                          }
+                          return ListView.builder(
+                            padding: const EdgeInsets.all(5),
+                            itemCount: bonosActivos.length,
+                            itemBuilder: (ctx, i) {
+                              final bono = bonosActivos[i];
+                              final caducidad = bono.fechaCaducidad != null 
+                                  ? DateFormat('dd/MM/yyyy').format(bono.fechaCaducidad!)
+                                  : 'Sin caducidad';
 
-                                return Card(
-                                  elevation: 2,
-                                  margin: const EdgeInsets.only(bottom: 10),
-                                  child: ListTile(
-                                    leading: const CircleAvatar(
-                                      backgroundColor: Colors.amber,
-                                      child: Icon(Icons.star, color: Colors.white),
+                              return Card(
+                                elevation: 2,
+                                margin: const EdgeInsets.only(bottom: 10),
+                                child: ListTile(
+                                  leading: const CircleAvatar(
+                                    backgroundColor: Colors.amber,
+                                    child: Icon(Icons.star, color: Colors.white),
+                                  ),
+                                  title: Text(bono.nombreServicio, style: const TextStyle(fontWeight: FontWeight.bold)),
+                                  subtitle: Text("Caduca: $caducidad"),
+                                  trailing: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: Colors.green.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(20),
+                                      border: Border.all(color: Colors.green)
                                     ),
-                                    title: Text(bono.nombreServicio, style: const TextStyle(fontWeight: FontWeight.bold)),
-                                    subtitle: Text("Caduca: $caducidad"),
-                                    trailing: Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                      decoration: BoxDecoration(
-                                        color: Colors.green.withOpacity(0.1),
-                                        borderRadius: BorderRadius.circular(20),
-                                        border: Border.all(color: Colors.green)
-                                      ),
-                                      child: Text(
-                                        "${bono.sesionesRestantes} sesiones", 
-                                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.green)
-                                      ),
+                                    child: Text(
+                                      "${bono.sesionesRestantes} sesiones", 
+                                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.green)
                                     ),
                                   ),
-                                );
-                              },
-                            ),
+                                ),
+                              );
+                            },
+                          );
+                        }
+                      ),
 
                       // Familiares
                       Column(
                         children: [
-                          // Botón Añadir Familiar 
                           Padding(
                             padding: const EdgeInsets.all(8.0),
                             child: ElevatedButton.icon(
@@ -307,11 +311,41 @@ class _Content extends StatelessWidget {
                                         ),
                                         title: Text(fam.nombreCompleto, style: const TextStyle(fontWeight: FontWeight.bold)),
                                         subtitle: Text("Relación: ${fam.relacion}"),
-                                        trailing: IconButton(
-                                          icon: const Icon(Icons.arrow_forward_ios, size: 16),
-                                          tooltip: "Ir a su ficha",
-                                          onPressed: () => context.push('/pacientes/${fam.idFamiliar}'),
-                                        ),
+                                        trailing: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            IconButton(
+                                              icon: const Icon(Icons.link_off, color: Colors.redAccent),
+                                              tooltip: "Desvincular (Quitar permiso)",
+                                              onPressed: () async {
+                                                final confirm = await showDialog(
+                                                  context: context,
+                                                  builder: (alertCtx) => AlertDialog(
+                                                    title: const Text("¿Desvincular familiar?"),
+                                                    content: Text("Si desvinculas a ${fam.nombreCompleto}, dejará de poder usar tus bonos."),
+                                                    actions: [
+                                                      TextButton(onPressed: () => Navigator.pop(alertCtx, false), child: const Text("Cancelar")),
+                                                      ElevatedButton(
+                                                        onPressed: () => Navigator.pop(alertCtx, true),
+                                                        style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white), 
+                                                        child: const Text("Desvincular")
+                                                      ),
+                                                    ],
+                                                  )
+                                                );
+
+                                                if (confirm == true) {
+                                                  await provider.desvincularFamiliar(fam.idGrupo);
+                                                }
+                                              },
+                                            ),
+                                            IconButton(
+                                              icon: const Icon(Icons.arrow_forward_ios, size: 16),
+                                              tooltip: "Ir a su ficha",
+                                              onPressed: () => context.push('/pacientes/${fam.idFamiliar}'),
+                                            ),
+                                          ],
+                                        )
                                       ),
                                     );
                                   },

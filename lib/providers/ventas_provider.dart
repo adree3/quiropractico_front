@@ -1,14 +1,17 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:quiropractico_front/models/servicio.dart';
+import 'package:quiropractico_front/models/bono_seleccion.dart';
 import 'package:quiropractico_front/services/local_storage.dart';
 
 class VentasProvider extends ChangeNotifier {
   final Dio _dio = Dio();
   final String _baseUrl = 'http://localhost:8080/api';
 
+  List<BonoSeleccion> bonosUsables = [];
   List<Servicio> bonosDisponibles = [];
   bool isLoading = false;
+  List<Servicio> listaServicios = [];
 
   // Cargar la lista de bonos para el dropdown
   Future<void> loadBonos() async {
@@ -24,6 +27,26 @@ class VentasProvider extends ChangeNotifier {
       notifyListeners();
     } catch (e) {
       print('Error cargando bonos: $e');
+    }
+  }
+
+  // Cargar Servicios ACTIVOS
+  Future<void> loadServiciosDisponibles() async {
+    try {
+      final token = LocalStorage.getToken();
+      
+      final response = await _dio.get(
+        '$_baseUrl/servicios',
+        queryParameters: {'activo': true},
+        options: Options(headers: {'Authorization': 'Bearer $token'})
+      );
+      
+      final List<dynamic> data = response.data;
+      listaServicios = data.map((e) => Servicio.fromJson(e)).toList();
+      
+      notifyListeners();
+    } catch (e) {
+      print('Error cargando servicios: $e');
     }
   }
 
@@ -55,6 +78,21 @@ class VentasProvider extends ChangeNotifier {
     } finally {
       isLoading = false;
       notifyListeners();
+    }
+  }
+
+  Future<void> cargarBonosUsables(int idCliente) async {
+    try {
+      final token = LocalStorage.getToken();
+      final response = await _dio.get(
+        '$_baseUrl/bonos/disponibles/$idCliente',
+        options: Options(headers: {'Authorization': 'Bearer $token'})
+      );
+      final List<dynamic> data = response.data;
+      bonosUsables = data.map((e) => BonoSeleccion.fromJson(e)).toList();
+      notifyListeners();
+    } catch (e) {
+      print(e);
     }
   }
 }
