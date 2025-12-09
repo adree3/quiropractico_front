@@ -31,13 +31,13 @@ class AppRouter {
       final authStatus = authProvider.authStatus;
       final role = authProvider.role;
 
-      if (authStatus == AuthStatus.notAuthenticated && !isGoingToLogin) {
+      if ((authStatus == AuthStatus.notAuthenticated || authStatus == AuthStatus.locked) && !isGoingToLogin) {
         return '/login';
       }
 
       if (authStatus == AuthStatus.authenticated && isGoingToLogin) {
         if (role == 'admin' || role == 'quiropráctico') {
-           return '/dashboard';
+           return '/agenda';
         } else {
            return '/agenda';
         }

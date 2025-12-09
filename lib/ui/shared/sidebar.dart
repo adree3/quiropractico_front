@@ -49,13 +49,13 @@ class Sidebar extends StatelessWidget {
             child: ListView(
               padding: const EdgeInsets.symmetric(horizontal: 10),
               children: [
-                if (isAdminOrQuiro) 
-                _SidebarItem(
-                  icon: Icons.dashboard_outlined, 
-                  title: 'Inicio',
-                  isActive: location == '/dashboard',
-                  onTap: () => context.go('/dashboard'),
-                ),
+                // if (isAdminOrQuiro) 
+                // _SidebarItem(
+                //   icon: Icons.dashboard_outlined, 
+                //   title: 'Inicio',
+                //   isActive: location == '/dashboard',
+                //   onTap: () => context.go('/dashboard'),
+                // ),
                 _SidebarItem(
                   icon: Icons.calendar_month_outlined, 
                   title: 'Agenda',

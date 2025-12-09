@@ -13,8 +13,9 @@ class LoginView extends StatelessWidget {
     return Scaffold(
       body: Row(
         children: [
-          if (size.width > 800)
+          if (size.width > 900)
             Expanded(
+              flex: 2,
               child: Container(
                 color: AppTheme.primaryColor, 
                 child: Column(
@@ -31,7 +32,7 @@ class LoginView extends StatelessWidget {
                     ),
                     const SizedBox(height: 10),
                     Text(
-                      'Gestión integral de pacientes y citas',
+                      'Gestión Clínica y Citas',
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         color: Colors.white70,
                       ),
@@ -42,14 +43,20 @@ class LoginView extends StatelessWidget {
             ),
           // Formulario
           Expanded(
+            flex: 2,
             child: Container(
-              color: Colors.white,
+              color: Colors.grey[50],
               child: Center(
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 400), // Ancho máximo para que no se estire feo
-                  child: const SingleChildScrollView(
-                    padding: EdgeInsets.all(32),
-                    child: _LoginForm(),
+                  constraints: const BoxConstraints(maxWidth: 450),
+                  child: Card(
+                    elevation: 4,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    margin: const EdgeInsets.all(24),
+                    child: const Padding(
+                      padding: EdgeInsets.all(40),
+                      child: _LoginForm(),
+                    ),
                   ),
                 ),
               ),
@@ -76,8 +83,18 @@ class _LoginFormState extends State<_LoginForm> {
   
   bool _isObscure = true;
 
+  void _submit() async {
+    if (_formKey.currentState!.validate()) {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      await authProvider.login(
+        _userController.text.trim(),
+        _passController.text.trim(),
+      );
+    }
+  }
   @override
   Widget build(BuildContext context) {
+    final authProvider = Provider.of<AuthProvider>(context);
     return Form(
       key: _formKey,
       child: Column(
@@ -86,34 +103,32 @@ class _LoginFormState extends State<_LoginForm> {
         children: [
           Text(
             'Bienvenido',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: AppTheme.primaryColor,
+            style: TextStyle(
+              fontSize: 28, 
+              fontWeight: FontWeight.bold, 
+              color: AppTheme.primaryColor
             ),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 10),
-          Text(
-            'Inicia sesión para acceder al panel',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: AppTheme.secondaryColor,
-            ),
+          const SizedBox(height: 8),
+          const Text(
+            'Introduce tus credenciales',
             textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.grey),
           ),
           const SizedBox(height: 40),
 
           // Usuario
           TextFormField(
             controller: _userController,
+            textInputAction: TextInputAction.next,
             decoration: const InputDecoration(
               labelText: 'Usuario',
               prefixIcon: Icon(Icons.person_outline),
               hintText: 'Ingresa tu nombre de usuario',
+              border: OutlineInputBorder(),
             ),
-            validator: (value) {
-              if (value == null || value.isEmpty) return 'El usuario es obligatorio';
-              return null;
-            },
+            validator: (value) => value!.isEmpty ? 'Campo requerido' : null,
           ),
           const SizedBox(height: 20),
 
@@ -121,6 +136,8 @@ class _LoginFormState extends State<_LoginForm> {
           TextFormField(
             controller: _passController,
             obscureText: _isObscure,
+            textInputAction: TextInputAction.done,
+            onFieldSubmitted: (_) => _submit(),
             decoration: InputDecoration(
               labelText: 'Contraseña',
               prefixIcon: const Icon(Icons.lock_outline),
@@ -140,37 +157,48 @@ class _LoginFormState extends State<_LoginForm> {
             },
           ),
           
-          const SizedBox(height: 40),
+          const SizedBox(height: 30),
 
+          if (authProvider.errorMessage != null)
+            Container(
+              margin: const EdgeInsets.only(bottom: 20),
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.red.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.red.shade200),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.error_outline, color: Colors.red),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      authProvider.errorMessage!,
+                      style: TextStyle(color: Colors.red.shade800, fontSize: 13),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           // Botón
           SizedBox(
             height: 50,
             child: ElevatedButton(
-              onPressed: () async {
-                if (_formKey.currentState!.validate()) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Validando credenciales...')),
-                  );
-                  final authProvider = Provider.of<AuthProvider>(context, listen: false);
-                  
-                  final success = await authProvider.login(
-                    _userController.text.trim(), 
-                    _passController.text.trim()
-                  );
-
-                  if (!success) {
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Credenciales incorrectas'),
-                          backgroundColor: Colors.red,
-                        ),
-                      );
-                    }
-                  }
-                }
-              },
-              child: const Text('INICIAR SESIÓN'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryColor,
+                foregroundColor: Colors.white,
+                disabledBackgroundColor: AppTheme.primaryColor.withOpacity(0.6),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              onPressed: authProvider.isLoginLoading ? null : _submit,
+              child: authProvider.isLoginLoading
+                  ? const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                    )
+                  : const Text('INICIAR SESIÓN', style: TextStyle(fontSize: 16)),
             ),
           ),
         ],
