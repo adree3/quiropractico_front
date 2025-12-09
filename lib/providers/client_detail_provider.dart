@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:quiropractico_front/models/bono.dart';
 import 'package:quiropractico_front/models/cita.dart';
+import 'package:quiropractico_front/models/cita_conflicto.dart';
 import 'package:quiropractico_front/models/cliente.dart';
 import 'package:quiropractico_front/models/familiar.dart';
 import 'package:quiropractico_front/services/local_storage.dart';
@@ -64,13 +65,7 @@ class ClientDetailProvider extends ChangeNotifier {
         options: Options(headers: {'Authorization': 'Bearer $token'})
       );
 
-      final respFamilia = await _dio.get(
-        '$_baseUrl/clientes/${cliente!.idCliente}/familiares', 
-        options: Options(headers: {'Authorization': 'Bearer $token'})
-      );
-      
-      familiares = (respFamilia.data as List).map((e) => Familiar.fromJson(e)).toList();
-      notifyListeners();
+      await _recargarFamiliares(token!);
       
       return true;
 
@@ -80,26 +75,57 @@ class ClientDetailProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> desvincularFamiliar(int idGrupo) async {
+  // Obitiene una lista de las citas pagadas por el grupo familiar que puedan entrar en conflicto
+  Future<List<CitaConflicto>> obtenerConflictos(int idGrupo) async {
     try {
       final token = LocalStorage.getToken();
-      await _dio.delete(
-        '$_baseUrl/clientes/familiares/$idGrupo',
-        options: Options(headers: {'Authorization': 'Bearer $token'})
+      final response = await _dio.get(
+        '$_baseUrl/familiares/$idGrupo/conflictos', 
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
 
-      final respFamilia = await _dio.get(
-        '$_baseUrl/clientes/${cliente!.idCliente}/familiares', 
-        options: Options(headers: {'Authorization': 'Bearer $token'})
+      return (response.data as List).map((e) => CitaConflicto.fromJson(e)).toList();
+    } catch (e) {
+      print('Error obteniendo conflictos: $e');
+      rethrow;
+    }
+  }
+
+  // Desvincula al familiar indicado y cancela las citas cuyos IDs se pasen en la lista
+  Future<bool> desvincularFamiliar(int idGrupo, List<int> idsCitasACancelar) async {
+    try {
+      final token = LocalStorage.getToken();
+
+      final data = {
+        "idsCitasACancelar": idsCitasACancelar
+      };
+
+      await _dio.post(
+        '$_baseUrl/familiares/$idGrupo/desvincular',
+        data: data,
+        options: Options(headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        })
       );
-      
-      familiares = (respFamilia.data as List).map((e) => Familiar.fromJson(e)).toList();
-      notifyListeners();
+
+      await _recargarFamiliares(token!);
       
       return true;
     } catch (e) {
       print('Error desvinculando: $e');
       return false;
     }
+  }
+
+  // Helper para no repetir codigo de la recarga de familiares
+  Future<void> _recargarFamiliares(String token) async {
+     if (cliente == null) return;
+     final respFamilia = await _dio.get(
+        '$_baseUrl/clientes/${cliente!.idCliente}/familiares', 
+        options: Options(headers: {'Authorization': 'Bearer $token'})
+      );
+      familiares = (respFamilia.data as List).map((e) => Familiar.fromJson(e)).toList();
+      notifyListeners();
   }
 }

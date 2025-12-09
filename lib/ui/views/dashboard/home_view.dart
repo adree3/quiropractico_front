@@ -227,7 +227,7 @@ class _IncomeChart extends StatelessWidget {
           ),
           const SizedBox(height: 20),
           SizedBox(
-            height: 250, // Altura de la gráfica
+            height: 250,
             child: SfCartesianChart(
               primaryXAxis: CategoryAxis(
                 majorGridLines: const MajorGridLines(width: 0),

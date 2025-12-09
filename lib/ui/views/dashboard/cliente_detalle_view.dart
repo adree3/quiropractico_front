@@ -3,10 +3,12 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:quiropractico_front/config/theme/app_theme.dart';
+import 'package:quiropractico_front/providers/agenda_provider.dart';
 import 'package:quiropractico_front/providers/client_detail_provider.dart';
 import 'package:quiropractico_front/ui/modals/client_modal.dart';
 import 'package:quiropractico_front/ui/modals/venta_bono_modal.dart';
 import 'package:quiropractico_front/ui/modals/vincular_familiar_modal.dart';
+import 'package:quiropractico_front/ui/views/dashboard/widgets/smart_desvinculacion_dialog.dart';
 
 
 class ClienteDetalleView extends StatelessWidget {
@@ -318,24 +320,38 @@ class _Content extends StatelessWidget {
                                               icon: const Icon(Icons.link_off, color: Colors.redAccent),
                                               tooltip: "Desvincular (Quitar permiso)",
                                               onPressed: () async {
-                                                final confirm = await showDialog(
+                                                final List<int>? idsParaCancelar = await showDialog<List<int>>(
                                                   context: context,
-                                                  builder: (alertCtx) => AlertDialog(
-                                                    title: const Text("¿Desvincular familiar?"),
-                                                    content: Text("Si desvinculas a ${fam.nombreCompleto}, dejará de poder usar tus bonos."),
-                                                    actions: [
-                                                      TextButton(onPressed: () => Navigator.pop(alertCtx, false), child: const Text("Cancelar")),
-                                                      ElevatedButton(
-                                                        onPressed: () => Navigator.pop(alertCtx, true),
-                                                        style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white), 
-                                                        child: const Text("Desvincular")
-                                                      ),
-                                                    ],
-                                                  )
+                                                  barrierDismissible: false,
+                                                  builder: (ctx) => SmartDesvinculacionDialog(
+                                                    nombreFamiliar: fam.nombreCompleto,
+                                                    idGrupo: fam.idGrupo,
+                                                    fetchConflictos: (id) => provider.obtenerConflictos(id),
+                                                  ),
                                                 );
 
-                                                if (confirm == true) {
-                                                  await provider.desvincularFamiliar(fam.idGrupo);
+                                                if (idsParaCancelar != null) {
+                                                  try {
+                                                    await provider.desvincularFamiliar(fam.idGrupo, idsParaCancelar);
+
+                                                    if (context.mounted) {
+                                                      ScaffoldMessenger.of(context).showSnackBar(
+                                                        const SnackBar(
+                                                          content: Text("Familiar desvinculado correctamente"),
+                                                          backgroundColor: Colors.green,
+                                                        ),
+                                                      );
+                                                      provider.loadFullData(cliente.idCliente);
+                                                      final agendaProvider = Provider.of<AgendaProvider>(context, listen: false); 
+                                                      agendaProvider.getCitasDelDia(agendaProvider.selectedDate);
+                                                    }
+                                                  } catch (e) {
+                                                    if (context.mounted) {
+                                                      ScaffoldMessenger.of(context).showSnackBar(
+                                                        SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
+                                                      );
+                                                    }
+                                                  }
                                                 }
                                               },
                                             ),
