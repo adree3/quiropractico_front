@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:quiropractico_front/config/theme/app_theme.dart';
 import 'package:quiropractico_front/models/usuario.dart';
 import 'package:quiropractico_front/providers/users_provider.dart';
 
@@ -46,6 +45,71 @@ class _UserModalState extends State<UserModal> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              if (isEditing && widget.usuarioExistente!.cuentaBloqueada) ...[
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  margin: const EdgeInsets.only(bottom: 20),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.shade50,
+                    border: Border.all(color: Colors.orange),
+                    borderRadius: BorderRadius.circular(10)
+                  ),
+                  child: Column( // Cambiamos Row por Column para meter los botones abajo
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Row(
+                        children: [
+                          Icon(Icons.lock_clock, color: Colors.orange),
+                          SizedBox(width: 10),
+                          Text("CUENTA BLOQUEADA", style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold, fontSize: 12)),
+                        ],
+                      ),
+                      const Padding(
+                        padding: EdgeInsets.only(left: 34, top: 5, bottom: 10),
+                        child: Text("Este usuario ha excedido los intentos de acceso.", style: TextStyle(fontSize: 12)),
+                      ),
+                      
+                      // BOTONES DE ACCIÓN
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          // IGNORAR
+                          TextButton(
+                            onPressed: () {
+                               provider.ignoreBlockAlert(widget.usuarioExistente!.idUsuario);
+                               Navigator.pop(context); 
+                               ScaffoldMessenger.of(context).showSnackBar(
+                                 const SnackBar(content: Text('Notificación silenciada para esta sesión'), backgroundColor: Colors.grey)
+                               );
+                            },
+                            style: TextButton.styleFrom(foregroundColor: Colors.grey),
+                            child: const Text("Ignorar Aviso"),
+                          ),
+                          
+                          const SizedBox(width: 10),
+
+                          // DESBLOQUEAR 
+                          ElevatedButton(
+                            onPressed: () async {
+                              final error = await provider.unlockUser(widget.usuarioExistente!.idUsuario);
+                              if (context.mounted) {
+                                if (error == null) {
+                                  Navigator.pop(context);
+                                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Usuario desbloqueado'), backgroundColor: Colors.green));
+                                } else {
+                                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error), backgroundColor: Colors.red));
+                                }
+                              }
+                            }, 
+                            style: ElevatedButton.styleFrom(backgroundColor: Colors.orange, foregroundColor: Colors.white),
+                            child: const Text("DESBLOQUEAR")
+                          )
+                        ],
+                      )
+                    ],
+                  ),
+                ),
+              ],
               TextFormField(
                 controller: nombreCtrl,
                 decoration: const InputDecoration(labelText: 'Nombre Completo', prefixIcon: Icon(Icons.badge_outlined)),
@@ -100,16 +164,16 @@ class _UserModalState extends State<UserModal> {
         ElevatedButton(
           onPressed: () async {
             if (_formKey.currentState!.validate()) {
-              bool success;
+              String? error;
               if (isEditing) {
-                success = await provider.updateUser(
+                error = await provider.updateUser(
                   widget.usuarioExistente!.idUsuario,
                   nombreCtrl.text.trim(),
                   passCtrl.text.isEmpty ? null : passCtrl.text.trim(),
                   rolSeleccionado
                 );
               } else {
-                success = await provider.createUser(
+                error = await provider.createUser(
                   nombreCtrl.text.trim(),
                   usernameCtrl.text.trim(),
                   passCtrl.text.trim(),
@@ -118,11 +182,11 @@ class _UserModalState extends State<UserModal> {
               }
 
               if (context.mounted) {
-                if (success) {
+                if (error == null) {
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Guardado correctamente'), backgroundColor: Colors.green));
                 } else {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Error al guardar'), backgroundColor: Colors.red));
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error), backgroundColor: Colors.red));
                 }
               }
             }

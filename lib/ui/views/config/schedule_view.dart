@@ -91,7 +91,12 @@ class ScheduleView extends StatelessWidget {
                                         backgroundColor: Colors.blue[50],
                                         deleteIcon: const Icon(Icons.close, size: 16, color: Colors.red),
                                         onDeleted: () async {
-                                          await provider.deleteHorario(turno.idHorario);
+                                          final String? error = await provider.deleteHorario(turno.idHorario);
+                                          if (context.mounted && error != null) {
+                                            ScaffoldMessenger.of(context).showSnackBar(
+                                              SnackBar(content: Text(error), backgroundColor: Colors.red)
+                                            );
+                                          }
                                         },
                                       )).toList(),
                                     ),

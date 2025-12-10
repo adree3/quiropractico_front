@@ -201,11 +201,20 @@ class _PaymentsList extends StatelessWidget {
                 const SizedBox(width: 10),
                 ElevatedButton(
                   onPressed: () async {
-                     // Confirmar Pago
-                     await Provider.of<PaymentsProvider>(context, listen: false).confirmarPago(pago.idPago);
-                     if (context.mounted) {
-                       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Pago confirmado"), backgroundColor: Colors.green));
-                     }
+                    // Confirmar Pago
+                    final String? error = await Provider.of<PaymentsProvider>(context, listen: false).confirmarPago(pago.idPago);
+                      
+                      if (context.mounted) {
+                        if (error == null) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text("Pago confirmado"), backgroundColor: Colors.green)
+                          );
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(error), backgroundColor: Colors.red)
+                          );
+                        }
+                      }
                   },
                   style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
                   child: const Text("Confirmar"),

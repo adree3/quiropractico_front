@@ -133,10 +133,10 @@ class _ClientModalState extends State<ClientModal> {
             if (_formKey.currentState!.validate()) {
               
               FocusScope.of(context).unfocus(); 
-              bool success;
+              String? error;
 
               if (isEditing) {
-                success = await clientsProvider.updateClient(
+                error = await clientsProvider.updateClient(
                   widget.clienteExistente!.idCliente,
                   nombreCtrl.text.trim(),
                   apellidosCtrl.text.trim(),
@@ -146,7 +146,7 @@ class _ClientModalState extends State<ClientModal> {
                 );
               } else {
                 // CREAR
-                success = await clientsProvider.createClient(
+                error = await clientsProvider.createClient(
                   nombreCtrl.text.trim(),
                   apellidosCtrl.text.trim(),
                   telefonoCtrl.text.trim(),
@@ -156,7 +156,7 @@ class _ClientModalState extends State<ClientModal> {
               }
 
               if (context.mounted) {
-                if (success) {
+                if (error == null) {
                   Navigator.of(context).pop(true);
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
@@ -166,8 +166,8 @@ class _ClientModalState extends State<ClientModal> {
                   );
                 } else {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Error: El teléfono o email ya existen'), 
+                    SnackBar(
+                      content: Text(error), 
                       backgroundColor: Colors.red
                     ),
                   );

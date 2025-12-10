@@ -142,20 +142,20 @@ class _VincularFamiliarModalState extends State<VincularFamiliarModal> {
         ElevatedButton(
           onPressed: () async {
             if (_formKey.currentState!.validate() && selectedBeneficiario != null) {
-              final success = await detailProvider.vincularFamiliar(
+              final String? error = await detailProvider.vincularFamiliar(
                 selectedBeneficiario!.idCliente,
                 relacionCtrl.text.trim()
               );
 
               if (context.mounted) {
-                if (success) {
+                if (error == null) {
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Familiar vinculado correctamente'), backgroundColor: Colors.green)
                   );
                 } else {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Error al vincular'), backgroundColor: Colors.red)
+                    SnackBar(content: Text(error), backgroundColor: Colors.red)
                   );
                 }
               }

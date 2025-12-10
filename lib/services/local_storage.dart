@@ -33,5 +33,13 @@ class LocalStorage {
   static String? getRole() {
     return prefs.getString('role');
   }
+
+  static Future<void> saveLastSeenBlockedCount(int count) async {
+    await prefs.setInt('lastSeenBlockedCount', count);
+  }
+
+  static int getLastSeenBlockedCount() {
+    return prefs.getInt('lastSeenBlockedCount') ?? -1;
+  }
  
 }

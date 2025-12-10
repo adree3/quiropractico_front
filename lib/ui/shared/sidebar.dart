@@ -3,6 +3,8 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:quiropractico_front/config/theme/app_theme.dart';
 import 'package:quiropractico_front/providers/auth_provider.dart';
+import 'package:quiropractico_front/providers/payments_provider.dart';
+import 'package:quiropractico_front/providers/users_provider.dart';
 
 class Sidebar extends StatelessWidget {
   const Sidebar({super.key});
@@ -10,7 +12,11 @@ class Sidebar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final String location = GoRouterState.of(context).uri.toString();
+    
     final authProvider = Provider.of<AuthProvider>(context);
+    final pagosPendientes = Provider.of<PaymentsProvider>(context).pendientes.length;
+    final alertasEquipo = Provider.of<UsersProvider>(context).blockedCountDisplay;
+
     final String? userRole = authProvider.role; 
     final bool isAdminOrQuiro = userRole == 'admin' || userRole == 'quiropráctico';
     
@@ -74,17 +80,38 @@ class Sidebar extends StatelessWidget {
                   title: 'Pagos',
                   isActive: location.startsWith('/pagos'),
                   onTap: () => context.go('/pagos'),
+                  badgeCount: pagosPendientes,
+                  badgeColor: Colors.orange,
                 ),
                 
                 if (isAdminOrQuiro) ...[
-                   const Divider(height: 30, color: Colors.grey),
-                
-                   _SidebarItem(
-                     icon: Icons.settings_outlined, 
-                     title: 'Panel',
-                     isActive: location.startsWith('/configuracion'),
-                     onTap: () => context.go('/configuracion'), 
-                   ),
+                    const Divider(height: 30, color: Colors.grey),
+
+                    // HORARIOS
+                    _SidebarItem(
+                      icon: Icons.access_time, 
+                      title: 'Horarios',
+                      isActive: location.startsWith('/configuracion/horarios'),
+                      onTap: () => context.go('/configuracion/horarios'),
+                    ),
+
+                   // TARIFAS
+                    _SidebarItem(
+                      icon: Icons.euro, 
+                      title: 'Servicios',
+                      isActive: location.startsWith('/configuracion/servicios'),
+                      onTap: () => context.go('/configuracion/servicios'),
+                    ),
+
+                    // EQUIPO
+                    _SidebarItem(
+                      icon: Icons.manage_accounts_outlined, 
+                      title: 'Gestionar Equipo',
+                      isActive: location.startsWith('/configuracion/usuarios'),
+                      badgeCount: alertasEquipo,
+                      badgeColor: Colors.red, 
+                      onTap: () => context.go('/configuracion/usuarios'),
+                    ),
                 ]
               ],
             ),
@@ -115,8 +142,10 @@ class _SidebarItem extends StatelessWidget {
   final String title;
   final bool isActive;
   final VoidCallback? onTap;
+  final int badgeCount;
+  final Color badgeColor;
 
-  const _SidebarItem({required this.icon, required this.title,this.isActive = false, this.onTap});
+  const _SidebarItem({required this.icon, required this.title,this.isActive = false, this.onTap, this.badgeCount= 0, this.badgeColor = Colors.blue});
 
   @override
   Widget build(BuildContext context) {
@@ -140,7 +169,18 @@ class _SidebarItem extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Row(
               children: [
-                Icon(icon, color: color, size: 22),
+                if (badgeCount > 0)
+                  Badge(
+                    label: Text(
+                      badgeCount > 99 ? '99+' : badgeCount.toString(), 
+                      style: const TextStyle(color: Colors.white, fontSize: 10)
+                    ),
+                    backgroundColor: badgeColor,
+                    offset: const Offset(6, -6),
+                    child: Icon(icon, color: color, size: 22),
+                  )
+                else
+                  Icon(icon, color: color, size: 22),
                 const SizedBox(width: 15),
                 Text(
                   title,

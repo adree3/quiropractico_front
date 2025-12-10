@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:quiropractico_front/config/theme/app_theme.dart';
 import 'package:quiropractico_front/providers/horarios_provider.dart';
 
 class HorarioModal extends StatefulWidget {
@@ -90,7 +89,7 @@ class _HorarioModalState extends State<HorarioModal> {
               return;
             }
 
-            final error = await provider.createHorario(selectedDia, horaInicio, horaFin);
+            final String? error = await provider.createHorario(selectedDia, horaInicio, horaFin);
 
             if (context.mounted) {
               if (error == null) {

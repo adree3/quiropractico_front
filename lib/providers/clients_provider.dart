@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:quiropractico_front/models/cliente.dart';
 import 'package:quiropractico_front/services/local_storage.dart';
+import 'package:quiropractico_front/utils/error_handler.dart';
 
 class ClientsProvider extends ChangeNotifier {
   
@@ -12,9 +13,9 @@ class ClientsProvider extends ChangeNotifier {
   bool isLoading = true;
   bool isSearching = false; 
   bool filterActive = true;
+  String? errorMessage;
 
   String currentSearchTerm = '';
-
   int currentPage = 0;
   int pageSize = 10;
   int totalPages = 0;
@@ -23,9 +24,13 @@ class ClientsProvider extends ChangeNotifier {
   ClientsProvider() {
     getPaginatedClients(); 
   }
-  Future<bool> createClient(String nombre, String apellidos, String telefono, String? email, String? direccion) async {
+
+  Options get _authOptions => Options(headers: {
+    'Authorization': 'Bearer ${LocalStorage.getToken()}'
+  });
+
+  Future<String?> createClient(String nombre, String apellidos, String telefono, String? email, String? direccion) async {
     try {
-      final token = LocalStorage.getToken();
       
       final data = {
         "nombre": nombre,
@@ -35,30 +40,25 @@ class ClientsProvider extends ChangeNotifier {
         "direccion": direccion
       };
 
-      final response = await _dio.post(
+      await _dio.post(
         '$_baseUrl/clientes',
         data: data,
-        options: Options(headers: {'Authorization': 'Bearer $token'})
+        options: _authOptions
       );
 
-      if (response.statusCode == 201) {
-        getPaginatedClients(page: 0);
-        return true;
-      }
-      return false;
-
+      getPaginatedClients(page: 0);
+      return null;
     } catch (e) {
-      print('Error creando cliente: $e');
-      return false;
+      return ErrorHandler.extractMessage(e);
     }
   }
   Future<void> getPaginatedClients({int page = 0}) async {
     isLoading = true;
     currentPage = page;
+    errorMessage = null;
     notifyListeners();
 
     try {
-      final token = LocalStorage.getToken();
       
       final response = await _dio.get(
         '$_baseUrl/clientes',
@@ -68,16 +68,17 @@ class ClientsProvider extends ChangeNotifier {
           'size': pageSize,
           'sort': 'id_cliente,desc' 
         },
-        options: Options(headers: {'Authorization': 'Bearer $token'})
+        options: _authOptions
       );
 
+    
       final List<dynamic> data = response.data['content'];
       totalPages = response.data['totalPages'];
       totalElements = response.data['totalElements'];
 
       clients = data.map((json) => Cliente.fromJson(json)).toList();
     } catch (e) {
-      print('Error cargando clientes: $e');
+      errorMessage = ErrorHandler.extractMessage(e);
     } finally {
       isLoading = false;
       notifyListeners();
@@ -116,13 +117,11 @@ class ClientsProvider extends ChangeNotifier {
   Future<List<Cliente>> searchClientesByName(String query) async {
     if (query.isEmpty) return [];
 
-    try {
-      final token = LocalStorage.getToken();
-      
+    try {      
       final response = await _dio.get(
         '$_baseUrl/clientes/buscar',
         queryParameters: {'texto': query}, 
-        options: Options(headers: {'Authorization': 'Bearer $token'})
+        options: _authOptions
       );
 
       final List<dynamic> data = response.data; 
@@ -138,6 +137,8 @@ class ClientsProvider extends ChangeNotifier {
   // Barra de busqueda
   Future<void> searchGlobal(String query, {int page = 0}) async {
     if (query.isEmpty) {
+      isSearching = false;
+      currentSearchTerm = '';
       await getPaginatedClients(page: 0);
       return;
     }
@@ -149,7 +150,6 @@ class ClientsProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final token = LocalStorage.getToken();
       
       final response = await _dio.get(
         '$_baseUrl/clientes/buscar-complejo',
@@ -158,7 +158,8 @@ class ClientsProvider extends ChangeNotifier {
           'page': page,     
           'size': pageSize, 
         },
-        options: Options(headers: {'Authorization': 'Bearer $token'})
+        options: _authOptions
+        
       );
 
       final List<dynamic> data = response.data['content'];
@@ -169,7 +170,8 @@ class ClientsProvider extends ChangeNotifier {
       clients = data.map((json) => Cliente.fromJson(json)).toList();
 
     } catch (e) {
-      print('Error en búsqueda global: $e');
+      errorMessage = ErrorHandler.extractMessage(e);
+      print('Error en búsqueda global: $errorMessage');
     } finally {
       isLoading = false;
       notifyListeners();
@@ -177,24 +179,26 @@ class ClientsProvider extends ChangeNotifier {
   }
 
   // Borrado Lógico
-  Future<bool> deleteClient(int idCliente) async {
+  Future<String?> deleteClient(int idCliente) async {
     try {
-      final token = LocalStorage.getToken();
       await _dio.delete(
         '$_baseUrl/clientes/$idCliente', 
-        options: Options(headers: {'Authorization': 'Bearer $token'})
+        options: _authOptions
       );
       
+      _refreshCurrentView();
+      return null;
+    } catch (e) {
+      return ErrorHandler.extractMessage(e);
+    }
+  }
+
+  void _refreshCurrentView() {
       if (isSearching) {
         searchGlobal(currentSearchTerm, page: currentPage);
       } else {
         getPaginatedClients(page: currentPage);
       }
-      return true;
-    } catch (e) {
-      print('Error borrando cliente: $e');
-      return false;
-    }
   }
 
   void toggleFilter(bool isActive) {
@@ -203,49 +207,38 @@ class ClientsProvider extends ChangeNotifier {
   }
   
   // Editar Cliente
-  Future<bool> updateClient(int id, String nombre, String apellidos, String telefono, String? email, String? direccion) async {
+  Future<String?> updateClient(int id, String nombre, String apellidos, String telefono, String? email, String? direccion) async {
     try {
-      final token = LocalStorage.getToken();
       final data = { "nombre": nombre, "apellidos": apellidos, "telefono": telefono, "email": email, "direccion": direccion };
 
       final response = await _dio.put( 
         '$_baseUrl/clientes/$id',
         data: data,
-        options: Options(headers: {'Authorization': 'Bearer $token'})
+        options: _authOptions
       );
 
-      if (response.statusCode == 200) {
-        final index = clients.indexWhere((c) => c.idCliente == id);
-        if (index != -1) {
-           clients[index] = Cliente.fromJson(response.data);
-           notifyListeners();
-        }
-        return true;
+      final index = clients.indexWhere((c) => c.idCliente == id);
+      if (index != -1) {
+         clients[index] = Cliente.fromJson(response.data);
+         notifyListeners();
       }
-      return false;
+      return null;
     } catch (e) {
-      print('Error editando: $e');
-      return false;
+      return ErrorHandler.extractMessage(e);
     }
   }
 
-  Future<bool> recoverClient(int idCliente) async {
+  Future<String?> recoverClient(int idCliente) async {
     try {
-      final token = LocalStorage.getToken();
       await _dio.put(
         '$_baseUrl/clientes/$idCliente/recuperar', 
-        options: Options(headers: {'Authorization': 'Bearer $token'})
+        options: _authOptions
       );
       
-      if (isSearching) {
-        searchGlobal(currentSearchTerm, page: currentPage);
-      } else {
-        getPaginatedClients(page: currentPage);
-      }
-      return true;
+      _refreshCurrentView();
+      return null;
     } catch (e) {
-      print('Error recuperando cliente: $e');
-      return false;
+      return  ErrorHandler.extractMessage(e);
     }
   }
 
@@ -256,10 +249,9 @@ class ClientsProvider extends ChangeNotifier {
       } catch (_) {
       }
 
-      final token = LocalStorage.getToken();
       final response = await _dio.get(
         '$_baseUrl/clientes/$id',
-        options: Options(headers: {'Authorization': 'Bearer $token'})
+        options: _authOptions
       );
 
       return Cliente.fromJson(response.data);

@@ -81,44 +81,36 @@ class _CitaModalState extends State<CitaModal> {
           fechaSeleccionada,
           idCitaExcluir: isEditing ? widget.citaExistente!.idCita : null 
         );
-
-        if (mounted) {          
-          final targetTime = isEditing 
-              ? widget.citaExistente!.fechaHoraInicio
-              : widget.selectedDate!;
-          final targetTimeStr = "${targetTime.hour.toString().padLeft(2,'0')}:${targetTime.minute.toString().padLeft(2,'0')}";
-          
-          try {
-            final huecoEncontrado = agendaProv.huecosDisponibles.firstWhere(
-              (h) => h['horaInicio'] == targetTimeStr
-            );
-            
-            setState(() {
-              selectedHueco = huecoEncontrado;
-              _actualizarHorasDesdeHueco(huecoEncontrado);
-            });
-          } catch (e) {
-            print("No se pudo pre-seleccionar el hueco: $targetTimeStr");
-          }
-        }
+      }
+      Cliente? clienteEncontrado;
+      if (isEditing) {
+        final idClienteDeLaCita = widget.citaExistente!.idCliente;
+        clienteEncontrado = await clientsProv.getClientePorId(idClienteDeLaCita);
       }
 
-      // Actualizar estado visual de los dropdowns de Cliente y Doctor
       if (mounted) {
-        setState(() async {
+        setState(() {
           selectedQuiro = doctorInicial;
-          if (isEditing) {
-            final idClienteDeLaCita = widget.citaExistente!.idCliente;
+          
+          if (isEditing && clienteEncontrado != null) {
+            selectedCliente = clienteEncontrado;
+          }
 
-            final clienteEncontrado = await clientsProv.getClientePorId(idClienteDeLaCita);
-            
-            if (mounted && clienteEncontrado != null) {
-              setState(() {
-                selectedCliente = clienteEncontrado;
-                if (fechaCtrl.text.isNotEmpty) { 
-                }
-              });
-            }
+          if (doctorInicial != null) {
+             final targetTime = isEditing 
+              ? widget.citaExistente!.fechaHoraInicio
+              : widget.selectedDate!;
+             final targetTimeStr = "${targetTime.hour.toString().padLeft(2,'0')}:${targetTime.minute.toString().padLeft(2,'0')}";
+             
+             try {
+               final huecoEncontrado = agendaProv.huecosDisponibles.firstWhere(
+                 (h) => h['horaInicio'] == targetTimeStr
+               );
+               selectedHueco = huecoEncontrado;
+               _actualizarHorasDesdeHueco(huecoEncontrado);
+             } catch (e) {
+               print("No se pudo pre-seleccionar el hueco: $targetTimeStr");
+             }
           }
         });
       }

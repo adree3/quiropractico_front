@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:quiropractico_front/config/theme/app_theme.dart';
 import 'package:quiropractico_front/models/servicio.dart';
 import 'package:quiropractico_front/providers/services_provider.dart';
 
@@ -116,19 +115,19 @@ class _ServiceModalState extends State<ServiceModal> {
               final precio = double.parse(precioCtrl.text.trim());
               final sesiones = tipoSeleccionado == 'bono' ? int.parse(sesionesCtrl.text.trim()) : null;
 
-              bool success;
+              String? error;
               if (isEditing) {
-                success = await provider.updateService(widget.servicioExistente!.idServicio, nombre, precio, tipoSeleccionado, sesiones);
+                error = await provider.updateService(widget.servicioExistente!.idServicio, nombre, precio, tipoSeleccionado, sesiones);
               } else {
-                success = await provider.createService(nombre, precio, tipoSeleccionado, sesiones);
+                error = await provider.createService(nombre, precio, tipoSeleccionado, sesiones);
               }
 
               if (context.mounted) {
-                if (success) {
+                if (error == null) {
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Guardado correctamente'), backgroundColor: Colors.green));
                 } else {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Error al guardar'), backgroundColor: Colors.red));
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error), backgroundColor: Colors.red));
                 }
               }
             }

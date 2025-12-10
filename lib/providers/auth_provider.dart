@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:quiropractico_front/models/api_error.dart';
 import 'package:quiropractico_front/services/local_storage.dart';
 
 enum AuthStatus { checking, authenticated, notAuthenticated, locked }
@@ -44,19 +45,14 @@ class AuthProvider extends ChangeNotifier {
         isLoginLoading = false;
         notifyListeners();
         return true;
-      }
-      if (response.statusCode == 401 || response.statusCode == 403) {
-        String msg = response.data['message'] ?? response.data['error'] ?? 'Error de autenticación';        
-        if (msg.toLowerCase().contains("bloqueada")|| response.statusCode == 423) {
-          errorMessage = "Cuenta bloqueada, contacta con un administrador.";
+      } else{
+        final apiError = ApiError.fromJson(response.data);
+        errorMessage = apiError.message;
+        if (apiError.errorType == 'ACCOUNT_LOCKED') {
           authStatus = AuthStatus.locked;
         } else {
-          errorMessage = msg;
           authStatus = AuthStatus.notAuthenticated;
         }
-      } else {
-        errorMessage = 'Error desconocido: ${response.statusCode}';
-        authStatus = AuthStatus.notAuthenticated;
       }
     } on DioException catch (e) {
       authStatus = AuthStatus.notAuthenticated;

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:quiropractico_front/models/horario.dart';
 import 'package:quiropractico_front/models/usuario.dart';
 import 'package:quiropractico_front/services/local_storage.dart';
+import 'package:quiropractico_front/utils/error_handler.dart';
 
 class HorariosProvider extends ChangeNotifier {
   final Dio _dio = Dio();
@@ -17,11 +18,17 @@ class HorariosProvider extends ChangeNotifier {
     loadDoctores();
   }
 
+  Options get _authOptions => Options(headers: {
+    'Authorization': 'Bearer ${LocalStorage.getToken()}'
+  });
+
   // Cargar lista de Quiroprácticos
   Future<void> loadDoctores() async {
     try {
-      final token = LocalStorage.getToken();
-      final response = await _dio.get('$_baseUrl/usuarios/quiros', options: Options(headers: {'Authorization': 'Bearer $token'}));
+      final response = await _dio.get(
+        '$_baseUrl/usuarios/quiros', 
+        options: _authOptions
+      );
       final List<dynamic> data = response.data;
       doctores = data.map((e) => Usuario.fromJson(e)).toList();
       
@@ -31,7 +38,7 @@ class HorariosProvider extends ChangeNotifier {
         notifyListeners();
       }
     } catch (e) {
-      print('Error cargando doctores: $e');
+      print('Error cargando doctores: ${ErrorHandler.extractMessage(e)}');
     }
   }
 
@@ -45,12 +52,14 @@ class HorariosProvider extends ChangeNotifier {
     isLoading = true;
     notifyListeners();
     try {
-      final token = LocalStorage.getToken();
-      final response = await _dio.get('$_baseUrl/horarios/quiro/$idQuiro', options: Options(headers: {'Authorization': 'Bearer $token'}));
+      final response = await _dio.get(
+        '$_baseUrl/horarios/quiro/$idQuiro', 
+        options: _authOptions
+      );
       final List<dynamic> data = response.data;
       horarios = data.map((e) => Horario.fromJson(e)).toList();
     } catch (e) {
-      print('Error cargando horarios: $e');
+      print('Error cargando horarios: ${ErrorHandler.extractMessage(e)}');
     } finally {
       isLoading = false;
       notifyListeners();
@@ -60,9 +69,7 @@ class HorariosProvider extends ChangeNotifier {
   // Crear Horario
   Future<String?> createHorario(int diaSemana, TimeOfDay inicio, TimeOfDay fin) async {
     if (selectedDoctor == null) return "No hay doctor seleccionado";
-    try {
-      final token = LocalStorage.getToken();
-      
+    try {      
       final inicioStr = "${inicio.hour.toString().padLeft(2,'0')}:${inicio.minute.toString().padLeft(2,'0')}:00";
       final finStr = "${fin.hour.toString().padLeft(2,'0')}:${fin.minute.toString().padLeft(2,'0')}:00";
 
@@ -73,28 +80,31 @@ class HorariosProvider extends ChangeNotifier {
         "horaFin": finStr
       };
 
-      await _dio.post('$_baseUrl/horarios', data: data, options: Options(headers: {'Authorization': 'Bearer $token'}));
+      await _dio.post(
+        '$_baseUrl/horarios', 
+        data: data, 
+        options: _authOptions
+      );
       await loadHorarios(selectedDoctor!.idUsuario);
       return null;
-    } on DioException catch (e) {
-      if (e.response?.data != null) {
-        return e.response!.data['message'] ?? 'Error al guardar';
-      }
-      return 'Error de conexión';
+    } catch (e) {
+      return ErrorHandler.extractMessage(e);
     }
   }
 
   // Borrar Horario
-  Future<bool> deleteHorario(int idHorario) async {
+  Future<String?> deleteHorario(int idHorario) async {
     try {
-      final token = LocalStorage.getToken();
-      await _dio.delete('$_baseUrl/horarios/$idHorario', options: Options(headers: {'Authorization': 'Bearer $token'}));
+      await _dio.delete(
+        '$_baseUrl/horarios/$idHorario', 
+        options: _authOptions
+      );
       
       horarios.removeWhere((h) => h.idHorario == idHorario);
       notifyListeners();
-      return true;
+      return null;
     } catch (e) {
-      return false;
+      return ErrorHandler.extractMessage(e);
     }
   }
 }

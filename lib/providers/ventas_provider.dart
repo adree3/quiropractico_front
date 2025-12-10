@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:quiropractico_front/models/servicio.dart';
 import 'package:quiropractico_front/models/bono_seleccion.dart';
 import 'package:quiropractico_front/services/local_storage.dart';
+import 'package:quiropractico_front/utils/error_handler.dart';
 
 class VentasProvider extends ChangeNotifier {
   final Dio _dio = Dio();
@@ -13,32 +14,34 @@ class VentasProvider extends ChangeNotifier {
   bool isLoading = false;
   List<Servicio> listaServicios = [];
 
+  // Helper para headers
+  Options get _authOptions => Options(headers: {
+    'Authorization': 'Bearer ${LocalStorage.getToken()}'
+  });
+
   // Cargar la lista de bonos para el dropdown
   Future<void> loadBonos() async {
     try {
-      final token = LocalStorage.getToken();
       final response = await _dio.get(
         '$_baseUrl/servicios/bonos',
-        options: Options(headers: {'Authorization': 'Bearer $token'})
+        options:_authOptions
       );
       
       final List<dynamic> data = response.data;
       bonosDisponibles = data.map((e) => Servicio.fromJson(e)).toList();
       notifyListeners();
     } catch (e) {
-      print('Error cargando bonos: $e');
+      print('Error cargando bonos: ${ErrorHandler.extractMessage(e)}');
     }
   }
 
   // Cargar Servicios ACTIVOS
   Future<void> loadServiciosDisponibles() async {
-    try {
-      final token = LocalStorage.getToken();
-      
+    try {      
       final response = await _dio.get(
         '$_baseUrl/servicios',
         queryParameters: {'activo': true},
-        options: Options(headers: {'Authorization': 'Bearer $token'})
+        options: _authOptions
       );
       
       final List<dynamic> data = response.data;
@@ -46,18 +49,16 @@ class VentasProvider extends ChangeNotifier {
       
       notifyListeners();
     } catch (e) {
-      print('Error cargando servicios: $e');
+      print('Error cargando servicios: ${ErrorHandler.extractMessage(e)}');
     }
   }
 
   // Realizar la venta
-  Future<bool> venderBono(int idCliente, int idServicio, String metodoPago) async {
+  Future<String?> venderBono(int idCliente, int idServicio, String metodoPago) async {
     isLoading = true;
     notifyListeners();
 
-    try {
-      final token = LocalStorage.getToken();
-      
+    try {      
       final data = {
         "idCliente": idCliente,
         "idServicio": idServicio,
@@ -67,14 +68,13 @@ class VentasProvider extends ChangeNotifier {
       await _dio.post(
         '$_baseUrl/pagos/venta-bono',
         data: data,
-        options: Options(headers: {'Authorization': 'Bearer $token'})
+        options: _authOptions
       );
 
-      return true;
+      return null;
 
     } catch (e) {
-      print('Error en venta: $e');
-      return false;
+      return ErrorHandler.extractMessage(e);
     } finally {
       isLoading = false;
       notifyListeners();
@@ -83,16 +83,15 @@ class VentasProvider extends ChangeNotifier {
 
   Future<void> cargarBonosUsables(int idCliente) async {
     try {
-      final token = LocalStorage.getToken();
       final response = await _dio.get(
         '$_baseUrl/bonos/disponibles/$idCliente',
-        options: Options(headers: {'Authorization': 'Bearer $token'})
+        options: _authOptions
       );
       final List<dynamic> data = response.data;
       bonosUsables = data.map((e) => BonoSeleccion.fromJson(e)).toList();
       notifyListeners();
     } catch (e) {
-      print(e);
+      print('Error cargando bonos usables: ${ErrorHandler.extractMessage(e)}');
     }
   }
 }

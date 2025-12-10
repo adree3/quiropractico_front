@@ -31,6 +31,12 @@ class _ClientsViewState extends State<ClientsView> {
     });
   }
 
+  void _mostrarSnack(String mensaje, Color color) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(mensaje), backgroundColor: color),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final clientsProvider = Provider.of<ClientsProvider>(context);
@@ -230,11 +236,22 @@ class _ClientsViewState extends State<ClientsView> {
                                                     );
 
                                                     if (confirm == true) {
+                                                      String? error;
                                                       if (isDeleting) {
-                                                        await clientsProvider.deleteClient(cliente.idCliente);
+                                                        error = await clientsProvider.deleteClient(cliente.idCliente);
                                                       } else {
-                                                        await clientsProvider.recoverClient(cliente.idCliente);
+                                                        error = await clientsProvider.recoverClient(cliente.idCliente);
                                                       }
+                                                      if (context.mounted) {
+                                                          if (error == null) {
+                                                            _mostrarSnack(
+                                                              isDeleting ? "Paciente borrado" : "Paciente reactivado", 
+                                                              Colors.green
+                                                            );
+                                                          } else {
+                                                            _mostrarSnack(error, Colors.red);
+                                                          }
+                                                        }
                                                     }
                                                   },
                                                 ),

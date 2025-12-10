@@ -5,8 +5,14 @@ import 'package:quiropractico_front/config/theme/app_theme.dart';
 import 'package:quiropractico_front/providers/users_provider.dart';
 import 'package:quiropractico_front/ui/modals/user_modal.dart';
 
-class UsersView extends StatelessWidget {
+class UsersView extends StatefulWidget {
   const UsersView({super.key});
+
+  @override
+  State<UsersView> createState() => _UsersViewState();
+}
+
+class _UsersViewState extends State<UsersView> {
 
   @override
   Widget build(BuildContext context) {
@@ -95,36 +101,40 @@ class UsersView extends StatelessWidget {
                             ],
                             rows: provider.usuarios.map((usuario) {
                               final colorTexto = usuario.activo ? Colors.black87 : Colors.grey;
-                              
+                              final mostrarAlerta = provider.shouldShowAlertFor(usuario.idUsuario, usuario.cuentaBloqueada);
                               Color colorRol;
                               switch(usuario.rol.toLowerCase()) {
                                 case 'admin': colorRol = Colors.purple; break;
                                 case 'quiropráctico': colorRol = Colors.blue; break;
                                 default: colorRol = Colors.orange;
                               }
-
                               return DataRow(
+                                color: MaterialStateProperty.resolveWith<Color?>((states) {
+                                  return usuario.cuentaBloqueada ? Colors.red.withOpacity(0.05) : null; 
+                                }),
                                 cells: [
                                   DataCell(Text(usuario.nombreCompleto, style: TextStyle(color: colorTexto, fontWeight: FontWeight.bold))),
                                   DataCell(Text(usuario.username, style: TextStyle(color: colorTexto))),
-                                  
                                   // CHIP
                                   DataCell(
-                                    Chip(
-                                      backgroundColor: colorRol.withOpacity(0.1),
-                                      side: BorderSide(color: colorRol),
-                                      shape: const StadiumBorder(),
-                                      padding: EdgeInsets.zero,
-                                      label: SizedBox(
-                                        width: 95, 
-                                        child: Text(
-                                          usuario.rol.toUpperCase(),
-                                          textAlign: TextAlign.center,
-                                          style: TextStyle(
-                                            color: colorRol, 
-                                            fontSize: 10, 
-                                            fontWeight: FontWeight.bold
-                                          )
+                                    Center(
+                                      child: Chip(
+                                        backgroundColor: colorRol.withOpacity(0.1),
+                                        side: BorderSide(color: colorRol),
+                                        padding: const EdgeInsets.all(0), 
+                                        label: SizedBox(
+                                          width: 85, 
+                                          child: Text(
+                                            usuario.rol.toUpperCase(),
+                                            textAlign: TextAlign.center,
+                                            style: TextStyle(
+                                              color: colorRol, 
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.bold
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis, 
+                                          ),
                                         ),
                                       ),
                                     )
@@ -135,13 +145,18 @@ class UsersView extends StatelessWidget {
                                     Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        // Editar
-                                        IconButton(
-                                          icon: const Icon(Icons.edit_outlined, color: AppTheme.primaryColor),
-                                          onPressed: () => showDialog(context: context, builder: (_) => UserModal(usuarioExistente: usuario)),
+                                        // BOTÓN EDITAR
+                                        Badge(
+                                          isLabelVisible: mostrarAlerta,
+                                          smallSize: 10,
+                                          backgroundColor: Colors.red,
+                                          child: IconButton(
+                                            icon: const Icon(Icons.edit_outlined, color: AppTheme.primaryColor),
+                                            onPressed: () => showDialog(context: context, builder: (_) => UserModal(usuarioExistente: usuario)),
+                                          ),
                                         ),
                                         
-                                        // Eliminar / Reactivar
+                                        // BOTÓN ELIMINAR/REACTIVAR
                                         IconButton(
                                           icon: Icon(
                                             usuario.activo ? Icons.delete_outline : Icons.restore_from_trash,
@@ -152,33 +167,36 @@ class UsersView extends StatelessWidget {
                                             // DIÁLOGO DE CONFIRMACIÓN
                                             final isDeleting = usuario.activo;
                                             final confirm = await showDialog(
-                                              context: context, 
-                                              builder: (ctx) => AlertDialog(
-                                                title: Text(isDeleting ? "¿Desactivar usuario?" : "¿Reactivar usuario?"),
-                                                content: Text("Vas a ${isDeleting ? 'quitar' : 'devolver'} el acceso a ${usuario.username}."),
-                                                actions: [
-                                                  TextButton(
-                                                    onPressed: () => Navigator.pop(ctx, false), 
-                                                    child: const Text("Cancelar")
-                                                  ),
-                                                  ElevatedButton(
-                                                    onPressed: () => Navigator.pop(ctx, true),
-                                                    style: ElevatedButton.styleFrom(
-                                                      backgroundColor: isDeleting ? Colors.red : Colors.green,
-                                                      foregroundColor: Colors.white
-                                                    ), 
-                                                    child: Text(isDeleting ? "Desactivar" : "Reactivar")
-                                                  ),
-                                                ],
-                                              )
+                                                context: context, 
+                                                builder: (ctx) => AlertDialog(
+                                                  title: Text(isDeleting ? "¿Desactivar usuario?" : "¿Reactivar usuario?"),
+                                                  content: Text("Vas a ${isDeleting ? 'quitar' : 'devolver'} el acceso a ${usuario.username}."),
+                                                  actions: [
+                                                    TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Cancelar")),
+                                                    ElevatedButton(
+                                                      onPressed: () => Navigator.pop(ctx, true),
+                                                      style: ElevatedButton.styleFrom(backgroundColor: isDeleting ? Colors.red : Colors.green, foregroundColor: Colors.white), 
+                                                      child: Text(isDeleting ? "Desactivar" : "Reactivar")
+                                                    ),
+                                                  ],
+                                                )
                                             );
 
                                             if (confirm == true) {
-                                              if (isDeleting) {
-                                                await provider.deleteUser(usuario.idUsuario);
-                                              } else {
-                                                await provider.recoverUser(usuario.idUsuario);
-                                              }
+                                                String? error;
+                                                if (isDeleting) {
+                                                  error = await provider.deleteUser(usuario.idUsuario);
+                                                } else {
+                                                  error = await provider.recoverUser(usuario.idUsuario);
+                                                }
+
+                                                if (context.mounted) {
+                                                  if (error == null) {
+                                                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(isDeleting ? 'Usuario eliminado' : 'Usuario reactivado'), backgroundColor: Colors.green));
+                                                  } else {
+                                                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error), backgroundColor: Colors.red));
+                                                  }
+                                                }
                                             }
                                           },
                                         ),

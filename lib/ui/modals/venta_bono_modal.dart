@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:quiropractico_front/config/theme/app_theme.dart';
 import 'package:quiropractico_front/models/cliente.dart';
 import 'package:quiropractico_front/models/servicio.dart';
 import 'package:quiropractico_front/providers/ventas_provider.dart';
@@ -139,21 +138,21 @@ class _VentaBonoModalState extends State<VentaBonoModal> {
             ? null 
             : () async {
               if (_formKey.currentState!.validate()) {
-                final success = await ventasProvider.venderBono(
+                final String? error = await ventasProvider.venderBono(
                   widget.cliente.idCliente,
                   selectedServicio!.idServicio,
                   selectedMetodo
                 );
 
                 if (context.mounted) {
-                  if (success) {
+                  if (error == null) {
                     Navigator.pop(context, true); 
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Venta realizada con éxito'), backgroundColor: Colors.green)
                     );
                   } else {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Error en la venta'), backgroundColor: Colors.red)
+                      SnackBar(content: Text(error), backgroundColor: Colors.red)
                     );
                   }
                 }

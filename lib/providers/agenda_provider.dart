@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:quiropractico_front/models/cita.dart';
 import 'package:quiropractico_front/models/usuario.dart';
 import 'package:quiropractico_front/services/local_storage.dart';
+import 'package:quiropractico_front/utils/error_handler.dart';
 
 class AgendaProvider extends ChangeNotifier {
   
@@ -11,12 +12,20 @@ class AgendaProvider extends ChangeNotifier {
   
   List<Cita> citas = [];
   bool isLoading = true;
+  String? errorMessage;
+
   List<Usuario> quiropracticos = [];
+  List<Map<String, String>> huecosDisponibles = [];
   DateTime selectedDate = DateTime.now();
 
   AgendaProvider() {
     updateSelectedDate(DateTime.now());
   }
+
+  // Helper para headers
+  Options get _authOptions => Options(headers: {
+    'Authorization': 'Bearer ${LocalStorage.getToken()}'
+  });
 
   Future<void> updateSelectedDate(DateTime date) async {
     selectedDate = date;
@@ -25,24 +34,24 @@ class AgendaProvider extends ChangeNotifier {
 
   Future<void> getCitasDelDia(DateTime fecha) async {
     isLoading = true;
+    errorMessage = null;
     notifyListeners();
 
     try {
-      final token = LocalStorage.getToken();
-      
       final fechaStr = "${fecha.year}-${fecha.month.toString().padLeft(2, '0')}-${fecha.day.toString().padLeft(2, '0')}";
-
+      
       final response = await _dio.get(
         '$_baseUrl/citas/agenda',
         queryParameters: {'fecha': fechaStr},
-        options: Options(headers: {'Authorization': 'Bearer $token'})
+        options: _authOptions
       );
 
       final List<dynamic> data = response.data;
       citas = data.map((json) => Cita.fromJson(json)).toList();
 
     } catch (e) {
-      print('Error cargando agenda: $e');
+      errorMessage = ErrorHandler.extractMessage(e);
+      print('Error agenda: $errorMessage');
     } finally {
       isLoading = false;
       notifyListeners();
@@ -51,7 +60,6 @@ class AgendaProvider extends ChangeNotifier {
 
   Future<String?> crearCita(int idCliente, int idQuiropractico, DateTime inicio, DateTime fin, String notas, {int? idBonoAUtilizar}) async {
     try {
-      final token = LocalStorage.getToken();
       
       final data = {
         "idCliente": idCliente,
@@ -62,87 +70,75 @@ class AgendaProvider extends ChangeNotifier {
         "idBonoAUtilizar": idBonoAUtilizar
       };
 
-      final response = await _dio.post(
+      await _dio.post(
         '$_baseUrl/citas',
         data: data,
-        options: Options(headers: {'Authorization': 'Bearer $token'})
+        options: _authOptions
       );
 
-      if (response.statusCode == 201) {
-        await getCitasDelDia(inicio); 
-        return null;
-      }
-      return 'Error desconocido';
+      await getCitasDelDia(inicio);
+      return null;
 
-    } on DioException catch (e) {
-      if (e.response != null && e.response!.data != null) {
-        return e.response!.data['message'] ?? 'Error al procesar la solicitud';
-      }
-      return 'Error de conexión con el servidor';
     } catch (e) {
-      return 'Error inesperado: $e';
+      return ErrorHandler.extractMessage(e);
     }
   }
 
   Future<void> loadQuiropracticos() async {
     try {
-      final token = LocalStorage.getToken();
       final response = await _dio.get(
         '$_baseUrl/usuarios/quiros',
-        options: Options(headers: {'Authorization': 'Bearer $token'})
+        options: _authOptions
       );
 
       final List<dynamic> data = response.data;
       quiropracticos = data.map((json) => Usuario.fromJson(json)).toList();
       notifyListeners();
     } catch (e) {
-      print('Error cargando quiros: $e');
+      print('Error: ${ErrorHandler.extractMessage(e)}');
     }
   }
 
   // Cambiar estado de la cita
-  Future<bool> cambiarEstadoCita(int idCita, String nuevoEstado) async {
+  Future<String?> cambiarEstadoCita(int idCita, String nuevoEstado) async {
     try {
-      final token = LocalStorage.getToken();
       await _dio.patch(
         '$_baseUrl/citas/$idCita/estado',
         queryParameters: {'nuevoEstado': nuevoEstado},
-        options: Options(headers: {'Authorization': 'Bearer $token'})
+        options: _authOptions
       );
       
       final fechaRecarga = citas.isNotEmpty ? citas[0].fechaHoraInicio : DateTime.now();
       await getCitasDelDia(fechaRecarga);
       
-      return true;
+      return null;
     } catch (e) {
       print('Error cambiando estado: $e');
-      return false;
+      return ErrorHandler.extractMessage(e);
     }
   }
 
   // Cancelar Cita
-  Future<bool> cancelarCita(int idCita) async {
+  Future<String?> cancelarCita(int idCita) async {
     try {
-      final token = LocalStorage.getToken();
       await _dio.put(
         '$_baseUrl/citas/$idCita/cancelar',
-        options: Options(headers: {'Authorization': 'Bearer $token'})
+        options:_authOptions
       );
       
       final fechaRecarga = citas.isNotEmpty ? citas[0].fechaHoraInicio : DateTime.now();
       await getCitasDelDia(fechaRecarga);
       
-      return true;
+      return null;
     } catch (e) {
       print('Error cancelando cita: $e');
-      return false;
+      return ErrorHandler.extractMessage(e);
     }
   }
 
   // Editar Cita
   Future<String?> editarCita(int idCita, int idCliente, int idQuiropractico, DateTime inicio, DateTime fin, String notas, String estado) async {
     try {
-      final token = LocalStorage.getToken();
       final inicioStr = inicio.toIso8601String().split('.')[0];
       final finStr = fin.toIso8601String().split('.')[0];
 
@@ -159,28 +155,22 @@ class AgendaProvider extends ChangeNotifier {
       await _dio.put(
         '$_baseUrl/citas/$idCita',
         data: data,
-        options: Options(headers: {'Authorization': 'Bearer $token'})
+        options:_authOptions
       );
 
       await getCitasDelDia(inicio);
       return null;
 
-    } on DioException catch (e) {
-      if (e.response?.data != null) {
-        return e.response!.data['message'] ?? 'Error al editar';
-      }
-      return 'Error de conexión';
+    } catch (e) {
+      return ErrorHandler.extractMessage(e);
     }
   }
-
-  List<Map<String, String>> huecosDisponibles = [];
 
   Future<void> cargarHuecos(int idQuiro, DateTime fecha,{int? idCitaExcluir}) async {
     huecosDisponibles = [];
     notifyListeners();
 
     try {
-      final token = LocalStorage.getToken();
       final fechaStr = "${fecha.year}-${fecha.month.toString().padLeft(2, '0')}-${fecha.day.toString().padLeft(2, '0')}";
 
       final Map<String, dynamic> params = {
@@ -195,7 +185,7 @@ class AgendaProvider extends ChangeNotifier {
       final response = await _dio.get(
         '$_baseUrl/citas/disponibilidad',
         queryParameters: params,
-        options: Options(headers: {'Authorization': 'Bearer $token'})
+        options: _authOptions
       );
       final List<dynamic> data = response.data;
       huecosDisponibles = data.map((json) => {
@@ -207,7 +197,7 @@ class AgendaProvider extends ChangeNotifier {
       notifyListeners();
 
     } catch (e) {
-      print('Error cargando huecos: $e');
+      print('Error cargando huecos: ${ErrorHandler.extractMessage(e)}');
     }
   }
 }

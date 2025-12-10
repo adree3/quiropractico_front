@@ -90,7 +90,7 @@ class _ClinicalNoteModalState extends State<ClinicalNoteModal> {
         ElevatedButton.icon(
           onPressed: () async {
             final provider = Provider.of<HistorialProvider>(context, listen: false);
-            final success = await provider.guardarNota(
+            final String? error = await provider.guardarNota(
               widget.idCita,
               sCtrl.text,
               oCtrl.text,
@@ -99,11 +99,11 @@ class _ClinicalNoteModalState extends State<ClinicalNoteModal> {
             );
 
             if (context.mounted) {
-              if (success) {
+              if (error == null) {
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Nota guardada correctamente"), backgroundColor: Colors.green));
               } else {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Error al guardar nota"), backgroundColor: Colors.red));
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error), backgroundColor: Colors.red));
               }
             }
           },

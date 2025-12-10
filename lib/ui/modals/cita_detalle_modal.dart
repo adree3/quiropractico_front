@@ -5,12 +5,22 @@ import 'package:quiropractico_front/config/theme/app_theme.dart';
 import 'package:quiropractico_front/models/cita.dart';
 import 'package:quiropractico_front/providers/agenda_provider.dart';
 import 'package:quiropractico_front/ui/modals/cita_modal.dart';
-import 'package:quiropractico_front/ui/modals/clinica_note_modal.dart';
 
 class CitaDetalleModal extends StatelessWidget {
   final Cita cita;
 
   const CitaDetalleModal({super.key, required this.cita});
+
+  // Helper para mostrar errores
+  void _mostrarError(BuildContext context, String mensaje) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(mensaje),
+        backgroundColor: Colors.red,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -152,8 +162,14 @@ class CitaDetalleModal extends StatelessWidget {
               );
 
               if (confirm == true) {
-                await agendaProvider.cancelarCita(cita.idCita);
-                if (context.mounted) Navigator.pop(context);
+                final String? error = await agendaProvider.cancelarCita(cita.idCita);
+                if (context.mounted) {
+                  if (error == null) {
+                    Navigator.pop(context);
+                  } else {
+                    _mostrarError(context, error);
+                  }
+                }
               }
             },
             icon: const Icon(Icons.cancel_outlined, size: 18),
@@ -165,8 +181,14 @@ class CitaDetalleModal extends StatelessWidget {
           ),
           ElevatedButton.icon(
             onPressed: () async {
-              await agendaProvider.cambiarEstadoCita(cita.idCita, 'ausente');
-              if (context.mounted) Navigator.pop(context);
+              final String? error = await agendaProvider.cambiarEstadoCita(cita.idCita, 'ausente');
+              if (context.mounted) {
+                if (error == null) {
+                  Navigator.pop(context);
+                } else {
+                  _mostrarError(context, error);
+                }
+              }
             },
             icon: const Icon(Icons.person_off_outlined, size: 18),
             label: const Text('Ausente'),
@@ -177,8 +199,14 @@ class CitaDetalleModal extends StatelessWidget {
           ),
           ElevatedButton.icon(
             onPressed: () async {
-              await agendaProvider.cambiarEstadoCita(cita.idCita, 'completada');
-              if (context.mounted) Navigator.pop(context);
+              final String? error = await agendaProvider.cambiarEstadoCita(cita.idCita, 'completada');
+              if (context.mounted) {
+                if (error == null) {
+                  Navigator.pop(context);
+                } else {
+                  _mostrarError(context, error);
+                }
+              }
             },
             icon: const Icon(Icons.check_circle_outline, size: 18),
             label: const Text('Completar'),

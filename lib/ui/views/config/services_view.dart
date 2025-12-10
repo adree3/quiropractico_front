@@ -147,10 +147,28 @@ class ServicesView extends StatelessWidget {
                                         ),
                                         tooltip: servicio.activo ? 'Desactivar' : 'Reactivar',
                                         onPressed: () async {
+                                          String? error;
                                           if (servicio.activo) {
-                                            await provider.deleteService(servicio.idServicio);
+                                            error = await provider.deleteService(servicio.idServicio);
                                           } else {
-                                            await provider.recoverService(servicio.idServicio);
+                                            error = await provider.recoverService(servicio.idServicio);
+                                          }
+                                          if (context.mounted) {
+                                            if (error == null) {
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                SnackBar(
+                                                  content: Text(servicio.activo ? 'Servicio eliminado' : 'Servicio reactivado'), 
+                                                  backgroundColor: Colors.green
+                                                )
+                                              );
+                                            } else {
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                SnackBar(
+                                                  content: Text(error), 
+                                                  backgroundColor: Colors.red
+                                                )
+                                              );
+                                            }
                                           }
                                         },
                                       ),

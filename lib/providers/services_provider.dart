@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:quiropractico_front/models/servicio.dart'; // Asegúrate de tener este modelo
 import 'package:quiropractico_front/services/local_storage.dart';
+import 'package:quiropractico_front/utils/error_handler.dart';
 
 class ServicesProvider extends ChangeNotifier {
   final Dio _dio = Dio();
@@ -15,13 +16,17 @@ class ServicesProvider extends ChangeNotifier {
     loadServices();
   }
 
+  // Helper para headers
+  Options get _authOptions => Options(headers: {
+    'Authorization': 'Bearer ${LocalStorage.getToken()}'
+  });
+
   // Cargar servicios ordenados
   Future<void> loadServices() async {
     isLoading = true;
     notifyListeners();
 
     try {
-      final token = LocalStorage.getToken();
       final Map<String, dynamic> params = {};
       if (filterActive != null) {
         params['activo'] = filterActive;
@@ -30,7 +35,7 @@ class ServicesProvider extends ChangeNotifier {
       final response = await _dio.get(
         '$_baseUrl/servicios', 
         queryParameters: params,
-        options: Options(headers: {'Authorization': 'Bearer $token'})
+        options: _authOptions
       );
 
       final List<dynamic> data = response.data;
@@ -46,7 +51,7 @@ class ServicesProvider extends ChangeNotifier {
       });
       servicios = tempList;
     } catch (e) {
-      print('Error cargando servicios: $e');
+      print('Error cargando servicios: ${ErrorHandler.extractMessage(e)}');
     } finally {
       isLoading = false;
       notifyListeners();
@@ -60,9 +65,8 @@ class ServicesProvider extends ChangeNotifier {
   }
 
   // CREAR
-  Future<bool> createService(String nombre, double precio, String tipo, int? sesiones) async {
+  Future<String?> createService(String nombre, double precio, String tipo, int? sesiones) async {
     try {
-      final token = LocalStorage.getToken();
       final data = {
         "nombreServicio": nombre,
         "precio": precio,
@@ -73,22 +77,20 @@ class ServicesProvider extends ChangeNotifier {
       await _dio.post(
         '$_baseUrl/servicios',
         data: data,
-        options: Options(headers: {'Authorization': 'Bearer $token'})
+        options: _authOptions
       );
       
       await loadServices();
-      return true;
+      return null;
     } catch (e) {
-      print('Error creando servicio: $e');
-      return false;
+      return ErrorHandler.extractMessage(e);
     }
   }
 
   // EDITAR
-  Future<bool> updateService(int id, String nombre, double precio, String tipo, int? sesiones) async {
+  Future<String?> updateService(int id, String nombre, double precio, String tipo, int? sesiones) async {
     try {
-      final token = LocalStorage.getToken();
-      final data = {
+       final data = {
         "nombreServicio": nombre,
         "precio": precio,
         "tipo": tipo,
@@ -98,34 +100,41 @@ class ServicesProvider extends ChangeNotifier {
       await _dio.put(
         '$_baseUrl/servicios/$id',
         data: data,
-        options: Options(headers: {'Authorization': 'Bearer $token'})
+        options: _authOptions
       );
       
       await loadServices();
-      return true;
+      return null;
     } catch (e) {
-      print('Error editando servicio: $e');
-      return false;
+      return ErrorHandler.extractMessage(e);
     }
   }
 
   // BORRAR
-  Future<bool> deleteService(int id) async {
+  Future<String?> deleteService(int id) async {
     try {
-      final token = LocalStorage.getToken();
-      await _dio.delete('$_baseUrl/servicios/$id', options: Options(headers: {'Authorization': 'Bearer $token'}));
+      await _dio.delete(
+        '$_baseUrl/servicios/$id', 
+        options: _authOptions
+      );
       await loadServices();
-      return true;
-    } catch (e) { return false; }
+      return null;
+    } catch (e) { 
+      return ErrorHandler.extractMessage(e);
+    }
   }
 
   // RECUPERAR
-  Future<bool> recoverService(int id) async {
+  Future<String?> recoverService(int id) async {
     try {
-      final token = LocalStorage.getToken();
-      await _dio.put('$_baseUrl/servicios/$id/recuperar', options: Options(headers: {'Authorization': 'Bearer $token'}));
+      await _dio.put(
+        '$_baseUrl/servicios/$id/recuperar', 
+        options: _authOptions
+        );
       await loadServices();
-      return true;
-    } catch (e) { return false; }
+      return null;
+    } catch (e) { 
+      return ErrorHandler.extractMessage(e);
+    }
   }
 }
