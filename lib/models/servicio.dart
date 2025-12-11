@@ -4,6 +4,7 @@ class Servicio {
   final double precio;
   final int? sesiones;
   final bool activo;
+  final String tipo;
 
   Servicio({
     required this.idServicio,
@@ -11,6 +12,7 @@ class Servicio {
     required this.precio,
     this.sesiones,
     required this.activo,
+    required this.tipo,
   });
 
   factory Servicio.fromJson(Map<String, dynamic> json) {
@@ -20,6 +22,7 @@ class Servicio {
       precio: (json['precio'] as num).toDouble(),
       sesiones: json['sesionesIncluidas'],
       activo: json['activo']?? true,
+      tipo: json['tipo'] ?? 'sesion_unica',
     );
   }
 

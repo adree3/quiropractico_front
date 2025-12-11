@@ -86,31 +86,35 @@ class Sidebar extends StatelessWidget {
                 
                 if (isAdminOrQuiro) ...[
                     const Divider(height: 30, color: Colors.grey),
-
-                    // HORARIOS
-                    _SidebarItem(
-                      icon: Icons.access_time, 
-                      title: 'Horarios',
-                      isActive: location.startsWith('/configuracion/horarios'),
-                      onTap: () => context.go('/configuracion/horarios'),
-                    ),
-
-                   // TARIFAS
-                    _SidebarItem(
-                      icon: Icons.euro, 
-                      title: 'Servicios',
-                      isActive: location.startsWith('/configuracion/servicios'),
-                      onTap: () => context.go('/configuracion/servicios'),
-                    ),
-
                     // EQUIPO
                     _SidebarItem(
                       icon: Icons.manage_accounts_outlined, 
                       title: 'Gestionar Equipo',
-                      isActive: location.startsWith('/configuracion/usuarios'),
+                      isActive: location.startsWith('/usuarios'),
                       badgeCount: alertasEquipo,
                       badgeColor: Colors.red, 
-                      onTap: () => context.go('/configuracion/usuarios'),
+                      onTap: () => context.go('/usuarios'),
+                    ),
+                    // TARIFAS
+                    _SidebarItem(
+                      icon: Icons.euro, 
+                      title: 'Servicios',
+                      isActive: location.startsWith('/servicios'),
+                      onTap: () => context.go('/servicios'),
+                    ),
+                    // HORARIOS
+                    _SidebarItem(
+                      icon: Icons.access_time, 
+                      title: 'Horarios',
+                      isActive: location.startsWith('/horarios'),
+                      onTap: () => context.go('/horarios'),
+                    ),
+                    // VACACIONES
+                    _SidebarItem(
+                      icon: Icons.beach_access_outlined,
+                      title: 'Vacaciones',
+                      isActive: location.startsWith('/vacaciones'),
+                      onTap: () => context.go('/vacaciones'),
                     ),
                 ]
               ],

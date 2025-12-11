@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:quiropractico_front/config/theme/app_theme.dart';
 import 'package:quiropractico_front/models/usuario.dart';
@@ -18,8 +17,6 @@ class ScheduleView extends StatelessWidget {
         // CABECERA
         Row(
           children: [
-            IconButton(icon: const Icon(Icons.arrow_back), onPressed: () => context.go('/configuracion')),
-            const SizedBox(width: 10),
             const Text("Gestión de Horarios", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
             const Spacer(),
             

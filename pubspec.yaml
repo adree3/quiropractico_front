@@ -23,6 +23,8 @@ dependencies:
   google_fonts: ^6.1.0
   # Formateo de fechas
   intl: ^0.19.0
+  # Calendario grande
+  table_calendar: ^3.0.9
   # Iconos
   font_awesome_flutter: ^10.7.0
   syncfusion_flutter_calendar: ^31.1.19

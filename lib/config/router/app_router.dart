@@ -3,10 +3,10 @@ import 'package:go_router/go_router.dart';
 import 'package:quiropractico_front/providers/auth_provider.dart';
 import 'package:quiropractico_front/ui/layouts/dashboard_layout.dart';
 import 'package:quiropractico_front/ui/views/auth/login_view.dart';
-import 'package:quiropractico_front/ui/views/config/configuracion_view.dart';
 import 'package:quiropractico_front/ui/views/config/schedule_view.dart';
 import 'package:quiropractico_front/ui/views/config/services_view.dart';
 import 'package:quiropractico_front/ui/views/config/users_view.dart';
+import 'package:quiropractico_front/ui/views/config/vacaciones_calendar_view.dart';
 import 'package:quiropractico_front/ui/views/dashboard/agenda_view.dart';
 import 'package:quiropractico_front/ui/views/dashboard/cliente_detalle_view.dart';
 import 'package:quiropractico_front/ui/views/dashboard/clients_view.dart';
@@ -59,9 +59,9 @@ class AppRouter {
         },
         routes: [
           GoRoute(
-             path: '/dashboard',
-             builder: (context, state) => const HomeView(),
-           ),
+            path: '/dashboard',
+            builder: (context, state) => const HomeView(),
+          ),
           GoRoute(
             path: '/agenda',
             builder: (context, state) => const AgendaView(),
@@ -79,25 +79,23 @@ class AppRouter {
           ),
           GoRoute(
             path: '/pagos',
-            builder: (context, state) => const PaymentsView(), // <--- CONECTAR AQUÍ
+            builder: (context, state) => const PaymentsView(),
           ),
           GoRoute(
-            path: '/configuracion',
-            builder: (context, state) => const ConfiguracionView(),
-            routes: [
-              GoRoute(
-                path: 'servicios',
-                builder: (context, state) => const ServicesView(), 
-              ),
-              GoRoute(
-                path: 'usuarios',
-                builder: (context, state) => const UsersView(),
-              ),
-              GoRoute(
-                path: 'horarios',
-                builder: (context, state) => const ScheduleView(),
-              ),
-            ]
+            path: '/servicios',
+            builder: (context, state) => const ServicesView(), 
+          ),
+          GoRoute(
+            path: '/usuarios',
+            builder: (context, state) => const UsersView(),
+          ),
+          GoRoute(
+            path: '/horarios',
+            builder: (context, state) => const ScheduleView(),
+          ),
+          GoRoute(
+            path: '/vacaciones',
+            builder: (context, state) => const VacacionesCalendarView(),
           ),
         ],
       ),

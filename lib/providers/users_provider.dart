@@ -16,7 +16,6 @@ class UsersProvider extends ChangeNotifier {
   bool _showBadge = false;
 
   int blockedCount = 0;
-  final Set<int> _ignoredBlockedUserIds = {};
 
   int get blockedCountDisplay => _showBadge ? _realBlockedCount : 0;
 
@@ -79,35 +78,12 @@ class UsersProvider extends ChangeNotifier {
 
   Future<void> checkBlockedCount() async {
     try {
-      // 1. Obtenemos la lista real de bloqueados del backend
-      // Necesitamos un cambio pequeño aquí: en lugar de solo count, 
-      // necesitamos saber QUIÉNES son para poder filtrar los ignorados.
-      // PERO, para no complicar el backend ahora, haremos un truco visual:
-      
       final response = await _dio.get('$_baseUrl/usuarios/bloqueados/count', options: _authOptions);
-      int realCount = response.data;
-
-      // Si tenemos ignorados, restamos (esto es una aproximación visual)
-      // Lo ideal sería filtrar en el cliente, pero para el badge sirve.
-      blockedCount = (realCount - _ignoredBlockedUserIds.length).clamp(0, 99);
-      
+      blockedCount = response.data;
       notifyListeners();
     } catch (e) {
       print(e);
     }
-  }
-
-  void ignoreBlockAlert(int userId) {
-    _ignoredBlockedUserIds.add(userId);
-    checkBlockedCount();
-    notifyListeners();
-  }
-
-   // Helper para saber si un usuario específico debe mostrar alerta
-  bool shouldShowAlertFor(int userId, bool isBlockedInDb) {
-    if (!isBlockedInDb) return false;
-    if (_ignoredBlockedUserIds.contains(userId)) return false;
-    return true;
   }
 
   Future<void> markAsSeen() async {

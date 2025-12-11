@@ -54,7 +54,7 @@ class _UserModalState extends State<UserModal> {
                     border: Border.all(color: Colors.orange),
                     borderRadius: BorderRadius.circular(10)
                   ),
-                  child: Column( // Cambiamos Row por Column para meter los botones abajo
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Row(
@@ -74,16 +74,20 @@ class _UserModalState extends State<UserModal> {
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
                           // IGNORAR
-                          TextButton(
-                            onPressed: () {
-                               provider.ignoreBlockAlert(widget.usuarioExistente!.idUsuario);
-                               Navigator.pop(context); 
-                               ScaffoldMessenger.of(context).showSnackBar(
-                                 const SnackBar(content: Text('Notificación silenciada para esta sesión'), backgroundColor: Colors.grey)
-                               );
+                          TextButton.icon(
+                            onPressed: () async{
+                              final error = await provider.deleteUser(widget.usuarioExistente!.idUsuario);
+                              if (context.mounted) {
+                                 if (error == null) {
+                                   Navigator.pop(context);
+                                   ScaffoldMessenger.of(context).showSnackBar(
+                                     const SnackBar(content: Text('Usuario eliminado'), backgroundColor: Colors.green)
+                                   );
+                                 } 
+                               }
                             },
-                            style: TextButton.styleFrom(foregroundColor: Colors.grey),
-                            child: const Text("Ignorar Aviso"),
+                            icon: const Icon(Icons.person_off, size: 16, color: Colors.red),
+                            label: const Text("Eliminar usuario"),
                           ),
                           
                           const SizedBox(width: 10),

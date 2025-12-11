@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:quiropractico_front/config/theme/app_theme.dart';
 import 'package:quiropractico_front/providers/services_provider.dart';
@@ -25,12 +24,6 @@ class ServicesView extends StatelessWidget {
         // CABECERA
         Row(
           children: [
-            IconButton(
-              icon: const Icon(Icons.arrow_back), 
-              onPressed: () => context.go('/configuracion'),
-              tooltip: 'Volver',
-            ),
-            const SizedBox(width: 10),
             const Text("Gestión de Servicios", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
             const Spacer(),
             Container(
@@ -96,7 +89,8 @@ class ServicesView extends StatelessWidget {
                           rows: provider.servicios.map((servicio) {
                             // Estilo visual para inactivos
                             final colorTexto = servicio.activo ? Colors.black87 : Colors.grey;
-                            
+                            final esSesion= servicio.tipo.toLowerCase() == 'sesion_unica' ? 'SESION' : 'BONO';
+
                             return DataRow(
                               cells: [
                                 DataCell(
@@ -113,13 +107,13 @@ class ServicesView extends StatelessWidget {
                                   Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                     decoration: BoxDecoration(
-                                      color: servicio.sesiones != null ? Colors.purple.withOpacity(0.1) : Colors.blue.withOpacity(0.1),
+                                      color: servicio.tipo.toLowerCase() == 'sesion_unica' ? Colors.purple.withOpacity(0.1) : Colors.blue.withOpacity(0.1),
                                       borderRadius: BorderRadius.circular(5)
                                     ),
                                     child: Text(
-                                      servicio.sesiones != null ? "BONO" : "SESIÓN",
+                                      esSesion,
                                       style: TextStyle(
-                                        color: servicio.sesiones != null ? Colors.purple : Colors.blue,
+                                        color: servicio.tipo.toLowerCase() == 'sesion_unica' ? Colors.purple : Colors.blue,
                                         fontSize: 10, fontWeight: FontWeight.bold
                                       )
                                     ),

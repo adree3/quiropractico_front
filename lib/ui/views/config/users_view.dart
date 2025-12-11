@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:quiropractico_front/config/theme/app_theme.dart';
 import 'package:quiropractico_front/providers/users_provider.dart';
@@ -31,12 +30,7 @@ class _UsersViewState extends State<UsersView> {
       children: [
         Row(
           children: [
-            IconButton(
-              icon: const Icon(Icons.arrow_back), 
-              onPressed: () => context.go('/configuracion'),
-              tooltip: 'Volver',
-            ),
-            const SizedBox(width: 10),
+            
             const Text("Gestión de Equipo", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
             
             const Spacer(),
@@ -101,7 +95,6 @@ class _UsersViewState extends State<UsersView> {
                             ],
                             rows: provider.usuarios.map((usuario) {
                               final colorTexto = usuario.activo ? Colors.black87 : Colors.grey;
-                              final mostrarAlerta = provider.shouldShowAlertFor(usuario.idUsuario, usuario.cuentaBloqueada);
                               Color colorRol;
                               switch(usuario.rol.toLowerCase()) {
                                 case 'admin': colorRol = Colors.purple; break;
@@ -147,7 +140,7 @@ class _UsersViewState extends State<UsersView> {
                                       children: [
                                         // BOTÓN EDITAR
                                         Badge(
-                                          isLabelVisible: mostrarAlerta,
+                                          isLabelVisible: usuario.cuentaBloqueada,
                                           smallSize: 10,
                                           backgroundColor: Colors.red,
                                           child: IconButton(

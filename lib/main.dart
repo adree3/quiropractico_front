@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
 import 'package:quiropractico_front/config/router/app_router.dart';
 import 'package:quiropractico_front/config/theme/app_theme.dart';
+import 'package:quiropractico_front/providers/agenda_bloqueo_provider.dart';
 import 'package:quiropractico_front/providers/agenda_provider.dart';
 import 'package:quiropractico_front/providers/auth_provider.dart';
 import 'package:quiropractico_front/providers/clients_provider.dart';
@@ -18,6 +20,7 @@ import 'package:quiropractico_front/services/local_storage.dart';
 void main() async{
   WidgetsFlutterBinding.ensureInitialized();
   await LocalStorage.configurePrefs();
+  await initializeDateFormatting();
   runApp(
     MultiProvider(
       providers: [
@@ -31,6 +34,7 @@ void main() async{
         ChangeNotifierProvider(create: (_) => PaymentsProvider()),
         ChangeNotifierProvider(create: (_) => HistorialProvider()),
         ChangeNotifierProvider(create: (_) => StatsProvider()),
+        ChangeNotifierProvider(create: (_) => AgendaBloqueoProvider()),
       ],
       child: const MyApp(),
     )
