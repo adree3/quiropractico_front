@@ -16,13 +16,22 @@ class Usuario {
   });
   
   factory Usuario.fromJson(Map<String, dynamic> json) {
-    return Usuario(
-      idUsuario: json['idUsuario'],
-      nombreCompleto: json['nombreCompleto'],
-      username: json['username'],
-      rol: json['rol'] ?? 'recepción',
-      activo: json['activo'] ?? true,
-      cuentaBloqueada: json['cuentaBloqueada'] ?? false,
-    );
-  }
+  return Usuario(
+    idUsuario: json['idUsuario'],
+    nombreCompleto: json['nombreCompleto'],
+    username: json['username'],
+    rol: json['rol'] ?? 'recepción',
+    activo: (json['activo'] == 1 || json['activo'] == true), 
+    cuentaBloqueada: (json['cuentaBloqueada'] == 1 || json['cuentaBloqueada'] == true),
+  );
+}
+
+@override
+bool operator ==(Object other) {
+  if (identical(this, other)) return true;
+  return other is Usuario && other.idUsuario == idUsuario;
+}
+
+@override
+int get hashCode => idUsuario.hashCode;
 }

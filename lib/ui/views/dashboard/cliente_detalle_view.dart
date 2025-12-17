@@ -9,6 +9,7 @@ import 'package:quiropractico_front/ui/modals/client_modal.dart';
 import 'package:quiropractico_front/ui/modals/venta_bono_modal.dart';
 import 'package:quiropractico_front/ui/modals/vincular_familiar_modal.dart';
 import 'package:quiropractico_front/ui/views/dashboard/widgets/smart_desvinculacion_dialog.dart';
+import 'package:quiropractico_front/ui/widgets/custom_snackbar.dart';
 
 
 class ClienteDetalleView extends StatelessWidget {
@@ -335,11 +336,9 @@ class _Content extends StatelessWidget {
                                                     await provider.desvincularFamiliar(fam.idGrupo, idsParaCancelar);
 
                                                     if (context.mounted) {
-                                                      ScaffoldMessenger.of(context).showSnackBar(
-                                                        const SnackBar(
-                                                          content: Text("Familiar desvinculado correctamente"),
-                                                          backgroundColor: Colors.green,
-                                                        ),
+                                                      CustomSnackBar.show(context, 
+                                                        message: "Familiar desvinculado correctamente", 
+                                                        type: SnackBarType.success
                                                       );
                                                       provider.loadFullData(cliente.idCliente);
                                                       final agendaProvider = Provider.of<AgendaProvider>(context, listen: false); 
@@ -347,8 +346,9 @@ class _Content extends StatelessWidget {
                                                     }
                                                   } catch (e) {
                                                     if (context.mounted) {
-                                                      ScaffoldMessenger.of(context).showSnackBar(
-                                                        SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
+                                                      CustomSnackBar.show(context, 
+                                                        message: "Error: $e",
+                                                        type: SnackBarType.error
                                                       );
                                                     }
                                                   }

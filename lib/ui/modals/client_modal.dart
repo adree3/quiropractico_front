@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:quiropractico_front/config/theme/app_theme.dart';
 import 'package:quiropractico_front/models/cliente.dart';
 import 'package:quiropractico_front/providers/clients_provider.dart';
+import 'package:quiropractico_front/ui/widgets/custom_snackbar.dart';
 
 class ClientModal extends StatefulWidget {
   final Cliente? clienteExistente;
@@ -158,18 +159,14 @@ class _ClientModalState extends State<ClientModal> {
               if (context.mounted) {
                 if (error == null) {
                   Navigator.of(context).pop(true);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(isEditing ? 'Paciente actualizado' : 'Paciente creado'),
-                      backgroundColor: Colors.green
-                    ),
+                  CustomSnackBar.show(context, 
+                    message: isEditing ? 'Paciente actualizado' : 'Paciente creado', 
+                    type: SnackBarType.success
                   );
                 } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(error), 
-                      backgroundColor: Colors.red
-                    ),
+                  CustomSnackBar.show(context, 
+                    message: error, 
+                    type: SnackBarType.error
                   );
                 }
               }

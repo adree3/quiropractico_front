@@ -2,20 +2,34 @@ import 'package:flutter/material.dart';
 
 class Horario {
   final int idHorario;
+  final int idQuiropractico;
   final int diaSemana;
   final TimeOfDay horaInicio;
   final TimeOfDay horaFin;
 
   Horario({
     required this.idHorario,
+    required this.idQuiropractico,
     required this.diaSemana,
     required this.horaInicio,
     required this.horaFin,
   });
 
   factory Horario.fromJson(Map<String, dynamic> json) {
+    int? quiroId;
+    if (json['idQuiropractico'] != null) {
+      quiroId = json['idQuiropractico'];
+    } 
+    else if (json['quiropractico'] != null && json['quiropractico'] is Map) {
+      quiroId = json['quiropractico']['idUsuario'];
+    }
+    else if (json['idUsuario'] != null) {
+      quiroId = json['idUsuario'];
+    }
+
     return Horario(
       idHorario: json['idHorario'],
+      idQuiropractico: quiroId ?? 0, 
       diaSemana: json['diaSemana'],
       horaInicio: _parseTime(json['horaInicio']),
       horaFin: _parseTime(json['horaFin']),

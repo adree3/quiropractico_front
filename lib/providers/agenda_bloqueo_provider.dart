@@ -72,4 +72,29 @@ class AgendaBloqueoProvider extends ChangeNotifier {
       return ErrorHandler.extractMessage(e);
     }
   }
+  
+  Future<String?> editarBloqueo(int idBloqueo, DateTime inicio, DateTime fin, String motivo, int? idUsuario) async {
+    try {
+      final data = {
+        "fechaInicio": inicio.toIso8601String(),
+        "fechaFin": fin.toIso8601String(),
+        "motivo": motivo,
+        "idQuiropractico": idUsuario
+      };
+      
+      await _dio.put(
+        '$_baseUrl/agenda/bloqueos/$idBloqueo', 
+        data: data, 
+        options: _authOptions
+      );
+      
+      await loadBloqueos(); 
+      return null;
+    } catch (e) {
+      if (e is DioException) {
+        return e.response?.data['message'] ?? "Error al editar bloqueo";
+      }
+      return "Error de conexión";
+    }
+  }
 }

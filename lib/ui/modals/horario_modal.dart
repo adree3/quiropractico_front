@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:quiropractico_front/providers/horarios_provider.dart';
+import 'package:quiropractico_front/ui/widgets/custom_snackbar.dart';
 
 class HorarioModal extends StatefulWidget {
   const HorarioModal({super.key});
@@ -85,7 +86,10 @@ class _HorarioModalState extends State<HorarioModal> {
             final startMinutes = horaInicio.hour * 60 + horaInicio.minute;
             final endMinutes = horaFin.hour * 60 + horaFin.minute;
             if (endMinutes <= startMinutes) {
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('La hora fin debe ser mayor a inicio'), backgroundColor: Colors.orange));
+              CustomSnackBar.show(context, 
+                message: 'La hora fin debe ser mayor a inicio', 
+                type: SnackBarType.info
+              );
               return;
             }
 
@@ -94,9 +98,15 @@ class _HorarioModalState extends State<HorarioModal> {
             if (context.mounted) {
               if (error == null) {
                 Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Turno añadido'), backgroundColor: Colors.green));
+                CustomSnackBar.show(context, 
+                  message: 'Turno añadido', 
+                  type: SnackBarType.error
+                );
               } else {
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error), backgroundColor: Colors.red));
+                CustomSnackBar.show(context, 
+                  message: error, 
+                  type: SnackBarType.error
+                );
               }
             }
           },

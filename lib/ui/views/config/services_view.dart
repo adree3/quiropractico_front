@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:quiropractico_front/config/theme/app_theme.dart';
+import 'package:quiropractico_front/models/servicio.dart';
 import 'package:quiropractico_front/providers/services_provider.dart';
 import 'package:quiropractico_front/ui/modals/service_modal.dart';
+import 'package:quiropractico_front/ui/widgets/custom_snackbar.dart';
 
 class ServicesView extends StatelessWidget {
   const ServicesView({super.key});
@@ -19,9 +21,28 @@ class ServicesView extends StatelessWidget {
     } else {
       mensajeVacio = "No hay servicios registrados";
     }
+    // Ordenar lista
+    final List<Servicio> serviciosOrdenados = List.from(provider.servicios);
+    
+    serviciosOrdenados.sort((a, b) {
+      final esBonoA = a.tipo.toLowerCase() == 'bono';
+      final esBonoB = b.tipo.toLowerCase() == 'bono';
+
+      if (esBonoA && !esBonoB){
+        return -1;
+      }
+      if (!esBonoA && esBonoB){
+        return 1;
+      }
+      int comparacionPrecio = b.precio.compareTo(a.precio);
+      if (comparacionPrecio != 0) {
+        return comparacionPrecio; 
+      }
+      return b.idServicio.compareTo(a.idServicio);
+    });
     return Column(
       children: [
-        // CABECERA
+        // Cabecera
         Row(
           children: [
             const Text("Gestión de Servicios", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
@@ -39,7 +60,7 @@ class ServicesView extends StatelessWidget {
                 icon: const Icon(Icons.filter_list, color: Colors.grey),
                 items: const [
                   DropdownMenuItem(value: true, child: Text("Activos")),
-                  DropdownMenuItem(value: false, child: Text("Papelera")),
+                  DropdownMenuItem(value: false, child: Text("Eliminados")),
                   DropdownMenuItem(value: null, child: Text("Todos")),
                 ],
                 onChanged: (val) {
@@ -60,9 +81,12 @@ class ServicesView extends StatelessWidget {
         // TABLA
         Expanded(
           child: Card(
+            elevation: 0,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8), side: BorderSide(color: Colors.grey.shade200)),
+            clipBehavior: Clip.antiAlias,
             child: provider.isLoading
                 ? const Center(child: CircularProgressIndicator())
-                : provider.servicios.isEmpty
+                : serviciosOrdenados.isEmpty
                   ? Center(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
@@ -79,49 +103,101 @@ class ServicesView extends StatelessWidget {
                         child: DataTable(
                           headingRowColor: MaterialStateProperty.all(Colors.grey[100]),
                           columnSpacing: 30,
+                          dataRowMinHeight: 60,
+                          dataRowMaxHeight: 60,
                           columns: const [
-                            DataColumn(label: Text("Nombre")),
-                            DataColumn(label: Text("Tipo")),
-                            DataColumn(label: Text("Precio")),
-                            DataColumn(label: Text("Sesiones")),
-                            DataColumn(label: Text("Acciones", textAlign: TextAlign.end)),
+                            DataColumn(label: Text("#", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey))),
+                            DataColumn(label: Text("Nombre", style: TextStyle(fontWeight: FontWeight.bold))),
+                            DataColumn(
+                              label: Expanded( 
+                                child: Center(
+                                  child: Text("Tipo", style: TextStyle(fontWeight: FontWeight.bold))
+                                )
+                              )
+                            ),
+                            DataColumn(label: Text("Precio", style: TextStyle(fontWeight: FontWeight.bold))),
+                            DataColumn(label: Text("Sesiones", style: TextStyle(fontWeight: FontWeight.bold))),
+                            
+                            DataColumn(label: Text("Acciones", style: TextStyle(fontWeight: FontWeight.bold), textAlign: TextAlign.end)),
                           ],
-                          rows: provider.servicios.map((servicio) {
-                            // Estilo visual para inactivos
-                            final colorTexto = servicio.activo ? Colors.black87 : Colors.grey;
-                            final esSesion= servicio.tipo.toLowerCase() == 'sesion_unica' ? 'SESION' : 'BONO';
+                          rows: serviciosOrdenados.asMap().entries.map((entry) {
+                            final int index = entry.key + 1;
+                            final Servicio servicio = entry.value;
+                            final bool esBono = servicio.tipo.toLowerCase() == 'bono';
+                            final bool activo = servicio.activo;
+                            
+                            final Color baseColor = esBono ? Colors.blue : Colors.purple;
+                            final Color rowColor = activo 
+                              ? baseColor.withOpacity(0.03)
+                              : Colors.grey.shade50;
+                            final Color textColor = activo ? Colors.black87 : Colors.grey;
 
                             return DataRow(
+                              color: MaterialStateProperty.all(rowColor),
                               cells: [
+                                // Indice
+                                DataCell(Text("$index", style: TextStyle(color: Colors.grey[400], fontWeight: FontWeight.bold))),
+                                // Nombre
                                 DataCell(
                                   SizedBox(
                                     width: 180, 
                                     child: Text(
                                       servicio.nombreServicio, 
-                                      style: TextStyle(color: colorTexto, fontWeight: FontWeight.w600),
+                                      style: TextStyle(color: textColor, fontWeight: FontWeight.w600, fontSize: 15),
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                   )
                                 ),
+                                // Tipo
                                 DataCell(
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: servicio.tipo.toLowerCase() == 'sesion_unica' ? Colors.purple.withOpacity(0.1) : Colors.blue.withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(5)
-                                    ),
-                                    child: Text(
-                                      esSesion,
-                                      style: TextStyle(
-                                        color: servicio.tipo.toLowerCase() == 'sesion_unica' ? Colors.purple : Colors.blue,
-                                        fontSize: 10, fontWeight: FontWeight.bold
-                                      )
+                                  Center(
+                                    child: Chip(
+                                      backgroundColor: baseColor.withOpacity(0.1),
+                                      side: BorderSide(color: baseColor),
+                                      padding: const EdgeInsets.all(0), 
+                                      label: SizedBox(
+                                        width: 45, 
+                                        child: Text(
+                                          esBono ? 'BONO' : 'SESIÓN',
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(
+                                            color: baseColor, 
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.bold
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis, 
+                                        ),
+                                      ),
                                     ),
                                   )
                                 ),
-                                DataCell(Text("${servicio.precio} €", style: TextStyle(color: colorTexto, fontWeight: FontWeight.bold))),
-                                DataCell(Text(servicio.sesiones?.toString() ?? "-", style: TextStyle(color: colorTexto))),
                                 
+                                // PRECIO
+                                DataCell(
+                                  Text(
+                                    "${servicio.precio} €", 
+                                    style: TextStyle(color: textColor, fontSize: 15)
+                                  )
+                                ),
+
+                                // SESIONES
+                                DataCell(
+                                  esBono 
+                                  ? Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(5),
+                                        border: Border.all(color: Colors.grey.shade300)
+                                      ),
+                                      child: Text(
+                                        "${servicio.sesiones}", 
+                                        style: TextStyle(color: textColor, fontWeight: FontWeight.bold)
+                                      )
+                                    )
+                                  : Text("-", style: TextStyle(color: textColor.withOpacity(0.5)))
+                                ),
                                 // ACCIONES
                                 DataCell(
                                   Row(
@@ -129,17 +205,21 @@ class ServicesView extends StatelessWidget {
                                     children: [
                                       // Editar 
                                       IconButton(
-                                        icon: const Icon(Icons.edit_outlined, color: AppTheme.primaryColor),
+                                        icon: const Icon(Icons.edit_outlined, size: 20, color: AppTheme.primaryColor),
                                         onPressed: () => showDialog(context: context, builder: (_) => ServiceModal(servicioExistente: servicio)),
+                                        tooltip: "Editar",
+                                        splashRadius: 20,
                                       ),
                                       
                                       // Eliminar / Recuperar
                                       IconButton(
                                         icon: Icon(
                                           servicio.activo ? Icons.delete_outline : Icons.restore_from_trash,
-                                          color: servicio.activo ? Colors.redAccent : Colors.green
+                                          color: servicio.activo ? Colors.redAccent : Colors.green,
+                                          size: 20,
                                         ),
-                                        tooltip: servicio.activo ? 'Desactivar' : 'Reactivar',
+                                        tooltip: servicio.activo ? 'Eliminar' : 'Reactivar',
+                                        splashRadius: 20,
                                         onPressed: () async {
                                           String? error;
                                           if (servicio.activo) {
@@ -149,18 +229,14 @@ class ServicesView extends StatelessWidget {
                                           }
                                           if (context.mounted) {
                                             if (error == null) {
-                                              ScaffoldMessenger.of(context).showSnackBar(
-                                                SnackBar(
-                                                  content: Text(servicio.activo ? 'Servicio eliminado' : 'Servicio reactivado'), 
-                                                  backgroundColor: Colors.green
-                                                )
+                                              CustomSnackBar.show(context, 
+                                                message: servicio.activo ? 'Servicio eliminado' : 'Servicio reactivado', 
+                                                type: SnackBarType.success
                                               );
                                             } else {
-                                              ScaffoldMessenger.of(context).showSnackBar(
-                                                SnackBar(
-                                                  content: Text(error), 
-                                                  backgroundColor: Colors.red
-                                                )
+                                              CustomSnackBar.show(context, 
+                                                message: error, 
+                                                type: SnackBarType.error
                                               );
                                             }
                                           }

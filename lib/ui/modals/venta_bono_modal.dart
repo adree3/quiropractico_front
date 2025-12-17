@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:quiropractico_front/models/cliente.dart';
 import 'package:quiropractico_front/models/servicio.dart';
 import 'package:quiropractico_front/providers/ventas_provider.dart';
+import 'package:quiropractico_front/ui/widgets/custom_snackbar.dart';
 
 class VentaBonoModal extends StatefulWidget {
   final Cliente cliente;
@@ -147,12 +148,14 @@ class _VentaBonoModalState extends State<VentaBonoModal> {
                 if (context.mounted) {
                   if (error == null) {
                     Navigator.pop(context, true); 
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Venta realizada con éxito'), backgroundColor: Colors.green)
+                    CustomSnackBar.show(context, 
+                      message: 'Venta realizada con éxito', 
+                      type: SnackBarType.success
                     );
                   } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(error), backgroundColor: Colors.red)
+                    CustomSnackBar.show(context, 
+                      message: error, 
+                      type: SnackBarType.error
                     );
                   }
                 }

@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:quiropractico_front/models/bloqueo_agenda.dart';
 import 'package:quiropractico_front/models/usuario.dart';
 import 'package:quiropractico_front/providers/agenda_bloqueo_provider.dart';
 import 'package:quiropractico_front/providers/agenda_provider.dart';
+import 'package:quiropractico_front/ui/widgets/custom_snackbar.dart';
 
 class BloqueoModal extends StatefulWidget {
-  const BloqueoModal({super.key});
+  final BloqueoAgenda? bloqueoEditar;
+  final DateTime? preselectedDate;
+
+  const BloqueoModal({super.key, this.bloqueoEditar, this.preselectedDate});
 
   @override
   State<BloqueoModal> createState() => _BloqueoModalState();
@@ -16,28 +21,76 @@ class _BloqueoModalState extends State<BloqueoModal> {
   final _formKey = GlobalKey<FormState>();
   final motivoCtrl = TextEditingController();
   
-  DateTime? start;
-  DateTime? end;
-  
+  late DateTime start;
+  late DateTime end;
   Usuario? selectedQuiro;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    if (widget.bloqueoEditar != null) {
+      final b = widget.bloqueoEditar!;
+      start = b.fechaInicio;
+      end = b.fechaFin;
+      motivoCtrl.text = b.motivo;
+    } else {
+      final baseDate = widget.preselectedDate ?? DateTime.now();
+      start = DateTime(baseDate.year, baseDate.month, baseDate.day);
+      end = DateTime(baseDate.year, baseDate.month, baseDate.day);
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       final agendaProv = Provider.of<AgendaProvider>(context, listen: false);
-      if (agendaProv.quiropracticos.isEmpty) agendaProv.loadQuiropracticos();
+      if (agendaProv.quiropracticos.isEmpty) await agendaProv.loadQuiropracticos();
+      
+      if (widget.bloqueoEditar != null && widget.bloqueoEditar!.idQuiropractico != null) {
+        try {
+          setState(() {
+            selectedQuiro = agendaProv.quiropracticos.firstWhere(
+              (u) => u.idUsuario == widget.bloqueoEditar!.idQuiropractico
+            );
+          });
+        } catch (_) {}
+      }
     });
+  }
+
+  Future<void> _pickDate(bool isStart) async {
+    final picked = await showDatePicker(
+      context: context, 
+      initialDate: isStart ? start : (end.isBefore(start) ? start : end), 
+      firstDate: DateTime(1990), 
+      lastDate: DateTime(2100),
+      locale: const Locale('es', 'ES'),
+    );
+
+    if (picked != null) {
+      setState(() {
+        if (isStart) {
+          start = picked;
+          if (end.isBefore(start)) {
+            end = start;
+          }
+        } else {
+          if (picked.isBefore(start)) {
+             end = start;
+          } else {
+             end = picked;
+          }
+        }
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final agendaProvider = Provider.of<AgendaProvider>(context);
     final bloqueoProvider = Provider.of<AgendaBloqueoProvider>(context, listen: false);
+    final esEdicion = widget.bloqueoEditar != null;
 
     return AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-      title: const Text("Registrar Ausencia / Festivo", style: TextStyle(fontWeight: FontWeight.bold)),
+      title: Text(esEdicion ? "Editar Bloqueo" : "Registrar Ausencia", style: const TextStyle(fontWeight: FontWeight.bold)),
       content: SizedBox(
         width: 400,
         child: Form(
@@ -55,7 +108,7 @@ class _BloqueoModalState extends State<BloqueoModal> {
                 value: selectedQuiro,
                 items: [
                   const DropdownMenuItem(value: null, child: Text("🏢 TODA LA CLÍNICA (Cierre)")),
-                  ...agendaProvider.quiropracticos.map((u) => DropdownMenuItem(value: u, child: Text("Dr. ${u.nombreCompleto}"))),
+                  ...agendaProvider.quiropracticos.map((u) => DropdownMenuItem(value: u, child: Text(u.nombreCompleto))),
                 ],
                 onChanged: (val) => setState(() => selectedQuiro = val),
               ),
@@ -63,37 +116,28 @@ class _BloqueoModalState extends State<BloqueoModal> {
               const SizedBox(height: 20),
 
               // ¿CUÁNDO?
-              InkWell(
-                onTap: () async {
-                  final picked = await showDateRangePicker(
-                    context: context, 
-                    firstDate: DateTime.now(), 
-                    lastDate: DateTime(2030),
-                    locale: const Locale('es', 'ES')
-                  );
-                  if (picked != null) {
-                    setState(() {
-                      start = picked.start;
-                      end = picked.end;
-                    });
-                  }
-                },
-                child: InputDecorator(
-                  decoration: const InputDecoration(
-                    labelText: 'Fechas',
-                    prefixIcon: Icon(Icons.date_range),
-                    border: OutlineInputBorder(),
-                  ),
-                  child: Text(
-                    (start != null && end != null)
-                        ? "${DateFormat('dd/MM/yyyy').format(start!)}  -  ${DateFormat('dd/MM/yyyy').format(end!)}"
-                        : "Seleccionar rango de fechas",
-                    style: TextStyle(
-                      color: start == null ? Colors.grey : Colors.black87,
-                      fontWeight: start == null ? FontWeight.normal : FontWeight.bold
+              Row(
+                children: [
+                  Expanded(
+                    child: InkWell(
+                      onTap: () => _pickDate(true),
+                      child: InputDecorator(
+                        decoration: const InputDecoration(labelText: 'Desde', prefixIcon: Icon(Icons.calendar_today), border: OutlineInputBorder()),
+                        child: Text(DateFormat('dd/MM/yyyy').format(start)),
+                      ),
                     ),
                   ),
-                ),
+                  const SizedBox(width: 15),
+                  Expanded(
+                    child: InkWell(
+                      onTap: () => _pickDate(false),
+                      child: InputDecorator(
+                        decoration: const InputDecoration(labelText: 'Hasta', prefixIcon: Icon(Icons.event), border: OutlineInputBorder()),
+                        child: Text(DateFormat('dd/MM/yyyy').format(end)),
+                      ),
+                    ),
+                  ),
+                ],
               ),
               
               const SizedBox(height: 20),
@@ -117,31 +161,45 @@ class _BloqueoModalState extends State<BloqueoModal> {
         ElevatedButton(
           onPressed: () async {
             if (_formKey.currentState!.validate()) {
-              if (start == null || end == null) {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Debes seleccionar las fechas"), backgroundColor: Colors.orange));
-                return;
-              }
-              final fechaInicioReal = DateTime(start!.year, start!.month, start!.day, 0, 0, 0);
-              final fechaFinReal = DateTime(end!.year, end!.month, end!.day, 23, 59, 59);
+              final fechaInicioReal = DateTime(start.year, start.month, start.day, 0, 0, 0);
+              final fechaFinReal = DateTime(end.year, end.month, end.day, 23, 59, 59);
 
-              final error = await bloqueoProvider.crearBloqueo(
-                fechaInicioReal, 
-                fechaFinReal, 
-                motivoCtrl.text, 
-                selectedQuiro?.idUsuario
-              );
+              String? error;
+              
+              if (esEdicion) {
+                error = await bloqueoProvider.editarBloqueo(
+                  widget.bloqueoEditar!.idBloqueo,
+                  fechaInicioReal,
+                  fechaFinReal,
+                  motivoCtrl.text,
+                  selectedQuiro?.idUsuario
+                );
+              } else {
+                error = await bloqueoProvider.crearBloqueo(
+                  fechaInicioReal, 
+                  fechaFinReal, 
+                  motivoCtrl.text, 
+                  selectedQuiro?.idUsuario
+                );
+              }
 
               if (context.mounted) {
                 if (error == null) {
                   Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Bloqueo creado correctamente"), backgroundColor: Colors.green));
+                  CustomSnackBar.show(context, 
+                    message: esEdicion ? "Bloqueo actualizado" : "Bloqueo creado", 
+                    type: SnackBarType.success
+                  );
                 } else {
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error), backgroundColor: Colors.red));
+                  CustomSnackBar.show(context, 
+                    message: "Error: $error", 
+                    type: SnackBarType.error
+                  );
                 }
               }
             }
           },
-          child: const Text('Guardar Bloqueo'),
+          child: Text(esEdicion ? 'Actualizar' : 'Crear'),
         )
       ],
     );

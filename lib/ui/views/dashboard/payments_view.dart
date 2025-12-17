@@ -5,6 +5,7 @@ import 'package:quiropractico_front/config/theme/app_theme.dart';
 import 'package:quiropractico_front/models/pago.dart';
 import 'package:quiropractico_front/providers/auth_provider.dart';
 import 'package:quiropractico_front/providers/payments_provider.dart';
+import 'package:quiropractico_front/ui/widgets/custom_snackbar.dart';
 
 class PaymentsView extends StatefulWidget {
   const PaymentsView({super.key});
@@ -206,12 +207,14 @@ class _PaymentsList extends StatelessWidget {
                       
                       if (context.mounted) {
                         if (error == null) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text("Pago confirmado"), backgroundColor: Colors.green)
+                          CustomSnackBar.show(context, 
+                            message: "Pago confirmado", 
+                            type: SnackBarType.error
                           );
                         } else {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text(error), backgroundColor: Colors.red)
+                          CustomSnackBar.show(context, 
+                            message: error, 
+                            type: SnackBarType.error
                           );
                         }
                       }

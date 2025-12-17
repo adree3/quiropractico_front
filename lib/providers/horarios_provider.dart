@@ -11,6 +11,7 @@ class HorariosProvider extends ChangeNotifier {
 
   List<Usuario> doctores = [];
   List<Horario> horarios = [];
+  List<Horario> horariosGlobales = [];
   Usuario? selectedDoctor;
   bool isLoading = false;
 
@@ -39,6 +40,46 @@ class HorariosProvider extends ChangeNotifier {
       }
     } catch (e) {
       print('Error cargando doctores: ${ErrorHandler.extractMessage(e)}');
+    }
+  }
+
+  // Obtiene todos los horarios de los quiropracticos
+  Future<void> loadAllHorariosGlobales() async {
+    try {
+      final response = await _dio.get(
+        '$_baseUrl/horarios/global',
+        options: _authOptions
+      );
+      
+      final List<dynamic> data = response.data;
+      horariosGlobales = data.map((e) => Horario.fromJson(e)).toList();
+      
+      notifyListeners();
+    } catch (e) {
+      print('Error cargando horarios globales: ${ErrorHandler.extractMessage(e)}');
+    }
+  }
+
+  // Devuelve los quiropracticos activos
+  Future<void> loadDoctoresActive() async {
+    try {
+      final response = await _dio.get(
+        '$_baseUrl/usuarios/quiros-activos', 
+        options: _authOptions
+      );
+      final List<dynamic> data = response.data;
+      doctores = data.map((e) => Usuario.fromJson(e)).toList();
+      
+      if (doctores.isNotEmpty) {
+        if (selectedDoctor == null || !doctores.any((d) => d.idUsuario == selectedDoctor!.idUsuario)) {
+          selectDoctor(doctores.first);
+        }
+      } else {
+        selectedDoctor = null;
+      }
+      notifyListeners();
+    } catch (e) {
+      print('Error cargando quiroprácticos activos: ${ErrorHandler.extractMessage(e)}');
     }
   }
 

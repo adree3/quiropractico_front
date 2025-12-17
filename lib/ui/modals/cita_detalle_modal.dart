@@ -5,6 +5,7 @@ import 'package:quiropractico_front/config/theme/app_theme.dart';
 import 'package:quiropractico_front/models/cita.dart';
 import 'package:quiropractico_front/providers/agenda_provider.dart';
 import 'package:quiropractico_front/ui/modals/cita_modal.dart';
+import 'package:quiropractico_front/ui/widgets/custom_snackbar.dart';
 
 class CitaDetalleModal extends StatelessWidget {
   final Cita cita;
@@ -13,12 +14,9 @@ class CitaDetalleModal extends StatelessWidget {
 
   // Helper para mostrar errores
   void _mostrarError(BuildContext context, String mensaje) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(mensaje),
-        backgroundColor: Colors.red,
-        behavior: SnackBarBehavior.floating,
-      ),
+    CustomSnackBar.show(context, 
+      message: mensaje,
+      type: SnackBarType.error
     );
   }
 

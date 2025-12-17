@@ -5,6 +5,7 @@ import 'package:quiropractico_front/config/theme/app_theme.dart';
 import 'package:quiropractico_front/providers/clients_provider.dart';
 import 'package:quiropractico_front/ui/modals/client_modal.dart';
 import 'package:go_router/go_router.dart';
+import 'package:quiropractico_front/ui/widgets/custom_snackbar.dart';
 
 class ClientsView extends StatefulWidget {
   const ClientsView({super.key});
@@ -32,8 +33,9 @@ class _ClientsViewState extends State<ClientsView> {
   }
 
   void _mostrarSnack(String mensaje, Color color) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(mensaje), backgroundColor: color),
+    CustomSnackBar.show(context, 
+      message: mensaje, 
+      type: SnackBarType.info
     );
   }
 

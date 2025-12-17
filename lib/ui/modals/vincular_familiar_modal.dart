@@ -4,6 +4,7 @@ import 'package:quiropractico_front/config/theme/app_theme.dart';
 import 'package:quiropractico_front/models/cliente.dart';
 import 'package:quiropractico_front/providers/client_detail_provider.dart';
 import 'package:quiropractico_front/providers/clients_provider.dart';
+import 'package:quiropractico_front/ui/widgets/custom_snackbar.dart';
 
 class VincularFamiliarModal extends StatefulWidget {
   final ClientDetailProvider detailProvider;
@@ -150,12 +151,14 @@ class _VincularFamiliarModalState extends State<VincularFamiliarModal> {
               if (context.mounted) {
                 if (error == null) {
                   Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Familiar vinculado correctamente'), backgroundColor: Colors.green)
+                  CustomSnackBar.show(context, 
+                    message: 'Familiar vinculado correctamente', 
+                    type: SnackBarType.success
                   );
                 } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(error), backgroundColor: Colors.red)
+                  CustomSnackBar.show(context, 
+                    message: error, 
+                    type: SnackBarType.error
                   );
                 }
               }

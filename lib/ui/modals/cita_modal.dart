@@ -9,6 +9,7 @@ import 'package:quiropractico_front/providers/agenda_provider.dart';
 import 'package:quiropractico_front/providers/clients_provider.dart';
 import 'package:quiropractico_front/ui/modals/payment_selection_modal.dart';
 import 'package:quiropractico_front/ui/modals/venta_bono_modal.dart';
+import 'package:quiropractico_front/ui/widgets/custom_snackbar.dart';
 
 class CitaModal extends StatefulWidget {
   final DateTime? selectedDate;
@@ -23,9 +24,9 @@ class CitaModal extends StatefulWidget {
 class _CitaModalState extends State<CitaModal> {
   final _formKey = GlobalKey<FormState>();
   
-  // Controladores
   final notasCtrl = TextEditingController();
   final fechaCtrl = TextEditingController();
+  bool _isLoading = false;
 
   // Selecciones
   Cliente? selectedCliente;
@@ -414,56 +415,64 @@ class _CitaModalState extends State<CitaModal> {
             ),
             const SizedBox(width: 10),
             ElevatedButton(
-              onPressed: () async {
+              onPressed: _isLoading ? null : () async {
                 if (_formKey.currentState!.validate()) {
-                  final inicioFinal = _joinDateTime(fechaSeleccionada, horaInicio);
-                  final finFinal = _joinDateTime(fechaSeleccionada, horaFin);
-                  int? idBonoElegido;
+                  setState(() { 
+                    _isLoading = true; 
+                  });
                   
-                  if (!isEditing) {
-                     final resultado = await showDialog(
-                        context: context,
-                        builder: (_) => PaymentSelectionModal(cliente: selectedCliente!)
-                     );
+                  try{
+                    final inicioFinal = _joinDateTime(fechaSeleccionada, horaInicio);
+                    final finFinal = _joinDateTime(fechaSeleccionada, horaFin);
+                    int? idBonoElegido;
+                    
+                    if (!isEditing) {
+                      final resultado = await showDialog(
+                          context: context,
+                          builder: (_) => PaymentSelectionModal(cliente: selectedCliente!)
+                      );
 
-                     if (resultado == null) return;
-                     
-                     if (resultado is int) {
-                        idBonoElegido = resultado;
-                     }
-                  }
+                      if (resultado == null){
+                        if (mounted) setState(() { _isLoading = false; });
+                        return;
+                      }
+                      if (resultado is int) {
+                          idBonoElegido = resultado;
+                      }
+                    }
 
-                  String? error;
-                  if (isEditing) {
-                    error = await agendaProvider.editarCita(
-                      widget.citaExistente!.idCita,
-                      selectedCliente!.idCliente,
-                      selectedQuiro!.idUsuario,
-                      inicioFinal,
-                      finFinal,
-                      notasCtrl.text,
-                      _estadoSeleccionado
-                    );
-                  } else {
-                    error = await agendaProvider.crearCita(
-                      selectedCliente!.idCliente,
-                      selectedQuiro!.idUsuario,
-                      inicioFinal,
-                      finFinal,
-                      notasCtrl.text,
-                      idBonoAUtilizar: idBonoElegido
-                    );
-                  }
-
-                  if (context.mounted) {
-                    if (error == null) {
-                      Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(isEditing ? 'Cita actualizada' : 'Cita creada'), backgroundColor: Colors.green)
+                    String? error;
+                    if (isEditing) {
+                      error = await agendaProvider.editarCita(
+                        widget.citaExistente!.idCita,
+                        selectedCliente!.idCliente,
+                        selectedQuiro!.idUsuario,
+                        inicioFinal,
+                        finFinal,
+                        notasCtrl.text,
+                        _estadoSeleccionado
                       );
                     } else {
+                      error = await agendaProvider.crearCita(
+                        selectedCliente!.idCliente,
+                        selectedQuiro!.idUsuario,
+                        inicioFinal,
+                        finFinal,
+                        notasCtrl.text,
+                        idBonoAUtilizar: idBonoElegido
+                      );
+                    }
+                    if (!context.mounted) return;
+                    if (error == null) {
+                      if (mounted) setState(() { _isLoading = false; });
+                      Navigator.pop(context);
+                      CustomSnackBar.show(context,
+                        message: isEditing ? 'Cita actualizada' : 'Cita creada', 
+                        type: SnackBarType.success
+                      );
+                    } else {
+                      if (mounted) setState(() { _isLoading = false; });
                       if (error.toLowerCase().contains("no tiene bonos") || error.toLowerCase().contains("saldo")) {
-                        
                         // Diálogo
                         final quiereComprar = await showDialog<bool>(
                           context: context,
@@ -544,39 +553,63 @@ class _CitaModalState extends State<CitaModal> {
                             builder: (_) => VentaBonoModal(cliente: selectedCliente!)
                           );
 
-                          // Si compró, REINTENTAMOS LA CITA automáticamente
-                          if (ventaExitosa == true && context.mounted) {
-                             ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Bono comprado. Reintentando cita...'), backgroundColor: Colors.blue));
-                             
-                             // Llamada recursiva al backend
-                             final reintentoError = await agendaProvider.crearCita(
-                                selectedCliente!.idCliente,
-                                selectedQuiro!.idUsuario,
-                                inicioFinal,
-                                finFinal,
-                                notasCtrl.text
-                             );
-
-                             if (context.mounted) {
-                               if (reintentoError == null) {
-                                 Navigator.pop(context);
-                                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Cita agendada correctamente'), backgroundColor: Colors.green));
-                               } else {
-                                 ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(reintentoError), backgroundColor: Colors.red));
-                               }
-                             }
+                          // Si compro un bono reintentamos la cita
+                          if (ventaExitosa == true && context.mounted) {                            
+                            setState(() { _isLoading = true; });
+                            final reintentoError = await agendaProvider.crearCita(
+                              selectedCliente!.idCliente,
+                              selectedQuiro!.idUsuario,
+                              inicioFinal,
+                              finFinal,
+                              notasCtrl.text
+                            );
+                            if (!context.mounted) return;
+                            setState(() { _isLoading = false; });
+                            if (reintentoError == null) {
+                              Navigator.pop(context);
+                              
+                              CustomSnackBar.show(context, 
+                                title: "Proceso completado",
+                                message: "Bono comprado y cita agendada correctamente.", 
+                                type: SnackBarType.success,
+                                duration: const Duration(seconds: 5)
+                              );
+                            } else {
+                              CustomSnackBar.show(context, 
+                                title: "Bono comprado",
+                                message: "El bono se compró, pero falló la cita: $reintentoError", 
+                                type: SnackBarType.error
+                              );
+                            }
                           }
                         }
-
                       } else {
-
-                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error), backgroundColor: Colors.red));
+                        CustomSnackBar.show(context, 
+                          message: error, 
+                          type: SnackBarType.error
+                        );
                       }
                     }
+                  } catch (e) {
+                    if (mounted) setState(() { _isLoading = false; });
+                    CustomSnackBar.show(context, 
+                      message: "Error inesperado: $e", 
+                      type: SnackBarType.error
+                    );
                   }
                 }
               }, 
-              child: Text(isEditing ? 'Guardar Cambios' : 'Agendar')
+              style: ElevatedButton.styleFrom(
+                disabledBackgroundColor: AppTheme.primaryColor.withOpacity(0.6),
+                disabledForegroundColor: Colors.white,
+              ),
+              child: _isLoading 
+                ? const SizedBox(
+                    width: 20, 
+                    height: 20, 
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)
+                  )
+                : Text(isEditing ? 'Guardar Cambios' : 'Agendar')
             ),
           ],
         ),

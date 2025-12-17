@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:quiropractico_front/config/theme/app_theme.dart';
 import 'package:quiropractico_front/providers/historial_provider.dart';
+import 'package:quiropractico_front/ui/widgets/custom_snackbar.dart';
 
 class ClinicalNoteModal extends StatefulWidget {
   final int idCita;
@@ -101,9 +102,15 @@ class _ClinicalNoteModalState extends State<ClinicalNoteModal> {
             if (context.mounted) {
               if (error == null) {
                 Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Nota guardada correctamente"), backgroundColor: Colors.green));
+                CustomSnackBar.show(context, 
+                  message: "Nota guardada correctamente", 
+                  type: SnackBarType.success
+                );
               } else {
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error), backgroundColor: Colors.red));
+                CustomSnackBar.show(context, 
+                  message: error, 
+                  type: SnackBarType.error
+                );
               }
             }
           },

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:quiropractico_front/config/theme/app_theme.dart';
+import 'package:quiropractico_front/models/usuario.dart';
 import 'package:quiropractico_front/providers/users_provider.dart';
 import 'package:quiropractico_front/ui/modals/user_modal.dart';
+import 'package:quiropractico_front/ui/widgets/custom_snackbar.dart';
 
 class UsersView extends StatefulWidget {
   const UsersView({super.key});
@@ -12,6 +14,16 @@ class UsersView extends StatefulWidget {
 }
 
 class _UsersViewState extends State<UsersView> {
+
+  // Metodo para ordenar los usuarios
+  int _getRolPriority(String rol) {
+    switch (rol.toLowerCase()) {
+      case 'admin': return 1;
+      case 'quiropráctico': return 2;
+      case 'recepción': return 3;
+      default: return 4;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -26,16 +38,25 @@ class _UsersViewState extends State<UsersView> {
       mensajeVacio = "No hay usuarios registrados";
     }
 
+    final List<Usuario> usuariosOrdenados = List.from(provider.usuarios);
+
+    usuariosOrdenados.sort((a, b) {
+      final priorityA = _getRolPriority(a.rol);
+      final priorityB = _getRolPriority(b.rol);
+
+      if (priorityA != priorityB) {
+        return priorityA.compareTo(priorityB); 
+      }
+      return b.idUsuario.compareTo(a.idUsuario);
+    });
+
     return Column(
       children: [
+        // Cabecera
         Row(
           children: [
-            
             const Text("Gestión de Equipo", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-            
             const Spacer(),
-
-            // FILTRO
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12),
               decoration: BoxDecoration(
@@ -49,7 +70,7 @@ class _UsersViewState extends State<UsersView> {
                 icon: const Icon(Icons.filter_list, color: Colors.grey),
                 items: const [
                   DropdownMenuItem(value: true, child: Text("Activos")),
-                  DropdownMenuItem(value: false, child: Text("Papelera")),
+                  DropdownMenuItem(value: false, child: Text("Eliminados")),
                   DropdownMenuItem(value: null, child: Text("Todos")),
                 ],
                 onChanged: (val) => provider.setFilter(val),
@@ -69,9 +90,12 @@ class _UsersViewState extends State<UsersView> {
         
         Expanded(
           child: Card(
+            elevation: 0,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8), side: BorderSide(color: Colors.grey.shade200)),
+            clipBehavior: Clip.antiAlias,
             child: provider.isLoading
                 ? const Center(child: CircularProgressIndicator())
-                : provider.usuarios.isEmpty 
+                : usuariosOrdenados.isEmpty 
                     ? Center(
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
@@ -87,33 +111,55 @@ class _UsersViewState extends State<UsersView> {
                         child: SingleChildScrollView(
                           child: DataTable(
                             headingRowColor: MaterialStateProperty.all(Colors.grey[100]),
+                            columnSpacing: 30,
+                            dataRowMinHeight: 60,
+                            dataRowMaxHeight: 60,
                             columns: const [
-                              DataColumn(label: Text("Nombre")),
-                              DataColumn(label: Text("Usuario")),
-                              DataColumn(label: Text("Rol")),
-                              DataColumn(label: Text("Acciones", textAlign: TextAlign.end)),
+                              DataColumn(label: Text("#", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey))),
+                              DataColumn(label: Text("Nombre", style: TextStyle(fontWeight: FontWeight.bold))),
+                              DataColumn(label: Text("Usuario", style: TextStyle(fontWeight: FontWeight.bold))),
+                              DataColumn(
+                                label: Expanded( 
+                                  child: Center( 
+                                    child: Text("Rol", style: TextStyle(fontWeight: FontWeight.bold))
+                                  )
+                                )
+                              ),
+                              DataColumn(label: Text("Acciones", style: TextStyle(fontWeight: FontWeight.bold), textAlign: TextAlign.end)),
                             ],
-                            rows: provider.usuarios.map((usuario) {
+                            rows: usuariosOrdenados.asMap().entries.map((entry) {
+                              final int index = entry.key + 1;
+                              final Usuario usuario = entry.value;
                               final colorTexto = usuario.activo ? Colors.black87 : Colors.grey;
-                              Color colorRol;
+                              Color baseColor;
                               switch(usuario.rol.toLowerCase()) {
-                                case 'admin': colorRol = Colors.purple; break;
-                                case 'quiropráctico': colorRol = Colors.blue; break;
-                                default: colorRol = Colors.orange;
+                                case 'admin': baseColor = Colors.purple; break;
+                                case 'quiropráctico': baseColor = Colors.blue; break;
+                                default: baseColor = Colors.orange;
                               }
+
+                              Color rowColor;
+                              if (!usuario.activo) {
+                                rowColor = Colors.grey.shade50;
+                              } else {
+                                rowColor = baseColor.withOpacity(0.04);
+                              }
+                              
                               return DataRow(
-                                color: MaterialStateProperty.resolveWith<Color?>((states) {
-                                  return usuario.cuentaBloqueada ? Colors.red.withOpacity(0.05) : null; 
-                                }),
+                                color: MaterialStateProperty.all(rowColor),
                                 cells: [
-                                  DataCell(Text(usuario.nombreCompleto, style: TextStyle(color: colorTexto, fontWeight: FontWeight.bold))),
+                                  // Indice
+                                  DataCell(Text("$index", style: TextStyle(color: Colors.grey[400], fontWeight: FontWeight.bold))),
+                                  // Nombre
+                                  DataCell(Text(usuario.nombreCompleto, style: TextStyle(color: colorTexto, fontWeight: FontWeight.w600))),
+                                  // Username
                                   DataCell(Text(usuario.username, style: TextStyle(color: colorTexto))),
                                   // CHIP
                                   DataCell(
                                     Center(
                                       child: Chip(
-                                        backgroundColor: colorRol.withOpacity(0.1),
-                                        side: BorderSide(color: colorRol),
+                                        backgroundColor: baseColor.withOpacity(0.1),
+                                        side: BorderSide(color: baseColor),
                                         padding: const EdgeInsets.all(0), 
                                         label: SizedBox(
                                           width: 85, 
@@ -121,7 +167,7 @@ class _UsersViewState extends State<UsersView> {
                                             usuario.rol.toUpperCase(),
                                             textAlign: TextAlign.center,
                                             style: TextStyle(
-                                              color: colorRol, 
+                                              color: baseColor, 
                                               fontSize: 10,
                                               fontWeight: FontWeight.bold
                                             ),
@@ -144,6 +190,7 @@ class _UsersViewState extends State<UsersView> {
                                           smallSize: 10,
                                           backgroundColor: Colors.red,
                                           child: IconButton(
+                                            tooltip: "Editar",
                                             icon: const Icon(Icons.edit_outlined, color: AppTheme.primaryColor),
                                             onPressed: () => showDialog(context: context, builder: (_) => UserModal(usuarioExistente: usuario)),
                                           ),
@@ -155,21 +202,21 @@ class _UsersViewState extends State<UsersView> {
                                             usuario.activo ? Icons.delete_outline : Icons.restore_from_trash,
                                             color: usuario.activo ? Colors.redAccent : Colors.green
                                           ),
-                                          tooltip: usuario.activo ? 'Desactivar' : 'Reactivar',
+                                          tooltip: usuario.activo ? 'Eliminar' : 'Reactivar',
                                           onPressed: () async {
                                             // DIÁLOGO DE CONFIRMACIÓN
                                             final isDeleting = usuario.activo;
                                             final confirm = await showDialog(
                                                 context: context, 
                                                 builder: (ctx) => AlertDialog(
-                                                  title: Text(isDeleting ? "¿Desactivar usuario?" : "¿Reactivar usuario?"),
-                                                  content: Text("Vas a ${isDeleting ? 'quitar' : 'devolver'} el acceso a ${usuario.username}."),
+                                                  title: Text(isDeleting ? "¿Eliminar usuario?" : "¿Reactivar usuario?"),
+                                                  content: Text("Vas a ${isDeleting ? 'eliminar' : 'reactivar'} a ${usuario.username}."),
                                                   actions: [
                                                     TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Cancelar")),
                                                     ElevatedButton(
                                                       onPressed: () => Navigator.pop(ctx, true),
                                                       style: ElevatedButton.styleFrom(backgroundColor: isDeleting ? Colors.red : Colors.green, foregroundColor: Colors.white), 
-                                                      child: Text(isDeleting ? "Desactivar" : "Reactivar")
+                                                      child: Text(isDeleting ? "Eliminar" : "Reactivar")
                                                     ),
                                                   ],
                                                 )
@@ -185,9 +232,15 @@ class _UsersViewState extends State<UsersView> {
 
                                                 if (context.mounted) {
                                                   if (error == null) {
-                                                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(isDeleting ? 'Usuario eliminado' : 'Usuario reactivado'), backgroundColor: Colors.green));
+                                                    CustomSnackBar.show(context, 
+                                                      message: isDeleting ? 'Usuario eliminado' : 'Usuario reactivado', 
+                                                      type: SnackBarType.success
+                                                    );
                                                   } else {
-                                                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error), backgroundColor: Colors.red));
+                                                    CustomSnackBar.show(context, 
+                                                      message: error, 
+                                                      type: SnackBarType.error
+                                                    );
                                                   }
                                                 }
                                             }

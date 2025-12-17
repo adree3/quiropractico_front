@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:quiropractico_front/models/servicio.dart';
 import 'package:quiropractico_front/providers/services_provider.dart';
+import 'package:quiropractico_front/ui/widgets/custom_snackbar.dart';
 
 class ServiceModal extends StatefulWidget {
   final Servicio? servicioExistente;
@@ -31,8 +32,15 @@ class _ServiceModalState extends State<ServiceModal> {
       final s = widget.servicioExistente!;
       nombreCtrl.text = s.nombreServicio;
       precioCtrl.text = s.precio.toString();
-      tipoSeleccionado = s.sesiones != null ? 'bono' : 'sesion_unica';
-      if (s.sesiones != null) sesionesCtrl.text = s.sesiones.toString();
+      if (s.tipo.toLowerCase() == 'bono') {
+        tipoSeleccionado = 'bono';
+        if (s.sesiones != null) {
+          sesionesCtrl.text = s.sesiones.toString();
+        }
+      } else {
+        tipoSeleccionado = 'sesion_unica';
+        sesionesCtrl.text = ''; 
+      }
     }
   }
 
@@ -125,9 +133,15 @@ class _ServiceModalState extends State<ServiceModal> {
               if (context.mounted) {
                 if (error == null) {
                   Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Guardado correctamente'), backgroundColor: Colors.green));
+                  CustomSnackBar.show(context, 
+                    message: 'Guardado correctamente', 
+                    type: SnackBarType.success
+                  );
                 } else {
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error), backgroundColor: Colors.red));
+                  CustomSnackBar.show(context, 
+                    message: error, 
+                    type: SnackBarType.error
+                  );
                 }
               }
             }

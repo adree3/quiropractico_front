@@ -87,7 +87,7 @@ class AgendaProvider extends ChangeNotifier {
   Future<void> loadQuiropracticos() async {
     try {
       final response = await _dio.get(
-        '$_baseUrl/usuarios/quiros',
+        '$_baseUrl/usuarios/quiros-activos',
         options: _authOptions
       );
 

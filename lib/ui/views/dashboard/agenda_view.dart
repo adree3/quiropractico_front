@@ -1,13 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:provider/provider.dart';
 import 'package:quiropractico_front/config/theme/app_theme.dart';
+import 'package:quiropractico_front/models/bloqueo_agenda.dart';
 import 'package:quiropractico_front/models/cita.dart';
+import 'package:quiropractico_front/models/horario.dart';
+import 'package:quiropractico_front/models/usuario.dart';
+import 'package:quiropractico_front/providers/agenda_bloqueo_provider.dart';
 import 'package:quiropractico_front/providers/agenda_provider.dart';
+import 'package:quiropractico_front/providers/horarios_provider.dart';
 import 'package:quiropractico_front/ui/modals/cita_detalle_modal.dart';
 import 'package:quiropractico_front/ui/modals/cita_modal.dart';
 import 'package:quiropractico_front/ui/views/dashboard/agenda_view_datasource.dart';
 import 'package:quiropractico_front/ui/views/dashboard/widgets/agenda_header.dart';
-import 'package:quiropractico_front/ui/views/dashboard/widgets/agenda_side_panel.dart'; 
+import 'package:quiropractico_front/ui/views/dashboard/widgets/agenda_side_panel.dart';
+import 'package:quiropractico_front/ui/widgets/custom_snackbar.dart'; 
 import 'package:syncfusion_flutter_calendar/calendar.dart';
 
 class AgendaView extends StatefulWidget {
@@ -21,21 +28,119 @@ class _AgendaViewState extends State<AgendaView> {
   final CalendarController _calendarController = CalendarController();
   bool _esTurnoManana = true;
 
+  List<TimeRegion>? _cachedRegions;
+  DateTime? _lastDateCalculated;
+  int? _lastDataHash;
+
   @override
   void initState() {
     super.initState();
     if (DateTime.now().hour >= 15) {
       _esTurnoManana = false;
     }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final bloqueoProvider = Provider.of<AgendaBloqueoProvider>(context, listen: false);
+      final horariosProvider = Provider.of<HorariosProvider>(context, listen: false);
+      final agendaProvider = Provider.of<AgendaProvider>(context, listen: false);
+
+      bloqueoProvider.loadBloqueos();
+      horariosProvider.loadAllHorariosGlobales();
+      agendaProvider.loadQuiropracticos();
+    });
   }
+
+  // Comprueba si hay un doctor disponible para una hora especifica
+  bool _isSlotEnabled(DateTime date, List<Usuario> doctores, List<Horario> horariosGlobales, List<BloqueoAgenda> bloqueos) {
+    
+    bool hayCierreGlobal = bloqueos.any((b) => 
+      b.idQuiropractico == null && 
+      !date.isBefore(b.fechaInicio) && !date.isAfter(b.fechaFin)
+    );
+    if (hayCierreGlobal) return false;
+
+    final doctoresActivos = doctores.where((d) => d.activo).toList();
+
+    for (var doc in doctoresActivos) {
+      bool tieneTurno = horariosGlobales.any((h) {
+        if (h.idQuiropractico != doc.idUsuario) return false; 
+        if (h.diaSemana != date.weekday) return false;
+        
+        final minutosSlot = date.hour * 60 + date.minute;
+        final minutosInicio = h.horaInicio.hour * 60 + h.horaInicio.minute;
+        final minutosFin = h.horaFin.hour * 60 + h.horaFin.minute;
+
+        return minutosSlot >= minutosInicio && minutosSlot < minutosFin;
+      });
+
+      bool estaDeVacaciones = bloqueos.any((b) => 
+        b.idQuiropractico == doc.idUsuario &&
+        !date.isBefore(b.fechaInicio) && !date.isAfter(b.fechaFin)
+      );
+
+      if (tieneTurno && !estaDeVacaciones) {
+        return true; 
+      }
+    }
+    return false;
+  }
+
+  // Generador de regiones grises
+  List<TimeRegion> _getDisabledRegions(
+      DateTime currentDate, 
+      List<Usuario> doctores, 
+      List<Horario> horarios, 
+      List<BloqueoAgenda> bloqueos
+  ) {
+    final currentHash = doctores.length + horarios.length + bloqueos.length;
+
+    if (_cachedRegions != null && 
+        DateUtils.isSameDay(_lastDateCalculated, currentDate) && 
+        _lastDataHash == currentHash) {
+      return _cachedRegions!;
+    }
+
+    List<TimeRegion> regions = [];
+    DateTime current = DateTime(currentDate.year, currentDate.month, currentDate.day, 0, 0);
+    DateTime endTime = DateTime(currentDate.year, currentDate.month, currentDate.day, 23, 59);
+    
+    while (current.isBefore(endTime)) {
+      if (!_isSlotEnabled(current, doctores, horarios, bloqueos)) {
+        regions.add(TimeRegion(
+          startTime: current,
+          endTime: current.add(const Duration(minutes: 30)),
+          color: Colors.grey.withOpacity(0.15),
+          enablePointerInteraction: false,
+          textStyle: const TextStyle(color: Colors.transparent),
+        ));
+      }
+      current = current.add(const Duration(minutes: 30));
+    }
+
+    _cachedRegions = regions;
+    _lastDateCalculated = currentDate;
+    _lastDataHash = currentHash;
+
+    return regions;
+  }
+
   @override
   Widget build(BuildContext context) {
     final agendaProvider = Provider.of<AgendaProvider>(context);
+    final horariosProvider = Provider.of<HorariosProvider>(context);
+    final bloqueosProvider = Provider.of<AgendaBloqueoProvider>(context);
     
     // Sincronización
-    if (_calendarController.displayDate != agendaProvider.selectedDate) {
+    if (_calendarController.displayDate != null && 
+        !DateUtils.isSameDay(_calendarController.displayDate, agendaProvider.selectedDate)) {
       _calendarController.displayDate = agendaProvider.selectedDate;
     }
+
+    final disabledRegions = _getDisabledRegions(
+      agendaProvider.selectedDate,
+      agendaProvider.quiropracticos, 
+      horariosProvider.horariosGlobales, 
+      bloqueosProvider.bloqueos
+    );
 
     return LayoutBuilder(
       builder: (context, constraits){
@@ -159,9 +264,19 @@ class _AgendaViewState extends State<AgendaView> {
                                 view: CalendarView.day,
                                 headerHeight: 0,
                                 viewHeaderHeight: 0,
-                                
+                                specialRegions: disabledRegions,
+                                onViewChanged: (ViewChangedDetails details) {
+                                  if (details.visibleDates.isNotEmpty) {
+                                    final nuevaFechaVisible = details.visibleDates.first;
+                                    if (!DateUtils.isSameDay(nuevaFechaVisible, agendaProvider.selectedDate)) {
+                                      SchedulerBinding.instance.addPostFrameCallback((_) {
+                                        agendaProvider.updateSelectedDate(nuevaFechaVisible);
+                                      });
+                                    }
+                                  }
+                                },
                                 timeSlotViewSettings: TimeSlotViewSettings(
-                                  startHour: _esTurnoManana ? 8.5 : 15.5, 
+                                  startHour: _esTurnoManana ? 8.5 : 15.5,
                                   endHour: _esTurnoManana ? 14 : 21,
                                   timeInterval: const Duration(minutes: 30),
                                   timeIntervalHeight: 80,
@@ -204,7 +319,7 @@ class _AgendaViewState extends State<AgendaView> {
                                           ],
                                         ),
                                         const SizedBox(height: 4),
-                                        Text("Dr. ${cita.nombreQuiropractico.split(' ').first}", style: const TextStyle(color: Colors.black54, fontSize: 11)),
+                                        Text(cita.nombreQuiropractico.split(' ').first, style: const TextStyle(color: Colors.black54, fontSize: 11)),
                                       ],
                                     ),
                                   );
@@ -213,6 +328,7 @@ class _AgendaViewState extends State<AgendaView> {
                                 onTap: (CalendarTapDetails details) {
                                   if (details.targetElement == CalendarElement.appointment || 
                                       details.targetElement == CalendarElement.calendarCell) {
+                                    
                                     if (details.appointments != null && details.appointments!.isNotEmpty) {
                                       final dynamic rawAppointment = details.appointments![0];
                                       if (rawAppointment is Cita) {
@@ -220,7 +336,15 @@ class _AgendaViewState extends State<AgendaView> {
                                       }
                                     } else {
                                       final fechaSeleccionada = details.date!;
-                                      showDialog(context: context, builder: (context) => CitaModal(selectedDate: fechaSeleccionada));
+                                      
+                                      if (_isSlotEnabled(fechaSeleccionada, agendaProvider.quiropracticos, horariosProvider.horariosGlobales, bloqueosProvider.bloqueos)) {
+                                         showDialog(context: context, builder: (context) => CitaModal(selectedDate: fechaSeleccionada));
+                                      } else {
+                                        CustomSnackBar.show(context, 
+                                          message: "No hay quiroprácticos disponibles en este horario", 
+                                          type: SnackBarType.info
+                                        );
+                                      }
                                     }
                                   }
                                 },

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:quiropractico_front/models/usuario.dart';
 import 'package:quiropractico_front/providers/users_provider.dart';
+import 'package:quiropractico_front/ui/widgets/custom_snackbar.dart';
 
 class UserModal extends StatefulWidget {
   final Usuario? usuarioExistente;
@@ -78,13 +79,14 @@ class _UserModalState extends State<UserModal> {
                             onPressed: () async{
                               final error = await provider.deleteUser(widget.usuarioExistente!.idUsuario);
                               if (context.mounted) {
-                                 if (error == null) {
-                                   Navigator.pop(context);
-                                   ScaffoldMessenger.of(context).showSnackBar(
-                                     const SnackBar(content: Text('Usuario eliminado'), backgroundColor: Colors.green)
-                                   );
-                                 } 
-                               }
+                                if (error == null) {
+                                  Navigator.pop(context);
+                                  CustomSnackBar.show(context, 
+                                    message: 'Usuario eliminado', 
+                                    type: SnackBarType.success
+                                  );
+                                } 
+                              }
                             },
                             icon: const Icon(Icons.person_off, size: 16, color: Colors.red),
                             label: const Text("Eliminar usuario"),
@@ -99,9 +101,15 @@ class _UserModalState extends State<UserModal> {
                               if (context.mounted) {
                                 if (error == null) {
                                   Navigator.pop(context);
-                                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Usuario desbloqueado'), backgroundColor: Colors.green));
+                                  CustomSnackBar.show(context, 
+                                    message: 'Usuario desbloqueado', 
+                                    type: SnackBarType.error
+                                  );
                                 } else {
-                                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error), backgroundColor: Colors.red));
+                                  CustomSnackBar.show(context, 
+                                    message: error, 
+                                    type: SnackBarType.error
+                                  );
                                 }
                               }
                             }, 
@@ -188,9 +196,15 @@ class _UserModalState extends State<UserModal> {
               if (context.mounted) {
                 if (error == null) {
                   Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Guardado correctamente'), backgroundColor: Colors.green));
+                  CustomSnackBar.show(context, 
+                    message: 'Guardado correctamente', 
+                    type: SnackBarType.success
+                  );
                 } else {
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error), backgroundColor: Colors.red));
+                  CustomSnackBar.show(context, 
+                    message: error, 
+                    type: SnackBarType.error
+                  );
                 }
               }
             }
