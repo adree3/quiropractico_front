@@ -17,6 +17,7 @@ class _UserModalState extends State<UserModal> {
   final nombreCtrl = TextEditingController();
   final usernameCtrl = TextEditingController();
   final passCtrl = TextEditingController();
+  String? _usernameError;
   
   String rolSeleccionado = 'recepción';
   bool get isEditing => widget.usuarioExistente != null;
@@ -103,7 +104,7 @@ class _UserModalState extends State<UserModal> {
                                   Navigator.pop(context);
                                   CustomSnackBar.show(context, 
                                     message: 'Usuario desbloqueado', 
-                                    type: SnackBarType.error
+                                    type: SnackBarType.success
                                   );
                                 } else {
                                   CustomSnackBar.show(context, 
@@ -135,9 +136,20 @@ class _UserModalState extends State<UserModal> {
                 decoration: InputDecoration(
                   labelText: 'Usuario (Login)', 
                   prefixIcon: const Icon(Icons.person),
+                  errorText: _usernameError,
                   filled: !isEditing,
                 ),
-                validator: (v) => v!.isEmpty ? 'Requerido' : null,
+                onChanged: (value) {
+                  if (_usernameError != null) {
+                    setState(() {
+                      _usernameError = null;
+                    });
+                  }
+                },
+                validator: (value) {
+                  if (value == null || value.isEmpty) return "Campo obligatorio";
+                  return null;
+                },
               ),
               const SizedBox(height: 15),
               
@@ -201,10 +213,16 @@ class _UserModalState extends State<UserModal> {
                     type: SnackBarType.success
                   );
                 } else {
-                  CustomSnackBar.show(context, 
-                    message: error, 
-                    type: SnackBarType.error
-                  );
+                  if (error.contains("USERNAME_TAKEN")) {
+                    setState(() {
+                      _usernameError = "Este nombre de usuario ya existe";
+                    });
+                  } else {
+                    CustomSnackBar.show(context, 
+                      message: error, 
+                      type: SnackBarType.error
+                    );
+                  }
                 }
               }
             }

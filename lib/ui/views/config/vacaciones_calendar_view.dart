@@ -237,227 +237,204 @@ class _VacacionesCalendarViewState extends State<VacacionesCalendarView> {
     final bloqueosDelDia = _getBloqueosDelDia(_selectedDay!, provider.bloqueos);
     final bloqueosAcumulados = _getBloqueosAcumulados(provider.bloqueos);
 
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      
-      // Boton modo selección (FAB)
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          setState(() {
-            _isSelectionMode = !_isSelectionMode;
-            _diasSeleccionados.clear();
-          });
-        },
-        backgroundColor: _isSelectionMode ? const Color.fromARGB(255, 111, 205, 240): AppTheme.primaryColor,
-        icon: Icon(_isSelectionMode ? Icons.close : Icons.checklist_rtl),
-        label: Text(_isSelectionMode ? "Salir Selección" : "Seleccionar Días"),
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isLargeScreen = constraints.maxWidth >= 1130;
 
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          final isLargeScreen = constraints.maxWidth >= 1130;
-
-          return SingleChildScrollView( 
-            padding: const EdgeInsets.all(15),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+        return Container(
+          padding: const EdgeInsets.fromLTRB(0, 10, 0, 10),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // HEADER 
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.grey.shade300),
+                ),
+                child: Row(
                   children: [
-                    const Text("Calendario de Ausencias", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
+                    // Icono + Titulo
+                    Icon(Icons.calendar_month_outlined, size: 24, color: Colors.grey.shade700),
+                    const SizedBox(width: 10),
+                    Text(
+                      'Calendario de Vacaciones', 
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)
+                    ),
+                    
                     const Spacer(),
+
+                    // CONTROLES DE ACCIÓN
                     if (_isSelectionMode) ...[
-                      // Mensaje informativo o Botón de acción
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
                           color: Colors.red.shade50,
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(color: Colors.red.shade200)
                         ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.info_outline, color: Colors.red, size: 16),
-                            const SizedBox(width: 8),
-                            if (_diasSeleccionados.isEmpty)
-                              const Text("Selecciona días para borrar", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 13))
-                            else
-                              Text("${_diasSeleccionados.length} días marcados", style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 13)),
-                          ],
+                        child: Text(
+                          _diasSeleccionados.isEmpty 
+                            ? "Selecciona días..." 
+                            : "${_diasSeleccionados.length} seleccionados", 
+                          style: TextStyle(color: Colors.red.shade800, fontWeight: FontWeight.bold, fontSize: 13)
                         ),
                       ),
-                      
                       const SizedBox(width: 10),
                       
-                      // Botón Eliminar (aparece si hay seleccionados)
+                      // Botones Acción
                       if (_diasSeleccionados.isNotEmpty)
-                         ElevatedButton.icon(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.red, 
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12)
-                            ),
-                            onPressed: () => _eliminarLote(provider), 
-                            icon: const Icon(Icons.delete, size: 18),
-                            label: Text("Eliminar (${bloqueosAcumulados.length})")
-                          )
+                        ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+                          onPressed: () => _eliminarLote(provider), 
+                          icon: const Icon(Icons.delete, size: 18),
+                          label: Text("Eliminar (${bloqueosAcumulados.length})")
+                        ),
+                      const SizedBox(width: 10),
+                      
+                      OutlinedButton.icon(
+                        onPressed: () => setState(() { _isSelectionMode = false; _diasSeleccionados.clear(); }),
+                        icon: const Icon(Icons.close, size: 18),
+                        label: const Text("Cancelar"),
+                      ),
                     ] else ...[
-                      // Modo Normal
-                      ElevatedButton.icon(
-                        onPressed: () => showDialog(context: context, builder: (_) => const BloqueoModal()),
-                        icon: const Icon(Icons.add),
-                        label: const Text("Nuevo Bloqueo"),
-                        style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15)),
-                      )
+                      // Botones Modo Normal 
+                      IconButton(
+                        tooltip: "Borrar en lote",
+                        icon: const Icon(Icons.checklist_rtl, color: Colors.grey),
+                        onPressed: () => setState(() { _isSelectionMode = true; _diasSeleccionados.clear(); }),
+                      ),
+                      const SizedBox(width: 15),
+                      Container(width: 1, height: 30, color: Colors.grey.shade300), // Separador
+                      const SizedBox(width: 15),
+                      
+                      _HoverableActionButton(
+                        onTap: () => showDialog(context: context, builder: (_) => const BloqueoModal()), 
+                        label: "Nuevo Bloqueo", 
+                        icon: Icons.add,
+                        isPrimary: true
+                      ),
                     ]
                   ],
                 ),
-                const SizedBox(height: 15),
-
-                if (isLargeScreen)
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        flex: 3, 
-                        child: _buildCalendarCard(provider, isLargeScreen: true)
-                      ),
-                      const SizedBox(width: 15),
-                      Flexible(
-                        flex: 1, 
-                        child: _isSelectionMode 
-                          ? _buildSelectionSummaryPanel(bloqueosAcumulados)
-                          : _buildSidePanel(bloqueosDelDia)
-                      ),
-                    ],
-                  )
-                else
-                  _buildCalendarCard(provider, isLargeScreen: false),
-              ],
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  // Widget para el calendario
-  Widget _buildCalendarCard(AgendaBloqueoProvider provider, {required bool isLargeScreen}) {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-      child: Padding(
-        padding: const EdgeInsets.all(10.0),
-        child: Column(
-            children: [
-              Stack(
-                alignment: Alignment.center,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      // Flecha Izquierda
-                      IconButton(
-                        icon: const Icon(Icons.chevron_left), 
-                        onPressed: () => setState(() => _focusedDay = DateTime(_focusedDay.year, _focusedDay.month - 1))
-                      ),
-
-                      // Flecha derecha y boton hoy
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (_focusedDay.month != DateTime.now().month || _focusedDay.year != DateTime.now().year)
-                             Padding(
-                               padding: const EdgeInsets.only(right: 5.0),
-                               child: TextButton.icon(
-                                  onPressed: () => setState(() { 
-                                    _focusedDay = DateTime.now(); 
-                                    if(!_isSelectionMode) _selectedDay = DateTime.now(); 
-                                  }),
-                                  label: Text("Ir a hoy"),
-                                  style: TextButton.styleFrom(
-                                    backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
-                                                                        
-                                  ),
-                                )
-                             ),
-                          IconButton(
-                            icon: const Icon(Icons.chevron_right), 
-                            onPressed: () => setState(() => _focusedDay = DateTime(_focusedDay.year, _focusedDay.month + 1))
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  
-                  InkWell(
-                    onTap: _seleccionarMesAnio,
-                    borderRadius: BorderRadius.circular(20),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            DateFormat('MMMM yyyy', 'es_ES').format(_focusedDay).toUpperCase(),
-                            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.primaryColor),
-                          ),
-                          const SizedBox(width: 8),
-                          const Icon(Icons.edit_calendar, size: 18, color: AppTheme.primaryColor) 
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
               ),
               
-              const SizedBox(height: 15),
+              const SizedBox(height: 20),
 
-              TableCalendar<BloqueoAgenda>(
-                locale: 'es_ES',
-                firstDay: DateTime(1990), lastDay: DateTime(2100),
-                focusedDay: _focusedDay,
-                
-                startingDayOfWeek: StartingDayOfWeek.monday, 
+              // CALENDARIO + DETALLES
+              Expanded(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(
+                      flex: 3,
+                      child: Card(
+                        elevation: 0,
+                        margin: EdgeInsets.zero,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10), side: BorderSide(color: Colors.grey.shade300)),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(10),
+                            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 5))]
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(10),
+                            child: Column(
+                              children: [
+                                Padding(
+                                  padding: const EdgeInsets.all(15.0),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      IconButton(icon: const Icon(Icons.chevron_left), onPressed: () => setState(() => _focusedDay = DateTime(_focusedDay.year, _focusedDay.month - 1))),
+                                      
+                                      InkWell(
+                                        onTap: _seleccionarMesAnio,
+                                        borderRadius: BorderRadius.circular(20),
+                                        child: Padding(
+                                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                          child: Row(
+                                            children: [
+                                              Text(DateFormat('MMMM yyyy', 'es_ES').format(_focusedDay).toUpperCase(), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.primaryColor)),
+                                              const SizedBox(width: 8),
+                                              const Icon(Icons.edit_calendar, size: 18, color: AppTheme.primaryColor) 
+                                            ],
+                                          ),
+                                        ),
+                                      ),
 
-                selectedDayPredicate: (day) {
-                  if (_isSelectionMode) {
-                    return _diasSeleccionados.any((d) => isSameDay(d, day));
-                  }
-                  return isSameDay(_selectedDay, day);
-                },
-                eventLoader: (day) => _getBloqueosDelDia(day, provider.bloqueos),
-                headerVisible: false,
-                
-                rowHeight: 90, 
-                daysOfWeekHeight: 50, 
-                
-                daysOfWeekStyle: const DaysOfWeekStyle(
-                  decoration: BoxDecoration(
-                    border: Border(bottom: BorderSide(color: Colors.transparent)) 
-                  ),
-                  weekdayStyle: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey),
-                  weekendStyle: TextStyle(fontWeight: FontWeight.bold, color: Colors.redAccent),
-                ),
-                
-                onDaySelected: (selectedDay, focusedDay) => _handleDaySelected(selectedDay, focusedDay, provider.bloqueos, isLargeScreen),
-                onPageChanged: (focusedDay) => _focusedDay = focusedDay,
+                                      IconButton(icon: const Icon(Icons.chevron_right), onPressed: () => setState(() => _focusedDay = DateTime(_focusedDay.year, _focusedDay.month + 1))),
+                                    ],
+                                  ),
+                                ),
+                                
+                                const Divider(height: 1),
 
-                calendarBuilders: CalendarBuilders(
-                  defaultBuilder: (context, day, focusedDay) => _buildCell(day, provider.bloqueos, isSelected: false, isToday: false),
-                  selectedBuilder: (context, day, focusedDay) => _buildCell(day, provider.bloqueos, isSelected: true, isToday: isSameDay(day, DateTime.now())),
-                  todayBuilder: (context, day, focusedDay) => _buildCell(day, provider.bloqueos, isSelected: false, isToday: true),
-                  outsideBuilder: (context, day, focusedDay) => _buildCell(day, provider.bloqueos, isSelected: false, isToday: false, isOutside: true),
-                  markerBuilder: (context, day, events) => const SizedBox(), 
+                                Expanded(
+                                  child: TableCalendar<BloqueoAgenda>(
+                                    locale: 'es_ES',
+                                    firstDay: DateTime(1990), lastDay: DateTime(2100),
+                                    focusedDay: _focusedDay,
+                                    startingDayOfWeek: StartingDayOfWeek.monday,
+                                    headerVisible: false,
+                                    shouldFillViewport: true,
+                                    daysOfWeekHeight: 40,
+                                    selectedDayPredicate: (day) => _isSelectionMode ? _diasSeleccionados.any((d) => isSameDay(d, day)) : isSameDay(_selectedDay, day),
+                                    eventLoader: (day) => _getBloqueosDelDia(day, provider.bloqueos),
+                                    onDaySelected: (selected, focused) => _handleDaySelected(selected, focused, provider.bloqueos, isLargeScreen),
+                                    onPageChanged: (focused) => _focusedDay = focused,
+
+                                    calendarBuilders: CalendarBuilders(
+                                      defaultBuilder: (context, day, focusedDay) => _buildCell(day, provider.bloqueos, isSelected: false, isToday: false),
+                                      selectedBuilder: (context, day, focusedDay) => _buildCell(day, provider.bloqueos, isSelected: true, isToday: isSameDay(day, DateTime.now())),
+                                      todayBuilder: (context, day, focusedDay) => _buildCell(day, provider.bloqueos, isSelected: false, isToday: true),
+                                      outsideBuilder: (context, day, focusedDay) => _buildCell(day, provider.bloqueos, isSelected: false, isToday: false, isOutside: true),
+                                      markerBuilder: (context, day, events) => const SizedBox(), 
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    if (isLargeScreen) ...[
+                      const SizedBox(width: 20),
+                      // PANEL LATERAL
+                      Flexible(
+                        flex: 1, 
+                        child: Container( 
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: Colors.grey.shade300),
+                            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 5))]
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(10),
+                            child: _isSelectionMode 
+                              ? _buildSelectionSummaryPanel(bloqueosAcumulados)
+                              : _buildSidePanel(bloqueosDelDia) 
+                          ),
+                        ),
+                      ),
+                    ]
+                  ],
                 ),
               ),
             ],
           ),
-      ),
+        );
+      }
     );
   }
 
+  // Widget celda del calendario
   Widget _buildDetailsContent(List<BloqueoAgenda> bloqueos, {VoidCallback? onClose}) {
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -517,13 +494,10 @@ class _VacacionesCalendarViewState extends State<VacacionesCalendarView> {
 
   // Widget detalles panel lateral (fijo)
   Widget _buildSidePanel(List<BloqueoAgenda> bloqueos) {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-      child: Container(
-        constraints: const BoxConstraints(minHeight: 500),
-        child: _buildDetailsContent(bloqueos),
-      ),
+    return Column(
+      children: [
+        Expanded(child: _buildDetailsContent(bloqueos)),
+      ],
     );
   }
 
@@ -600,135 +574,101 @@ class _VacacionesCalendarViewState extends State<VacacionesCalendarView> {
     }
 
     return ListView.separated(
-      shrinkWrap: true,
-      physics: isScrollable ? const AlwaysScrollableScrollPhysics() : const NeverScrollableScrollPhysics(),
-      padding: const EdgeInsets.all(15),
+      padding: const EdgeInsets.all(15), 
       itemCount: bloqueos.length,
-      separatorBuilder: (_,__) => const SizedBox(height: 10),
+      separatorBuilder: (_,__) => const SizedBox(height: 15),
+      shrinkWrap: !isScrollable,
+      physics: isScrollable ? const AlwaysScrollableScrollPhysics() : const NeverScrollableScrollPhysics(),
       itemBuilder: (context, index) {
         final bloqueo = bloqueos[index];
         final isGlobal = bloqueo.idQuiropractico == null;
+        
         String fechaTexto;
-          if (isSameDay(bloqueo.fechaInicio, bloqueo.fechaFin)) {
-            fechaTexto = "Fecha: ${DateFormat('dd/MM/yyyy').format(bloqueo.fechaInicio)}";
-          } else {
-            fechaTexto = "Fecha:\n${DateFormat('dd/MM').format(bloqueo.fechaInicio)} - ${DateFormat('dd/MM').format(bloqueo.fechaFin)}";
-          }
+        if (isSameDay(bloqueo.fechaInicio, bloqueo.fechaFin)) {
+          fechaTexto = DateFormat('dd/MM/yyyy').format(bloqueo.fechaInicio);
+        } else {
+          fechaTexto = "Del ${DateFormat('dd/MM').format(bloqueo.fechaInicio)} al ${DateFormat('dd/MM').format(bloqueo.fechaFin)}";
+        }
 
         return Container(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 15),
           decoration: BoxDecoration(
             color: isGlobal ? Colors.red.shade50 : Colors.blue.shade50,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: isGlobal ? Colors.red.shade100 : Colors.blue.shade100)
+            border: Border.all(color: isGlobal ? Colors.red.shade100 : Colors.blue.shade100),
+            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 5, offset: const Offset(0, 2))]
           ),
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start, 
             children: [
-              Icon(isGlobal ? Icons.business : Icons.person, color: isGlobal ? Colors.red : Colors.blue, size: 20),
-              const SizedBox(width: 10),
+              // ICONO 
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.6),
+                  shape: BoxShape.circle
+                ),
+                child: Icon(isGlobal ? Icons.business : Icons.person, color: isGlobal ? Colors.red : Colors.blue, size: 24),
+              ),
+              
+              const SizedBox(width: 15),
+              
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // TÍTULO
                     Text(
                       isGlobal ? "Global" : bloqueo.nombreQuiropractico, 
-                      style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13)
+                      style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)
                     ),
-                    Text(bloqueo.motivo, style: TextStyle(fontSize: 12, color: Colors.grey[800])),
-                    Text(fechaTexto, style: const TextStyle(fontSize: 10, color: Colors.grey)),
+                    const SizedBox(height: 6),
+                    
+                    // MOTIVO
+                    Text(
+                      bloqueo.motivo, 
+                      style: TextStyle(fontSize: 15, color: Colors.grey[800], height: 1.3)
+                    ),
+                    
+                    const SizedBox(height: 6),
+                    
+                    // FECHA
+                    Row(
+                      children: [
+                        Text(
+                          fechaTexto, 
+                          style: TextStyle(fontSize: 13, color: Colors.grey[700], fontWeight: FontWeight.w500)
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               ),
               
-              // Boton editar y eliminar (En modo detalles)
+              // BOTONES DE ACCIÓN
               if (showEdit) ...[
-                // Editar
-                IconButton(
-                  icon: const Icon(Icons.edit, size: 18, color: Colors.grey),
-                  onPressed: () => showDialog(context: context, builder: (_) => BloqueoModal(bloqueoEditar: bloqueo)),
-                  tooltip: "Editar bloqueo",
-                ),
-                
-                // Eliminar
-                IconButton(
-                  icon: const Icon(Icons.delete_outline, size: 18, color: Colors.redAccent),
-                  tooltip: "Eliminar bloqueo",
-                  onPressed: () async {
-                    final confirm = await showDialog<bool>(
-                      context: context,
-                      builder: (ctx) {
-                        final isGlobal = bloqueo.idQuiropractico == null;
-                        return AlertDialog(
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                          title: const Text("¿Eliminar bloqueo?", style: TextStyle(fontWeight: FontWeight.bold)),
-                          content: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Caja de aviso roja
-                              Container(
-                                width: 500,
-                                padding: const EdgeInsets.all(10),
-                                decoration: BoxDecoration(
-                                  color: Colors.red.shade50,
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(color: Colors.red.shade100)
-                                ),
-                                child: Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Icon(Icons.warning_amber_rounded, color: Colors.red, size: 20),
-                                    const SizedBox(width: 10),
-                                    Expanded(
-                                      child: Text(
-                                        "Se eliminará este registro completo. El horario volverá a estar disponible para citas en todo el rango de fechas.",
-                                        style: TextStyle(color: Colors.red.shade900, fontSize: 13)
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(height: 15),
-                              const Text("Registro a eliminar:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                              const SizedBox(height: 5),
-
-                              // Ficha visual del elemento
-                              ListTile(
-                                contentPadding: EdgeInsets.zero,
-                                dense: true,
-                                leading: CircleAvatar(
-                                  radius: 15,
-                                  backgroundColor: isGlobal ? Colors.red.shade100 : Colors.blue.shade100,
-                                  child: Icon(isGlobal ? Icons.business : Icons.person, color: isGlobal ? Colors.red : Colors.blue, size: 16),
-                                ),
-                                title: Text(bloqueo.nombreQuiropractico, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                                subtitle: Text(
-                                  "${DateFormat('dd/MM/yyyy').format(bloqueo.fechaInicio)} - ${DateFormat('dd/MM/yyyy').format(bloqueo.fechaFin)} • ${bloqueo.motivo}",
-                                  style: TextStyle(color: Colors.grey[700], fontSize: 12)
-                                ),
-                              )
-                            ],
-                          ),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(ctx, false), 
-                              child: const Text("Cancelar")
-                            ),
-                            ElevatedButton(
-                              style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
-                              onPressed: () => Navigator.pop(ctx, true),
-                              child: const Text("Eliminar")
-                            )
-                          ],
-                        );
-                      }
-                    );
-
-                    if (confirm == true) {
-                      final prov = Provider.of<AgendaBloqueoProvider>(context, listen: false);
-                      await prov.borrarBloqueo(bloqueo.idBloqueo);
-                    }
-                  }, 
+                const SizedBox(width: 10),
+                Column(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.edit, size: 22, color: Colors.grey),
+                      onPressed: () => showDialog(context: context, builder: (_) => BloqueoModal(bloqueoEditar: bloqueo)),
+                      tooltip: "Editar",
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                    const SizedBox(height: 15), 
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline, size: 24, color: Colors.redAccent),
+                      tooltip: "Eliminar",
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      onPressed: () async {
+                         final provider = Provider.of<AgendaBloqueoProvider>(context, listen: false);
+                         await provider.borrarBloqueo(bloqueo.idBloqueo);
+                      },
+                    )
+                  ],
                 )
               ]
             ],
@@ -829,5 +769,17 @@ class _VacacionesCalendarViewState extends State<VacacionesCalendarView> {
         ),
       ),
     );
+  }
+}
+class _HoverableActionButton extends StatefulWidget {
+  final VoidCallback onTap; final String label; final IconData icon; final bool isPrimary;
+  const _HoverableActionButton({required this.onTap, required this.label, required this.icon, this.isPrimary = false});
+  @override State<_HoverableActionButton> createState() => _HoverableActionButtonState();
+}
+class _HoverableActionButtonState extends State<_HoverableActionButton> {
+  bool _isHovering = false;
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(onEnter: (_) => setState(() => _isHovering = true), onExit: (_) => setState(() => _isHovering = false), cursor: SystemMouseCursors.click, child: GestureDetector(onTap: widget.onTap, child: Container(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10), decoration: BoxDecoration(color: widget.isPrimary ? (_isHovering ? AppTheme.primaryColor.withOpacity(0.9) : AppTheme.primaryColor) : (_isHovering ? Colors.grey.shade100 : Colors.transparent), borderRadius: BorderRadius.circular(8), boxShadow: widget.isPrimary ? [BoxShadow(color: AppTheme.primaryColor.withOpacity(0.3), blurRadius: 4, offset: const Offset(0, 2))] : null), child: Row(children: [Icon(widget.icon, size: 18, color: widget.isPrimary ? Colors.white : Colors.grey), const SizedBox(width: 8), Text(widget.label, style: TextStyle(color: widget.isPrimary ? Colors.white : Colors.grey.shade700, fontWeight: FontWeight.w600))]))));
   }
 }

@@ -116,6 +116,13 @@ class Sidebar extends StatelessWidget {
                       isActive: location.startsWith('/vacaciones'),
                       onTap: () => context.go('/vacaciones'),
                     ),
+                    // LOGS
+                    _SidebarItem(
+                      icon: Icons.file_present_sharp,
+                      title: 'Logs',
+                      isActive: location.startsWith('/logs'),
+                      onTap: () => context.go('/logs'),
+                    ),
                 ]
               ],
             ),

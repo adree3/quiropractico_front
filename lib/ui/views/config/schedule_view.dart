@@ -54,222 +54,249 @@ class _ScheduleViewState extends State<ScheduleView> {
     final Usuario? currentDoctor = provider.selectedDoctor;
     final mesesAfectados = _getMesesConBloqueos(bloqueosProvider.bloqueos, currentDoctor?.idUsuario);
     
-    return Column(
-      children: [
-        // Titulo, selector y boton
-        Row(
-          children: [
-            const Expanded(
-              child: Text("Horarios", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+    return Container(
+      padding: const EdgeInsets.fromLTRB(0, 10, 0, 10),
+      child: Column(
+        children: [
+          // Titulo, selector y boton
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Colors.grey.shade300),
+              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 5, offset: const Offset(0, 2))]
             ),
-            
-            // Selector del quiropractico
-            if (doctoresList.isEmpty)
-               Container(
-                 padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
-                 decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(5)),
-                 child: const Text("Sin quiroprácticos activos", style: TextStyle(color: Colors.grey, fontStyle: FontStyle.italic)),
-               )
-            else
-               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(15),
-                  border: Border.all(color: AppTheme.primaryColor.withOpacity(0.3)),
-                  boxShadow: [
-                    BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))
-                  ]
-                ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<Usuario>(
-                    value: currentDoctor,
-                    hint: const Text("Seleccionar ", style: TextStyle(fontWeight: FontWeight.bold)),
-                    icon: const Icon(Icons.arrow_drop_down, color: AppTheme.primaryColor),
-                    items: doctoresList.map((u) => DropdownMenuItem(
-                      value: u, 
-                      child: Text(u.nombreCompleto, style: const TextStyle(fontWeight: FontWeight.w600))
-                    )).toList(),
-                    onChanged: (val) {
-                      if (val != null) provider.selectDoctor(val);
-                    },
-                  ),
-                ),
-              ),
-              
-            const SizedBox(width: 20),
-            
-            Expanded(
-              child: Align(
-                alignment: Alignment.centerRight,
-                child: ElevatedButton.icon(
-                  onPressed: currentDoctor == null 
-                      ? null 
-                      : () => showDialog(context: context, builder: (_) => const HorarioModal()),
-                  icon: const Icon(Icons.add_alarm),
-                  label: const Text("Añadir Turno"),
-                ),
-              ),
-            ),
-          ],
-        ),
-        
-        const SizedBox(height: 20),
+            child: Row(
+              children: [
+                Icon(Icons.access_time_outlined, size: 24, color: Colors.grey.shade700),
+                const SizedBox(width: 10),
+                Text("Horarios", style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+                
+                const SizedBox(width: 20),
+                Container(width: 1, height: 30, color: Colors.grey.shade300), // Separador
+                const SizedBox(width: 20),
 
-        // Horario y Calendario
-        Expanded(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Horarios 
-              Expanded(
-                flex: 1,
-                child: Align(
-                  alignment: Alignment.topCenter,
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(
-                      maxWidth: 550,
-                      maxHeight: 730
-                    ),
-                    child: provider.isLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : ListView.builder(
-                      padding: const EdgeInsets.only(top: 0, bottom: 40, right: 10), 
-                      itemCount: 7,
-                      itemBuilder: (context, index) {
-                        final diaNum = index + 1; 
-                        final nombreDia = _getDiaNombre(diaNum);
-                        final turnosDelDia = currentDoctor == null 
-                          ? [] 
-                          : provider.horarios.where((h) => h.diaSemana == diaNum).toList();
-                            
-                        if (turnosDelDia.isNotEmpty) {
-                          turnosDelDia.sort((a, b) => (a.horaInicio.hour * 60 + a.horaInicio.minute).compareTo(b.horaInicio.hour * 60 + b.horaInicio.minute));
-                        }
-                        return Card(
-                          margin: const EdgeInsets.only(bottom: 15),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade200)),
-                          elevation: 0, 
-                          child: Padding(
-                            padding: const EdgeInsets.all(15),
-                            child: Column( 
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(nombreDia, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppTheme.primaryColor)),
-                                const SizedBox(height: 10),
-                                if (doctoresList.isEmpty)
-                                  const Text("No hay personal activo", style: TextStyle(color: Colors.grey, fontSize: 13))
-                                else if (currentDoctor == null)
-                                  const Text("Seleccione un doctor para ver horarios", style: TextStyle(color: Colors.orange, fontSize: 13))
-                                else if (turnosDelDia.isEmpty) 
-                                  const Text("Sin turnos asignados", style: TextStyle(color: Colors.grey, fontStyle: FontStyle.italic, fontSize: 13))
-                                else
-                                  Wrap(
-                                    spacing: 8, runSpacing: 8,
-                                    children: turnosDelDia.map((turno) => Chip(
-                                      visualDensity: VisualDensity.compact,
-                                      label: Text(turno.formattedRange, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                                      backgroundColor: Colors.blue.shade50,
-                                      side: BorderSide.none,
-                                      deleteIcon: const Icon(Icons.close, size: 14, color: Colors.red),
-                                      onDeleted: () async => await provider.deleteHorario(turno.idHorario),
-                                    )).toList(),
-                                  ),
-                              ],
+                // Selector del quiropractico
+                if (doctoresList.isEmpty)
+                   const Text("Sin quiroprácticos activos", style: TextStyle(color: Colors.grey, fontStyle: FontStyle.italic))
+                else
+                  DropdownButtonHideUnderline(
+                    child: DropdownButton<Usuario>(
+                      value: currentDoctor,
+                      hint: const Text("Seleccionar Doctor", style: TextStyle(fontWeight: FontWeight.w500)),
+                      icon: const Icon(Icons.keyboard_arrow_down, color: Colors.grey),
+                      style: const TextStyle(color: Colors.black87, fontSize: 15, fontWeight: FontWeight.w500),
+                      items: doctoresList.map((u) => DropdownMenuItem(
+                        value: u, 
+                        child: Row(
+                          children: [
+                            CircleAvatar(
+                              radius: 12,
+                              backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
+                              child: Text(u.nombreCompleto[0], style: const TextStyle(fontSize: 10, color: AppTheme.primaryColor, fontWeight: FontWeight.bold)),
                             ),
-                          ),
-                        );
+                            const SizedBox(width: 10),
+                            Text(u.nombreCompleto),
+                          ],
+                        )
+                      )).toList(),
+                      onChanged: (val) {
+                        if (val != null) provider.selectDoctor(val);
                       },
                     ),
                   ),
-                )
-              ),
-
-              const SizedBox(width: 20),
-
-              // Calendario
-              Expanded(
-                flex: 1, 
-                child: Align(
-                  alignment: Alignment.topCenter, 
                   
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(
-                      maxWidth: 450,
-                      maxHeight: 730,
-                    ),
-                    child: Card(
-                      margin: EdgeInsets.zero,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade300)),
-                      child: Padding(
-                        padding: const EdgeInsets.all(20.0),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min, 
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text("Afectaciones $_visualizerYear", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                                Row(
-                                  children: [
-                                    IconButton(icon: const Icon(Icons.chevron_left), onPressed: () => setState(() => _visualizerYear--)),
-                                    IconButton(icon: const Icon(Icons.chevron_right), onPressed: () => setState(() => _visualizerYear++)),
-                                  ],
-                                )
-                              ],
-                            ),
-                            const Divider(),
-                            Row(
-                              children: [
-                                _buildLegendItem(Colors.red.shade100, "Clínica Cerrada"),
-                                const SizedBox(width: 15),
-                                if (currentDoctor != null)
-                                  _buildLegendItem(Colors.blue.shade100, "Vacaciones ${currentDoctor.nombreCompleto.split(' ')[0]}"),
-                              ],
-                            ),
-                            const SizedBox(height: 15),
+                const Spacer(),
+                
 
-                            // GRID
-                            Expanded(
-                              child: mesesAfectados.isEmpty
-                                  ? const Padding(
-                                      padding: EdgeInsets.all(30.0),
-                                      child: Text("Sin bloqueos este año", style: TextStyle(color: Colors.grey)),
-                                    )
-                                  : LayoutBuilder(
-                                      builder: (context, constraints) {
-                                        final double width = constraints.maxWidth;
-                                        final int columnas = width < 100 ? 1 : 2;
+                const SizedBox(width: 20),
 
-                                        return GridView.builder(
-                                          shrinkWrap: true,
-                                          physics: const AlwaysScrollableScrollPhysics(),
-                                          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                                            crossAxisCount: columnas,
-                                            mainAxisExtent: 210, 
-                                            crossAxisSpacing: 15,
-                                            mainAxisSpacing: 15,
-                                          ),
-                                          itemCount: mesesAfectados.length,
-                                          itemBuilder: (context, index) {
-                                            return _buildMonthMiniature(mesesAfectados[index], _visualizerYear, bloqueosProvider.bloqueos, currentDoctor?.idUsuario);
-                                          },
-                                        );
-                                      },
+                // D. BOTÓN AÑADIR TURNO
+                _HoverableActionButton(
+                  label: "Nuevo Turno",
+                  icon: Icons.add_alarm,
+                  isPrimary: true,
+                  onTap: currentDoctor == null 
+                      ? () {} 
+                      : () => showDialog(context: context, builder: (_) => const HorarioModal()),
+                ),
+              ],
+            ),
+          ),
+          
+          const SizedBox(height: 20),
+      
+          // Horario y Calendario
+
+          Expanded(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Horarios 
+                Expanded(
+                  flex: 1,
+                  child: Align(
+                    alignment: Alignment.topCenter,
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(
+                        maxWidth: 550,
+                        maxHeight: 730
+                      ),
+                      child: provider.isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : ListView.builder(
+                        padding: const EdgeInsets.only(top: 0, bottom: 40, right: 10), 
+                        itemCount: 7,
+                        itemBuilder: (context, index) {
+                          final diaNum = index + 1; 
+                          final nombreDia = _getDiaNombre(diaNum);
+                          final turnosDelDia = currentDoctor == null 
+                            ? [] 
+                            : provider.horarios.where((h) => h.diaSemana == diaNum).toList();
+                              
+                          if (turnosDelDia.isNotEmpty) {
+                            turnosDelDia.sort((a, b) => (a.horaInicio.hour * 60 + a.horaInicio.minute).compareTo(b.horaInicio.hour * 60 + b.horaInicio.minute));
+                          }
+                          return Card(
+                            margin: const EdgeInsets.only(bottom: 15),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade200)),
+                            elevation: 0, 
+                            child: Padding(
+                              padding: const EdgeInsets.all(15),
+                              child: Column( 
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(nombreDia, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppTheme.primaryColor)),
+                                  const SizedBox(height: 10),
+                                  if (doctoresList.isEmpty)
+                                    const Text("No hay personal activo", style: TextStyle(color: Colors.grey, fontSize: 13))
+                                  else if (currentDoctor == null)
+                                    const Text("Seleccione un doctor para ver horarios", style: TextStyle(color: Colors.orange, fontSize: 13))
+                                  else if (turnosDelDia.isEmpty) 
+                                    const Text("Sin turnos asignados", style: TextStyle(color: Colors.grey, fontStyle: FontStyle.italic, fontSize: 13))
+                                  else
+                                    Wrap(
+                                      spacing: 8, runSpacing: 8,
+                                      children: turnosDelDia.map((turno) => Chip(
+                                        visualDensity: VisualDensity.compact,
+                                        label: Text(turno.formattedRange, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                                        backgroundColor: Colors.blue.shade50,
+                                        side: BorderSide.none,
+                                        deleteIcon: const Icon(Icons.close, size: 14, color: Colors.red),
+                                        onDeleted: () async => await provider.deleteHorario(turno.idHorario),
+                                      )).toList(),
                                     ),
-                            )
-                          ],
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  )
+                ),
+      
+                const SizedBox(width: 20),
+      
+                // Calendario
+                Expanded(
+                  flex: 1, 
+                  child: Align(
+                    alignment: Alignment.topCenter, 
+                    
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(
+                        maxWidth: 450,
+                        maxHeight: 730,
+                      ),
+                      child: Card(
+                        margin: EdgeInsets.zero,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade300)),
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: 10, bottom: 10, right: 15, left: 15), 
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min, 
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 5),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    IconButton(
+                                      icon: const Icon(Icons.chevron_left, size: 20), 
+                                      onPressed: () => setState(() => _visualizerYear--),
+                                      tooltip: "Año anterior",
+                                      constraints: const BoxConstraints(),
+                                      padding: const EdgeInsets.all(8),
+                                    ),
+                                    Text(
+                                      "Vacaciones $_visualizerYear", 
+                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: Colors.black87)
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.chevron_right, size: 20), 
+                                      onPressed: () => setState(() => _visualizerYear++),
+                                      tooltip: "Año siguiente",
+                                      constraints: const BoxConstraints(),
+                                      padding: const EdgeInsets.all(8),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const Divider(),
+                              Row(
+                                children: [
+                                  _buildLegendItem(Colors.red.shade100, "Clínica Cerrada"),
+                                  const SizedBox(width: 15),
+                                  if (currentDoctor != null)
+                                    _buildLegendItem(Colors.blue.shade100, "Vacaciones ${currentDoctor.nombreCompleto.split(' ')[0]}"),
+                                ],
+                              ),
+                              const SizedBox(height: 15),
+      
+                              // GRID
+                              Expanded(
+                                child: mesesAfectados.isEmpty
+                                    ? const Padding(
+                                        padding: EdgeInsets.all(30.0),
+                                        child: Text("Sin bloqueos este año", style: TextStyle(color: Colors.grey)),
+                                      )
+                                    : LayoutBuilder(
+                                        builder: (context, constraints) {
+                                          final double width = constraints.maxWidth;
+                                          final int columnas = width < 100 ? 1 : 2;
+      
+                                          return GridView.builder(
+                                            shrinkWrap: true,
+                                            physics: const AlwaysScrollableScrollPhysics(),
+                                            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                                              crossAxisCount: columnas,
+                                              mainAxisExtent: 210, 
+                                              crossAxisSpacing: 15,
+                                              mainAxisSpacing: 15,
+                                            ),
+                                            itemCount: mesesAfectados.length,
+                                            itemBuilder: (context, index) {
+                                              return _buildMonthMiniature(mesesAfectados[index], _visualizerYear, bloqueosProvider.bloqueos, currentDoctor?.idUsuario);
+                                            },
+                                          );
+                                        },
+                                      ),
+                              )
+                            ],
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
-              )
-            ],
+                )
+              ],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -360,6 +387,35 @@ class _ScheduleViewState extends State<ScheduleView> {
             ),
           )
         ],
+      ),
+    );
+  }
+}
+class _HoverableActionButton extends StatefulWidget {
+  final VoidCallback onTap; final String label; final IconData icon; final bool isPrimary;
+  const _HoverableActionButton({required this.onTap, required this.label, required this.icon, this.isPrimary = false});
+  @override State<_HoverableActionButton> createState() => _HoverableActionButtonState();
+}
+
+class _HoverableActionButtonState extends State<_HoverableActionButton> {
+  bool _isHovering = false;
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovering = true),
+      onExit: (_) => setState(() => _isHovering = false),
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: BoxDecoration(
+            color: widget.isPrimary ? (_isHovering ? AppTheme.primaryColor.withOpacity(0.9) : AppTheme.primaryColor) : (_isHovering ? Colors.grey.shade100 : Colors.transparent),
+            borderRadius: BorderRadius.circular(8),
+            boxShadow: widget.isPrimary ? [BoxShadow(color: AppTheme.primaryColor.withOpacity(0.3), blurRadius: 4, offset: const Offset(0, 2))] : null
+          ),
+          child: Row(children: [Icon(widget.icon, size: 18, color: widget.isPrimary ? Colors.white : Colors.grey), const SizedBox(width: 8), Text(widget.label, style: TextStyle(color: widget.isPrimary ? Colors.white : Colors.grey.shade700, fontWeight: FontWeight.w600))]),
+        ),
       ),
     );
   }

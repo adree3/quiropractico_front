@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:quiropractico_front/providers/auth_provider.dart';
 import 'package:quiropractico_front/ui/layouts/dashboard_layout.dart';
 import 'package:quiropractico_front/ui/views/auth/login_view.dart';
+import 'package:quiropractico_front/ui/views/config/auditoria_view.dart';
 import 'package:quiropractico_front/ui/views/config/schedule_view.dart';
 import 'package:quiropractico_front/ui/views/config/services_view.dart';
 import 'package:quiropractico_front/ui/views/config/users_view.dart';
@@ -96,6 +97,10 @@ class AppRouter {
           GoRoute(
             path: '/vacaciones',
             builder: (context, state) => const VacacionesCalendarView(),
+          ),
+          GoRoute(
+            path: '/logs',
+            builder: (context, state) => const AuditoriaView(),
           ),
         ],
       ),

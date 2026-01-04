@@ -100,7 +100,7 @@ class _HorarioModalState extends State<HorarioModal> {
                 Navigator.pop(context);
                 CustomSnackBar.show(context, 
                   message: 'Turno añadido', 
-                  type: SnackBarType.error
+                  type: SnackBarType.success
                 );
               } else {
                 CustomSnackBar.show(context, 

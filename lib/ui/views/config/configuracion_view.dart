@@ -110,9 +110,9 @@ class _ConfigCard extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(15),
-        hoverColor: color.withOpacity(0.05), // Efecto hover sutil
+        hoverColor: color.withOpacity(0.05),
         child: Container(
-          width: 300, // Ancho fijo para que se vean uniformes en el Wrap
+          width: 300,
           padding: const EdgeInsets.all(25),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(15),
@@ -121,7 +121,6 @@ class _ConfigCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Icono con fondo de color suave
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(

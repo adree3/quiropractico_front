@@ -102,6 +102,7 @@ class UsersProvider extends ChangeNotifier {
 
   // CREAR
   Future<String?> createUser(String nombre, String username, String password, String rol) async {
+    isLoading = true;
     try {
       final data = {
         "nombreCompleto": nombre,
@@ -116,8 +117,16 @@ class UsersProvider extends ChangeNotifier {
       );
       await getUsers();
       return null;
-    } catch (e) { 
-      return ErrorHandler.extractMessage(e);
+    } on DioException catch (e) {
+      if (e.response != null && e.response!.data != null) {
+        return e.response!.data['message'] ?? "Error al guardar";
+      }
+      return "Error de conexión";
+    } catch (e) {
+      return "Error inesperado";
+    } finally {
+      isLoading = false;
+      notifyListeners();
     }
   }
 

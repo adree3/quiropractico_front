@@ -44,287 +44,376 @@ class _ClientsViewState extends State<ClientsView> {
     final clientsProvider = Provider.of<ClientsProvider>(context);
     final clientes = clientsProvider.clients;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // CABECERA
-        Row(
-          children: [
-            Text(
-              'Pacientes', 
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)
-            ),
-            const Spacer(),
-            
-            // BUSCADOR
-            SizedBox(
-              width: 300,
-              child: TextField(
-                controller: searchCtrl,
-                decoration: InputDecoration(
-                  hintText: 'Nombre, Apellido o Teléfono...',
-                  prefixIcon: const Icon(Icons.search),
-                  fillColor: Colors.white,
-                  filled: true,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 10),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
-                  suffixIcon: IconButton(
-                    icon: const Icon(Icons.clear, size: 18,color: Colors.grey),
-                    onPressed: () {
-                      searchCtrl.clear();
-                      _debounce?.cancel(); 
-                      Provider.of<ClientsProvider>(context, listen: false).searchGlobal('');
-                    },
-                  ),
-                ),
-                onChanged: _onSearchChanged,
-              ),
-            ),
-            const SizedBox(width: 10),
-
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: Colors.grey[300]!)
-              ),
-              child: DropdownButton<bool>(
-                value: clientsProvider.filterActive,
-                underline: const SizedBox(),
-                icon: const Icon(Icons.filter_list, size: 18),
-                items: const [
-                  DropdownMenuItem(value: true, child: Text("Activos")),
-                  DropdownMenuItem(value: false, child: Text("Papelera")),
-                ],
-                onChanged: (val) {
-                  if (val != null) clientsProvider.toggleFilter(val);
-                },
-              ),
-            ),
-            
-            const SizedBox(width: 10),
-            
-            ElevatedButton.icon(
-              onPressed: () {
-                showDialog(
-                  context: context,
-                  builder: (context) => const ClientModal(),
-                );
-              },
-              icon: const Icon(Icons.add , size: 20),
-              label: const Text('Nuevo'),
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))
-              ),
-            )
-          ],
-        ),
-        
-        const SizedBox(height: 20),
-
-        // TABLA
-        Expanded(
-          child: SingleChildScrollView(
-            child: Column(
-              children: [
-                Container(
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(10),
-                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 5))]
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
-                    child: clientsProvider.isLoading
-                        ? const SizedBox(
-                            height: 400,
-                            child: Center(child: CircularProgressIndicator())
-                          )
-                        : clientes.isEmpty
-                            ? const SizedBox(
-                                height: 200,
-                                child: Center(child: Text("No hay pacientes registrados"))
-                              )
-                            : SizedBox(
-                              width: double.infinity,
-                              child: SingleChildScrollView(
-                                child: DataTable(
-                                  headingRowColor: MaterialStateProperty.all(Colors.grey[100]),
-                                  dataRowMinHeight: 60,
-                                  dataRowMaxHeight: 60,
-                                  headingRowHeight: 50,
-                                  dividerThickness: 0.5,
-                                  columnSpacing: 20,
-                                  
-                                  columns: const [
-                                    DataColumn(label: Text('#', style: TextStyle(fontWeight: FontWeight.bold))),
-                                    DataColumn(label: Text('Nombre Completo', style: TextStyle(fontWeight: FontWeight.bold))),
-                                    DataColumn(label: Text('Teléfono', style: TextStyle(fontWeight: FontWeight.bold))),
-                                    DataColumn(label: Expanded(child: Text('Acciones', textAlign: TextAlign.end, style: TextStyle(fontWeight: FontWeight.bold)))), 
-                                  ],
-                                  
-                                  rows: List.generate(clientes.length, (index) {
-                                    final cliente = clientes[index];
-                                    
-                                    final realIndex = (clientsProvider.currentPage * clientsProvider.pageSize) + index + 1;
-
-                                    return DataRow(
-                                      cells: [
-                                        // ÍNDICE VISUAL
-                                        DataCell(Text(
-                                          "$realIndex", 
-                                          style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.w600)
-                                        )),
-                                        
-                                        // NOMBRE
-                                        DataCell(Text(
-                                          '${cliente.nombre} ${cliente.apellidos}',
-                                          style: const TextStyle(fontWeight: FontWeight.w500)
-                                        )),
-                                        
-                                        // TELÉFONO
-                                        DataCell(Text(cliente.telefono)),
-                                        
-                                        // ACCIONES 
-                                        DataCell(
-                                          Align(
-                                            alignment: Alignment.centerRight,
-                                            child: Row(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                // Ver/Editar
-                                                IconButton(
-                                                  icon: const Icon(Icons.visibility_outlined, color: AppTheme.primaryColor),
-                                                  tooltip: 'Detalles del paciente',
-                                                  onPressed: () => context.go('/pacientes/${cliente.idCliente}'),
-                                                ),
-                                                // Eliminar
-                                                IconButton(
-                                                  icon: Icon(
-                                                    clientsProvider.filterActive 
-                                                        ? Icons.delete_outline 
-                                                        : Icons.restore_from_trash,
-                                                    color: clientsProvider.filterActive 
-                                                        ? Colors.redAccent 
-                                                        : Colors.green,
-                                                  ),
-                                                  tooltip: clientsProvider.filterActive ? 'Eliminar' : 'Reactivar',
-                                                  onPressed: () async {
-                                                    final isDeleting = clientsProvider.filterActive;
-                                                    final title = isDeleting ? "¿Eliminar paciente?" : "¿Reactivar paciente?";
-                                                    final content = isDeleting 
-                                                        ? "Se moverá a la papelera." 
-                                                        : "Volverá a aparecer en la lista de activos y agenda.";
-                                                    final actionBtn = isDeleting ? "Eliminar" : "Reactivar";
-                                                    final actionColor = isDeleting ? Colors.red : Colors.green;
-                                                    final confirm = await showDialog(
-                                                      
-                                                      context: context, 
-                                                      builder: (ctx) => AlertDialog(
-                                                        title: Text(title),
-                                                        content: Text(content),
-                                                        actions: [
-                                                          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Cancelar")),
-                                                          ElevatedButton(
-                                                            onPressed: () => Navigator.pop(ctx, true), 
-                                                            style: ElevatedButton.styleFrom(backgroundColor: actionColor, foregroundColor: Colors.white),
-                                                            child: Text(actionBtn)
-                                                          ),
-                                                        ],
-                                                      )
-                                                    );
-
-                                                    if (confirm == true) {
-                                                      String? error;
-                                                      if (isDeleting) {
-                                                        error = await clientsProvider.deleteClient(cliente.idCliente);
-                                                      } else {
-                                                        error = await clientsProvider.recoverClient(cliente.idCliente);
-                                                      }
-                                                      if (context.mounted) {
-                                                          if (error == null) {
-                                                            _mostrarSnack(
-                                                              isDeleting ? "Paciente borrado" : "Paciente reactivado", 
-                                                              Colors.green
-                                                            );
-                                                          } else {
-                                                            _mostrarSnack(error, Colors.red);
-                                                          }
-                                                        }
-                                                    }
-                                                  },
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    );
-                                  }),
-                                ),
-                              ),
-                            )
-                  ),
-                ),
-                const SizedBox(height: 20),
-              ],
-            ),
-          ),
-        ),
-
-        const SizedBox(height: 10),
-
-        // PAGINACIÓN
-
-        Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+    return Container(
+      padding: const EdgeInsets.fromLTRB(0, 10, 0, 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // CABECERA
+          Container(
+            padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(10),
-              boxShadow: [
-                BoxShadow(color: Colors.black.withOpacity(0.05), 
-                blurRadius: 5, 
-                offset: const Offset(0, 2))
-              ]
+              border: Border.all(color: Colors.grey.shade300),
             ),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
               children: [
+                const SizedBox(width: 10),
+                Icon(Icons.groups_outlined, size: 24, color: Colors.grey.shade700),
+                const SizedBox(width: 10),
                 Text(
-                  'Mostrando ${clientsProvider.clients.length} de ${clientsProvider.totalElements} registros',
-                  style: const TextStyle(color: Colors.grey),
+                  'Pacientes', 
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)
                 ),
-                const Spacer(),
-                IconButton(
-                  onPressed: clientsProvider.currentPage > 0 
-                      ? () => clientsProvider.prevPage() 
-                      : null,
-                  icon: const Icon(Icons.chevron_left),
-                  tooltip: 'Anterior',
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 10),
-                  child: Text(
-                    'Página ${clientsProvider.currentPage + 1} de ${clientsProvider.totalPages > 0 ? clientsProvider.totalPages : 1}',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
+                const SizedBox(width: 20),
+                Container(width: 1, height: 30, color: Colors.grey.shade300),
+                const SizedBox(width: 20),
+                // Buscador
+                Expanded(
+                  child: TextField(
+                    controller: searchCtrl,
+                    decoration: InputDecoration(
+                      hintText: 'Buscar por nombre, apellido o teléfono',
+                      prefixIcon: const Icon(Icons.search, color: Colors.grey),
+                      border: InputBorder.none,
+                      isDense: true,
+                      contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                      suffixIcon: searchCtrl.text.isNotEmpty 
+                        ? IconButton(
+                            icon: const Icon(Icons.clear, size: 18, color: Colors.grey),
+                            onPressed: () {
+                              searchCtrl.clear();
+                              _debounce?.cancel();
+                              Provider.of<ClientsProvider>(context, listen: false).searchGlobal('');
+                            },
+                          )
+                        : null,
+                    ),
+                    onChanged: _onSearchChanged,
                   ),
                 ),
-                IconButton(
-                  onPressed: clientsProvider.currentPage < clientsProvider.totalPages - 1
-                      ? () => clientsProvider.nextPage()
-                      : null,
-                  icon: const Icon(Icons.chevron_right),
-                  tooltip: 'Siguiente',
+                const SizedBox(width: 20),
+                Container(width: 1, height: 30, color: Colors.grey.shade300),
+                const SizedBox(width: 10),
+
+                // Filtro estado
+                _buildStatusDropdown(clientsProvider),
+
+                const SizedBox(width: 15),
+                Container(width: 1, height: 30, color: Colors.grey.shade300),
+                const SizedBox(width: 10),
+
+                // Nuevo cliente
+                _HoverableActionButton(
+                  label: "Nuevo Paciente",
+                  icon: Icons.person_add,
+                  isPrimary: true, 
+                  onTap: () {
+                    showDialog(
+                      context: context,
+                      builder: (context) => const ClientModal(),
+                    );
+                  },
                 ),
+                
+                const SizedBox(width: 10),
               ],
             ),
-          ),  
-          
-        const SizedBox(height: 20),
-      ],
+          ),             
+                        
+          const SizedBox(height: 20),
+      
+          // TABLA
+          Expanded(
+            child: Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(10),
+                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 5))]
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: clientsProvider.isLoading
+                  ? const SizedBox(
+                      height: 400,
+                      child: Center(child: CircularProgressIndicator())
+                    )
+                  : clientes.isEmpty
+                      ? const SizedBox(
+                          height: 200,
+                          child: Center(child: Text("No hay pacientes registrados"))
+                        )
+                      : Column(
+                    children: [
+                      Expanded(
+                        child: SingleChildScrollView(
+                          child: SizedBox(
+                            width: double.infinity,
+                            child: DataTable(
+                              headingRowColor: MaterialStateProperty.all(Colors.grey[100]),
+                              dataRowMinHeight: 60,
+                              dataRowMaxHeight: 60,
+                              headingRowHeight: 50,
+                              dividerThickness: 0.5,
+                              columnSpacing: 20,
+                              
+                              columns: const [
+                                DataColumn(label: Text('#', style: TextStyle(fontWeight: FontWeight.bold))),
+                                DataColumn(label: Text('Nombre Completo', style: TextStyle(fontWeight: FontWeight.bold))),
+                                DataColumn(label: Text('Teléfono', style: TextStyle(fontWeight: FontWeight.bold))),
+                                DataColumn(label: Expanded(child: Text('Acciones', textAlign: TextAlign.end, style: TextStyle(fontWeight: FontWeight.bold)))), 
+                              ],
+                              
+                              rows: List.generate(clientes.length, (index) {
+                                final cliente = clientes[index];
+                                final realIndex = (clientsProvider.currentPage * clientsProvider.pageSize) + index + 1;
+
+                                return DataRow(cells: [
+                                  DataCell(Text("$realIndex", style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.w600))),
+                                  
+                                  // Nombre con Avatar (Opcional, queda bonito)
+                                  DataCell(Row(
+                                    children: [
+                                      CircleAvatar(
+                                        radius: 14,
+                                        backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
+                                        child: Text(
+                                          cliente.nombre.isNotEmpty ? cliente.nombre[0].toUpperCase() : "?",
+                                          style: const TextStyle(color: AppTheme.primaryColor, fontSize: 12, fontWeight: FontWeight.bold),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Text('${cliente.nombre} ${cliente.apellidos}', style: const TextStyle(fontWeight: FontWeight.w500)),
+                                    ],
+                                  )),
+                                  
+                                  DataCell(Text(cliente.telefono)),
+                                  
+                                  DataCell(Align(
+                                    alignment: Alignment.centerRight,
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        IconButton(
+                                          icon: const Icon(Icons.visibility_outlined, color: AppTheme.primaryColor),
+                                          tooltip: 'Detalles',
+                                          onPressed: () => context.go('/pacientes/${cliente.idCliente}'),
+                                        ),
+                                        IconButton(
+                                          icon: Icon(
+                                            clientsProvider.filterActive ? Icons.delete_outline : Icons.restore_from_trash,
+                                            color: clientsProvider.filterActive ? Colors.redAccent : Colors.green,
+                                          ),
+                                          tooltip: clientsProvider.filterActive ? 'Eliminar' : 'Reactivar',
+                                          onPressed: () async {
+                                            _confirmarAccion(context, clientsProvider, cliente);
+                                          },
+                                        ),
+                                      ],
+                                    ),
+                                  )),
+                                ]);
+                              }),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          _buildPaginationFooter(clientsProvider),
+        ],
+      ),
+    );
+  }
+  
+  // Dropdownbutton
+  Widget _buildStatusDropdown(ClientsProvider provider) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<bool>(
+          value: provider.filterActive,
+          hint: const Text("Estado"),
+          icon: const Icon(Icons.keyboard_arrow_down, color: Colors.grey),
+          style: const TextStyle(color: Colors.black87, fontSize: 14),
+          items: [
+            DropdownMenuItem(
+              value: true, 
+              child: Row(children: const [
+                Icon(Icons.check_circle_outline, size: 18, color: Colors.green),
+                SizedBox(width: 8),
+                Text("Activos", style: TextStyle(fontWeight: FontWeight.w500))
+              ])
+            ),
+            DropdownMenuItem(
+              value: false, 
+              child: Row(children: const [
+                Icon(Icons.delete_outline, size: 18, color: Colors.redAccent),
+                SizedBox(width: 8),
+                Text("Eliminados", style: TextStyle(fontWeight: FontWeight.w500))
+              ])
+            ),
+          ],
+          onChanged: (val) {
+            if (val != null) provider.toggleFilter(val);
+          },
+        ),
+      ),
+    );
+  }
+
+  // Paginacion
+  Widget _buildPaginationFooter(ClientsProvider provider) {
+    int start = (provider.currentPage * provider.pageSize) + 1;
+    int end = (provider.currentPage * provider.pageSize) + provider.clients.length;
+    if (provider.totalElements == 0) start = 0;
+    
+    int totalPages = (provider.totalElements / provider.pageSize).ceil();
+    if (totalPages == 0) totalPages = 1;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 5, offset: const Offset(0, 2))
+        ]
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          Text(
+            'Mostrando $start - $end de ${provider.totalElements} registros',
+            style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.w500),
+          ),
+          const Spacer(),
+          IconButton(
+            onPressed: provider.currentPage > 0 ? () => provider.prevPage() : null,
+            icon: const Icon(Icons.chevron_left),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            child: Text(
+              'Página ${provider.currentPage + 1} de $totalPages',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+          IconButton(
+            onPressed: provider.currentPage < provider.totalPages - 1 ? () => provider.nextPage() : null,
+            icon: const Icon(Icons.chevron_right),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Confirmacion de eliminar paciente
+  Future<void> _confirmarAccion(BuildContext context, ClientsProvider provider, dynamic cliente) async {
+    final isDeleting = provider.filterActive;
+    final title = isDeleting ? "¿Eliminar paciente?" : "¿Reactivar paciente?";
+    final content = isDeleting ? "Se moverá a la papelera." : "Volverá a aparecer en la lista de activos.";
+    final actionColor = isDeleting ? Colors.red : Colors.green;
+
+    final confirm = await showDialog(
+      context: context, 
+      builder: (ctx) => AlertDialog(
+        title: Text(title),
+        content: Text(content),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Cancelar")),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true), 
+            style: ElevatedButton.styleFrom(backgroundColor: actionColor, foregroundColor: Colors.white),
+            child: Text(isDeleting ? "Eliminar" : "Reactivar")
+          ),
+        ],
+      )
+    );
+
+    if (confirm == true) {
+      String? error;
+      if (isDeleting) {
+        error = await provider.deleteClient(cliente.idCliente);
+      } else {
+        error = await provider.recoverClient(cliente.idCliente);
+      }
+      
+      if (context.mounted) {
+        if (error == null) {
+          _mostrarSnack(isDeleting ? "Paciente borrado" : "Paciente reactivado", Colors.green);
+        } else {
+          _mostrarSnack(error, Colors.red);
+        }
+      }
+    }
+  }
+}
+
+// -----------------------------------------------------------
+// WIDGET EXTRA: BOTÓN HOVERABLE (Igual que en Auditoría pero adaptado)
+// -----------------------------------------------------------
+class _HoverableActionButton extends StatefulWidget {
+  final VoidCallback onTap;
+  final String label;
+  final IconData icon;
+  final bool isPrimary;
+
+  const _HoverableActionButton({
+    required this.onTap, required this.label, required this.icon, this.isPrimary = false,
+  });
+
+  @override
+  State<_HoverableActionButton> createState() => _HoverableActionButtonState();
+}
+
+class _HoverableActionButtonState extends State<_HoverableActionButton> {
+  bool _isHovering = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovering = true),
+      onExit: (_) => setState(() => _isHovering = false),
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: BoxDecoration(
+            color: widget.isPrimary 
+                ? (_isHovering ? AppTheme.primaryColor.withOpacity(0.9) : AppTheme.primaryColor)
+                : (_isHovering ? Colors.grey.shade100 : Colors.transparent),
+            borderRadius: BorderRadius.circular(8),
+            // Sombra suave si es primario
+            boxShadow: widget.isPrimary 
+              ? [BoxShadow(color: AppTheme.primaryColor.withOpacity(0.3), blurRadius: 4, offset: const Offset(0, 2))]
+              : null
+          ),
+          child: Row(
+            children: [
+              Icon(widget.icon, 
+                size: 18, 
+                color: widget.isPrimary ? Colors.white : Colors.grey
+              ),
+              const SizedBox(width: 8),
+              Text(
+                widget.label,
+                style: TextStyle(
+                  color: widget.isPrimary ? Colors.white : Colors.grey.shade700,
+                  fontWeight: FontWeight.w600
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

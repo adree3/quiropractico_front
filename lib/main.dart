@@ -6,6 +6,7 @@ import 'package:quiropractico_front/config/router/app_router.dart';
 import 'package:quiropractico_front/config/theme/app_theme.dart';
 import 'package:quiropractico_front/providers/agenda_bloqueo_provider.dart';
 import 'package:quiropractico_front/providers/agenda_provider.dart';
+import 'package:quiropractico_front/providers/auditoria_provider.dart';
 import 'package:quiropractico_front/providers/auth_provider.dart';
 import 'package:quiropractico_front/providers/clients_provider.dart';
 import 'package:quiropractico_front/providers/historial_provider.dart';
@@ -35,6 +36,7 @@ void main() async{
         ChangeNotifierProvider(create: (_) => HistorialProvider()),
         ChangeNotifierProvider(create: (_) => StatsProvider()),
         ChangeNotifierProvider(create: (_) => AgendaBloqueoProvider()),
+        ChangeNotifierProvider(create: (_) => AuditoriaProvider()),
       ],
       child: const MyApp(),
     )
