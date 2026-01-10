@@ -62,6 +62,7 @@ class _AuditoriaViewState extends State<AuditoriaView> {
             ),
             child: Row(
               children: [
+                const SizedBox(width: 10),
                 Icon(Icons.receipt_long_outlined, size: 24, color: Colors.grey.shade700),
                 const SizedBox(width: 10),
                 Text(

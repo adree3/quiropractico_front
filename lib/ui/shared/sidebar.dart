@@ -14,7 +14,7 @@ class Sidebar extends StatelessWidget {
     final String location = GoRouterState.of(context).uri.toString();
     
     final authProvider = Provider.of<AuthProvider>(context);
-    final pagosPendientes = Provider.of<PaymentsProvider>(context).pendientes.length;
+    final pagosPendientes = Provider.of<PaymentsProvider>(context).listaPendientes.length;
     final alertasEquipo = Provider.of<UsersProvider>(context).blockedCountDisplay;
 
     final String? userRole = authProvider.role; 
