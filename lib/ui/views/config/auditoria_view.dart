@@ -7,7 +7,7 @@ import 'package:intl/intl.dart';
 import 'package:quiropractico_front/models/auditoria_log.dart';
 import 'package:quiropractico_front/providers/auditoria_provider.dart';
 import 'package:quiropractico_front/ui/widgets/custom_snackbar.dart';
-
+import 'package:quiropractico_front/ui/widgets/dashboard_dropdown.dart';
 
 class AuditoriaView extends StatefulWidget {
   const AuditoriaView({super.key});
@@ -17,14 +17,13 @@ class AuditoriaView extends StatefulWidget {
 }
 
 class _AuditoriaViewState extends State<AuditoriaView> {
-
   Timer? _debounce;
   final searchCtrl = TextEditingController();
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-       Provider.of<AuditoriaProvider>(context, listen: false).getLogs(page: 0);
+      Provider.of<AuditoriaProvider>(context, listen: false).getLogs(page: 0);
     });
   }
 
@@ -62,17 +61,23 @@ class _AuditoriaViewState extends State<AuditoriaView> {
             ),
             child: Row(
               children: [
-                const SizedBox(width: 10),
-                Icon(Icons.receipt_long_outlined, size: 24, color: Colors.grey.shade700),
+                const SizedBox(height: 40, width: 10),
+                Icon(
+                  Icons.receipt_long_outlined,
+                  size: 24,
+                  color: Colors.grey.shade700,
+                ),
                 const SizedBox(width: 10),
                 Text(
-                  'Registros', 
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)
+                  'Registros',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(width: 20),
                 Container(width: 1, height: 30, color: Colors.grey.shade300),
                 const SizedBox(width: 20),
-                // Buscador 
+                // Buscador
                 Expanded(
                   child: TextField(
                     controller: searchCtrl,
@@ -82,16 +87,21 @@ class _AuditoriaViewState extends State<AuditoriaView> {
                       border: InputBorder.none,
                       isDense: true,
                       contentPadding: const EdgeInsets.symmetric(vertical: 14),
-                      suffixIcon: searchCtrl.text.isNotEmpty 
-                        ? IconButton(
-                            icon: const Icon(Icons.clear, size: 18, color: Colors.grey),
-                            onPressed: () {
-                              searchCtrl.clear();
-                              _debounce?.cancel();
-                              provider.setSearch('');
-                            },
-                          )
-                        : null,
+                      suffixIcon:
+                          searchCtrl.text.isNotEmpty
+                              ? IconButton(
+                                icon: const Icon(
+                                  Icons.clear,
+                                  size: 18,
+                                  color: Colors.grey,
+                                ),
+                                onPressed: () {
+                                  searchCtrl.clear();
+                                  _debounce?.cancel();
+                                  provider.setSearch('');
+                                },
+                              )
+                              : null,
                     ),
                     onChanged: _onSearchChanged,
                   ),
@@ -114,9 +124,12 @@ class _AuditoriaViewState extends State<AuditoriaView> {
                     if (picked != null) provider.setFecha(picked);
                   },
                   onClear: () => provider.setFecha(null),
-                  label: provider.fechaSeleccionada != null 
-                    ? DateFormat('dd/MM/yyyy').format(provider.fechaSeleccionada!)
-                    : "Fecha",
+                  label:
+                      provider.fechaSeleccionada != null
+                          ? DateFormat(
+                            'dd/MM/yyyy',
+                          ).format(provider.fechaSeleccionada!)
+                          : "Fecha",
                   icon: Icons.calendar_today,
                 ),
 
@@ -126,12 +139,12 @@ class _AuditoriaViewState extends State<AuditoriaView> {
 
                 // Filtro entidad
                 _buildPrettyDropdown(provider),
-                
+
                 const SizedBox(width: 10),
               ],
             ),
           ),
-          
+
           const SizedBox(height: 20),
 
           // Tabla + paginador
@@ -141,47 +154,102 @@ class _AuditoriaViewState extends State<AuditoriaView> {
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(10),
-                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 5))]
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 5),
+                  ),
+                ],
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(10),
-                child: provider.isLoading
-                  ? const SizedBox(
-                    height: 400,
-                    child: Center(child: CircularProgressIndicator())
-                  )
-                  : logs.isEmpty
-                      ? const SizedBox(
-                          height: 200,
-                          child: Center(child: Text("No hay logs disponibles"))
+                child:
+                    provider.isLoading
+                        ? const SizedBox(
+                          height: 400,
+                          child: Center(child: CircularProgressIndicator()),
                         )
-                      : Column(
-                        children: [
-                          Expanded(
-                            child: SingleChildScrollView(
-                              child: SizedBox(
-                                width: double.infinity,
-                                child: DataTable(
-                                  headingRowColor: MaterialStateProperty.all(Colors.grey[100]),
-                                  dataRowMinHeight: 60,
-                                  dataRowMaxHeight: 60,
-                                  headingRowHeight: 50,
-                                  dividerThickness: 0.5,
-                                  columnSpacing: 20,
-                                  columns: const [
-                                    DataColumn(label: Text('Fecha', style: TextStyle(fontWeight: FontWeight.bold))),
-                                    DataColumn(label: Text('Usuario', style: TextStyle(fontWeight: FontWeight.bold))),
-                                    DataColumn(label: Text('Acción', style: TextStyle(fontWeight: FontWeight.bold))),
-                                    DataColumn(label: Text('Entidad', style: TextStyle(fontWeight: FontWeight.bold))),
-                                    DataColumn(label: Expanded(child: Text('Detalle', style: TextStyle(fontWeight: FontWeight.bold)))),
-                                  ],
-                                  rows: logs.map((log) => _buildDataRow(log, context)).toList(),
+                        : logs.isEmpty
+                        ? const SizedBox(
+                          height: 200,
+                          child: Center(child: Text("No hay logs disponibles")),
+                        )
+                        : Column(
+                          children: [
+                            Expanded(
+                              child: SingleChildScrollView(
+                                child: SizedBox(
+                                  width: double.infinity,
+                                  child: DataTable(
+                                    headingRowColor: WidgetStateProperty.all(Color(0xFF00AEEF)),
+                                    dataRowMinHeight: 60,
+                                    dataRowMaxHeight: 60,
+                                    headingRowHeight: 50,
+                                    dividerThickness: 0.5,
+                                    columnSpacing: 20,
+                                    columns: const [
+                                      DataColumn(
+                                        label: Text(
+                                          'Fecha',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ),
+                                      DataColumn(
+                                        label: Text(
+                                          'Usuario',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ),
+                                      DataColumn(
+                                        label: Text(
+                                          'Acción',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ),
+                                      DataColumn(
+                                        label: Text(
+                                          'Entidad',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ),
+                                      DataColumn(
+                                        label: Expanded(
+                                          child: Text(
+                                            'Detalle',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                    rows:
+                                        logs
+                                            .map(
+                                              (log) =>
+                                                  _buildDataRow(log, context),
+                                            )
+                                            .toList(),
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                        ],
-                      ),
+                          ],
+                        ),
               ),
             ),
           ),
@@ -208,44 +276,34 @@ class _AuditoriaViewState extends State<AuditoriaView> {
       "WHATSAPP",
       "HISTORIAL_CLINICO",
       "SERVICIO",
-      "GRUPO_FAMILIAR"
-    ];
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String?>(
-          value: provider.filtroEntidad,
-          hint: Row(children: const [
-             Icon(Icons.filter_list, size: 18, color: Colors.grey),
-             SizedBox(width: 8),
-             Text("Filtrar")
-          ]),
-          icon: const Icon(Icons.keyboard_arrow_down, color: Colors.grey),
-          style: const TextStyle(color: Colors.black87, fontSize: 14),
-          // Lista de opciones
-          items: [
-            const DropdownMenuItem(
-              value: null, 
-              child: Row(children: [
-                Icon(Icons.list, size: 18, color: Colors.grey), 
-                SizedBox(width: 10), 
-                Text("Todos")
-              ])
-            ),
-            ...entidades.map((entidad) => DropdownMenuItem(
-              value: entidad,
-              child: Row(
-                children: [
-                  Icon(_getIconForEntity(entidad), size: 18, color: _getColorForEntity(entidad)),
-                  const SizedBox(width: 10),
-                  Text(_formatEntityName(entidad), style: const TextStyle(fontWeight: FontWeight.w500)),
-                ],
-              ),
-            ))
-          ],
-          onChanged: (val) => provider.setFiltroEntidad(val),
+      "GRUPO_FAMILIAR",
+    ]; // Could move this to a static const or provider getter
+
+    final options = <DropdownOption<String?>>[
+      const DropdownOption(
+        value: null,
+        label: "Todos",
+        icon: Icons.list,
+        color: Colors.grey,
+      ),
+      ...entidades.map(
+        (entidad) => DropdownOption(
+          value: entidad,
+          label: _formatEntityName(entidad),
+          icon: _getIconForEntity(entidad),
+          color: _getColorForEntity(entidad),
         ),
       ),
+    ];
+
+    return DashboardDropdown<String?>(
+      selectedValue: provider.filtroEntidad,
+      customLabel:
+          provider.filtroEntidad == null
+              ? "Todos"
+              : null, 
+      onSelected: (val) => provider.setFiltroEntidad(val),
+      options: options,
     );
   }
 
@@ -263,26 +321,34 @@ class _AuditoriaViewState extends State<AuditoriaView> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(10),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 5, offset: const Offset(0, 2))
-        ]
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 5,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
           Text(
             'Mostrando $start - $end de ${provider.totalElements} registros',
-            style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.w500),
+            style: const TextStyle(
+              color: Colors.grey,
+              fontWeight: FontWeight.w500,
+            ),
           ),
-          
+
           const Spacer(),
-          
+
           IconButton(
-            onPressed: provider.currentPage > 0 
-              ? () => provider.getLogs(page: provider.currentPage - 1)
-              : null,
+            onPressed:
+                provider.currentPage > 0
+                    ? () => provider.getLogs(page: provider.currentPage - 1)
+                    : null,
             icon: const Icon(Icons.chevron_left),
           ),
-          
+
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 10),
             child: Text(
@@ -292,9 +358,11 @@ class _AuditoriaViewState extends State<AuditoriaView> {
           ),
 
           IconButton(
-            onPressed: (provider.currentPage + 1) * provider.pageSize < provider.totalElements
-              ? () => provider.getLogs(page: provider.currentPage + 1)
-              : null,
+            onPressed:
+                (provider.currentPage + 1) * provider.pageSize <
+                        provider.totalElements
+                    ? () => provider.getLogs(page: provider.currentPage + 1)
+                    : null,
             icon: const Icon(Icons.chevron_right),
           ),
         ],
@@ -306,81 +374,108 @@ class _AuditoriaViewState extends State<AuditoriaView> {
   DataRow _buildDataRow(AuditoriaLog log, BuildContext context) {
     final DateFormat dateFormat = DateFormat('dd/MM/yyyy HH:mm');
 
-    return DataRow(cells: [
-      DataCell(Text(dateFormat.format(log.fechaHora), style: const TextStyle(fontWeight: FontWeight.w500))),
-      
-      DataCell(Row(
-        children: [
-          CircleAvatar(
-            radius: 14,
-            backgroundColor: _getColorHash(log.usernameResponsable),
-            child: Text(
-              (log.usernameResponsable ?? "S")[0].toUpperCase(),
-              style: const TextStyle(fontSize: 12, color: Colors.white),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Text(log.usernameResponsable ?? "Sistema", style: const TextStyle(fontSize: 13)),
-        ],
-      )),
-      
-      DataCell(_buildActionBadge(log.accion)),
-      
-      DataCell(Row(
-        children: [
-          Icon(_getIconForEntity(log.entidad), size: 18, color: _getColorForEntity(log.entidad)),
-          const SizedBox(width: 8),
+    return DataRow(
+      cells: [
+        DataCell(
           Text(
-            _formatEntityName(log.entidad),
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)
+            dateFormat.format(log.fechaHora),
+            style: const TextStyle(fontWeight: FontWeight.w500),
           ),
-          ],
-      )),
-      
-      // Detalles
-      DataCell(
-        SizedBox(
-          width: 350, 
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        ),
+
+        DataCell(
+          Row(
             children: [
-              Expanded(
-                child: Tooltip(
-                  message: log.detalles ?? "",
-                  waitDuration: const Duration(milliseconds: 500),
-                  child: Text(
-                    log.detalles ?? "-",
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: Colors.grey[800], fontSize: 13),
-                  ),
+              CircleAvatar(
+                radius: 14,
+                backgroundColor: _getColorHash(log.usernameResponsable),
+                child: Text(
+                  (log.usernameResponsable ?? "S")[0].toUpperCase(),
+                  style: const TextStyle(fontSize: 12, color: Colors.white),
                 ),
               ),
-              const SizedBox(width: 10),
-              // Botón Copiar
-              if (log.detalles != null && log.detalles!.isNotEmpty)
-                SizedBox(
-                  width: 24, height: 24,
-                  child: IconButton(
-                    padding: EdgeInsets.zero,
-                    icon: const Icon(Icons.copy, size: 16, color: Colors.grey),
-                    tooltip: "Copiar",
-                    onPressed: () {
-                      Clipboard.setData(ClipboardData(text: log.detalles!));
-                      CustomSnackBar.show(context, 
-                        message: "Copiado al portapapeles", 
-                        type: SnackBarType.info
-                      );
-                    },
-                  ),
-                )
+              const SizedBox(width: 8),
+              Text(
+                log.usernameResponsable ?? "Sistema",
+                style: const TextStyle(fontSize: 13),
+              ),
             ],
           ),
-        )
-      ),
-    ]);
+        ),
+
+        DataCell(_buildActionBadge(log.accion)),
+
+        DataCell(
+          Row(
+            children: [
+              Icon(
+                _getIconForEntity(log.entidad),
+                size: 18,
+                color: _getColorForEntity(log.entidad),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                _formatEntityName(log.entidad),
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // Detalles
+        DataCell(
+          SizedBox(
+            width: 350,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Tooltip(
+                    message: log.detalles ?? "",
+                    waitDuration: const Duration(milliseconds: 500),
+                    child: Text(
+                      log.detalles ?? "-",
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: Colors.grey[800], fontSize: 13),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                // Botón Copiar
+                if (log.detalles != null && log.detalles!.isNotEmpty)
+                  SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: IconButton(
+                      padding: EdgeInsets.zero,
+                      icon: const Icon(
+                        Icons.copy,
+                        size: 16,
+                        color: Colors.grey,
+                      ),
+                      tooltip: "Copiar",
+                      onPressed: () {
+                        Clipboard.setData(ClipboardData(text: log.detalles!));
+                        CustomSnackBar.show(
+                          context,
+                          message: "Copiado al portapapeles",
+                          type: SnackBarType.info,
+                        );
+                      },
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
   }
-  
+
   // Helpers visuales
   String _formatEntityName(String entidad) {
     switch (entidad) {
@@ -406,68 +501,127 @@ class _AuditoriaViewState extends State<AuditoriaView> {
             .replaceAll("_", " ")
             .toLowerCase()
             .split(' ')
-            .map((word) => word.isNotEmpty ? '${word[0].toUpperCase()}${word.substring(1)}' : '')
+            .map(
+              (word) =>
+                  word.isNotEmpty
+                      ? '${word[0].toUpperCase()}${word.substring(1)}'
+                      : '',
+            )
             .join(' ');
     }
   }
 
   IconData _getIconForEntity(String entidad) {
     switch (entidad) {
-      case 'CITA': return Icons.calendar_month;
-      case 'SESION': return Icons.vpn_key;
-      case 'BONO': return Icons.card_membership;
-      case 'HORARIO': return Icons.schedule;
-      case 'BLOQUEO_AGENDA': return Icons.block;
-      case 'PAGO': return Icons.euro;
-      case 'USUARIO': return Icons.badge_outlined;
-      case 'CLIENTE': return Icons.person_outline;
-      case 'WHATSAPP': return Icons.chat_bubble_outline;
-      case 'HISTORIAL_CLINICO': return Icons.medical_services_outlined;
-      case 'SERVICIO': return Icons.price_change_outlined;
-      case 'GRUPO_FAMILIAR': return Icons.diversity_3;
-      
-      default: return Icons.extension_outlined;
+      case 'CITA':
+        return Icons.calendar_month;
+      case 'SESION':
+        return Icons.vpn_key;
+      case 'BONO':
+        return Icons.card_membership;
+      case 'HORARIO':
+        return Icons.schedule;
+      case 'BLOQUEO_AGENDA':
+        return Icons.block;
+      case 'PAGO':
+        return Icons.euro;
+      case 'USUARIO':
+        return Icons.badge_outlined;
+      case 'CLIENTE':
+        return Icons.person_outline;
+      case 'WHATSAPP':
+        return Icons.chat_bubble_outline;
+      case 'HISTORIAL_CLINICO':
+        return Icons.medical_services_outlined;
+      case 'SERVICIO':
+        return Icons.price_change_outlined;
+      case 'GRUPO_FAMILIAR':
+        return Icons.diversity_3;
+
+      default:
+        return Icons.extension_outlined;
     }
   }
 
   Color _getColorForEntity(String entidad) {
     switch (entidad) {
-      case 'CITA': return Colors.blue;
-      case 'SESION': return Colors.teal;
-      case 'BONO': return Colors.orange;
-      case 'HORARIO': return Colors.blueGrey; 
-      case 'BLOQUEO_AGENDA': return Colors.red; 
-      case 'PAGO': return Colors.green;
-      case 'USUARIO': return Colors.deepPurple;
-      case 'CLIENTE': return Colors.cyan;
-      case 'WHATSAPP': return Colors.purple;
-      case 'HISTORIAL_CLINICO': return Colors.indigo;
-      case 'SERVICIO': return Colors.deepOrange;
-      case 'GRUPO_FAMILIAR': return Colors.pinkAccent;
-      
-      default: return Colors.grey;
+      case 'CITA':
+        return Colors.blue;
+      case 'SESION':
+        return Colors.teal;
+      case 'BONO':
+        return Colors.orange;
+      case 'HORARIO':
+        return Colors.blueGrey;
+      case 'BLOQUEO_AGENDA':
+        return Colors.red;
+      case 'PAGO':
+        return Colors.green;
+      case 'USUARIO':
+        return Colors.deepPurple;
+      case 'CLIENTE':
+        return Colors.cyan;
+      case 'WHATSAPP':
+        return Colors.purple;
+      case 'HISTORIAL_CLINICO':
+        return Colors.indigo;
+      case 'SERVICIO':
+        return Colors.deepOrange;
+      case 'GRUPO_FAMILIAR':
+        return Colors.pinkAccent;
+
+      default:
+        return Colors.grey;
     }
   }
 
   Widget _buildActionBadge(String accion) {
     Color color;
     switch (accion) {
-      case 'CREAR': case 'VENTA': case 'REACTIVAR': case 'UNLOCK': color = Colors.green; break;
-      case 'EDITAR': case 'LOGIN': case 'CONSUMO': color = Colors.blue; break;
-      case 'ELIMINAR_FISICO': case 'ELIMINAR_LOGICO': case 'BLOQUEADO': case 'ERROR': color = Colors.red; break;
-      case 'NOTIFICACION': color = Colors.purple; break;
-      default: color = Colors.grey;
+      case 'CREAR':
+      case 'VENTA':
+      case 'REACTIVAR':
+      case 'UNLOCK':
+        color = Colors.green;
+        break;
+      case 'EDITAR':
+      case 'LOGIN':
+      case 'CONSUMO':
+        color = Colors.blue;
+        break;
+      case 'ELIMINAR_FISICO':
+      case 'ELIMINAR_LOGICO':
+      case 'BLOQUEADO':
+      case 'ERROR':
+        color = Colors.red;
+        break;
+      case 'NOTIFICACION':
+        color = Colors.purple;
+        break;
+      default:
+        color = Colors.grey;
     }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(4), border: Border.all(color: color.withOpacity(0.3))),
-      child: Text(accion, style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold)),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Text(
+        accion,
+        style: TextStyle(
+          color: color,
+          fontSize: 10,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
     );
   }
 
   Color _getColorHash(String? text) {
-     if (text == null) return Colors.grey;
-     return Colors.primaries[text.hashCode % Colors.primaries.length];
+    if (text == null) return Colors.grey;
+    return Colors.primaries[text.hashCode % Colors.primaries.length];
   }
 }
 
@@ -505,26 +659,29 @@ class _HoverableFilterButtonState extends State<_HoverableFilterButton> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
-            color: widget.isActive 
-                ? Colors.blue.shade50 
-                : (_isHovering ? Colors.grey.shade100 : Colors.transparent),
+            color:
+                widget.isActive
+                    ? Colors.blue.shade50
+                    : (_isHovering ? Colors.grey.shade100 : Colors.transparent),
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
-              color: widget.isActive ? Colors.blue.shade200 : Colors.transparent
-            )
+              color:
+                  widget.isActive ? Colors.blue.shade200 : Colors.transparent,
+            ),
           ),
           child: Row(
             children: [
-              Icon(widget.icon, 
-                size: 18, 
-                color: widget.isActive ? Colors.blue : Colors.grey
+              Icon(
+                widget.icon,
+                size: 18,
+                color: widget.isActive ? Colors.blue : Colors.grey,
               ),
               const SizedBox(width: 5),
               Text(
                 widget.label,
                 style: TextStyle(
                   color: widget.isActive ? Colors.blue : Colors.grey.shade700,
-                  fontWeight: FontWeight.w500
+                  fontWeight: FontWeight.w500,
                 ),
               ),
               if (widget.isActive && widget.onClear != null)
@@ -532,9 +689,13 @@ class _HoverableFilterButtonState extends State<_HoverableFilterButton> {
                   padding: const EdgeInsets.only(left: 5),
                   child: GestureDetector(
                     onTap: widget.onClear,
-                    child: const Icon(Icons.close, size: 16, color: Colors.blue),
+                    child: const Icon(
+                      Icons.close,
+                      size: 16,
+                      color: Colors.blue,
+                    ),
                   ),
-                )
+                ),
             ],
           ),
         ),

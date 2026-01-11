@@ -303,7 +303,8 @@ class _VacacionesCalendarViewState extends State<VacacionesCalendarView> {
                       // Botones Modo Normal 
                       IconButton(
                         tooltip: "Borrar en lote",
-                        icon: const Icon(Icons.checklist_rtl, color: Colors.grey),
+                        icon: const Icon(Icons.delete_sweep_rounded, color: Colors.grey),
+                        color: Colors.red,
                         onPressed: () => setState(() { _isSelectionMode = true; _diasSeleccionados.clear(); }),
                       ),
                       const SizedBox(width: 15),

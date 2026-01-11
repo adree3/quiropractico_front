@@ -3,15 +3,20 @@ import 'package:flutter/material.dart';
 class DropdownOption<T> {
   final T value;
   final String label;
-  final IconData icon;
+  final IconData? icon;
+  final Widget? iconWidget;
   final Color color;
 
   const DropdownOption({
     required this.value,
     required this.label,
-    required this.icon,
+    this.icon,
+    this.iconWidget,
     this.color = Colors.black87,
-  });
+  }) : assert(
+         icon != null || iconWidget != null,
+         'Must provide either icon or iconWidget',
+       );
 }
 
 class DashboardDropdown<T> extends StatelessWidget {
@@ -39,29 +44,42 @@ class DashboardDropdown<T> extends StatelessWidget {
     );
 
     final displayLabel = customLabel ?? selectedOption.label;
-    final displayIcon = customIcon ?? selectedOption.icon;
-    final displayColor =
-        customIcon != null ? Colors.grey : selectedOption.color;
+
+    Widget displayIconWidget;
+    if (customIcon != null) {
+      displayIconWidget = Icon(customIcon, size: 16, color: Colors.grey);
+    } else if (selectedOption.iconWidget != null) {
+      displayIconWidget = selectedOption.iconWidget!;
+    } else {
+      displayIconWidget = Icon(
+        selectedOption.icon,
+        size: 16,
+        color: selectedOption.color,
+      );
+    }
 
     return PopupMenuButton<DropdownOption<T>>(
       offset: const Offset(0, 45),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       onSelected: (option) => onSelected(option.value),
       itemBuilder:
-          (ctx) =>
-              options
-                  .map(
-                    (opt) => PopupMenuItem<DropdownOption<T>>(
-                      value: opt,
-                      child: Row(
-                        children: [
+        (ctx) =>
+            options
+                .map(
+                  (opt) => PopupMenuItem<DropdownOption<T>>(
+                    value: opt,
+                    child: Row(
+                      children: [
+                        if (opt.iconWidget != null)
+                          opt.iconWidget!
+                        else
                           Icon(opt.icon, size: 18, color: opt.color),
-                          const SizedBox(width: 10),
-                          Text(opt.label),
-                        ],
-                      ),
+                        const SizedBox(width: 10),
+                        Text(opt.label),
+                      ],
                     ),
-                  )
+                  ),
+                )
                   .toList(),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
@@ -80,7 +98,7 @@ class DashboardDropdown<T> extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(displayIcon, size: 16, color: displayColor),
+            displayIconWidget,
             const SizedBox(width: 10),
             Text(
               displayLabel,
