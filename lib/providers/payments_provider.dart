@@ -1,19 +1,22 @@
 import 'dart:async';
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:quiropractico_front/config/api_config.dart';
+import 'package:quiropractico_front/services/api_service.dart';
 import 'package:quiropractico_front/models/pago.dart';
-import 'package:quiropractico_front/services/local_storage.dart';
+
 import 'package:quiropractico_front/utils/error_handler.dart';
 
 class PaymentsProvider extends ChangeNotifier {
-  final Dio _dio = Dio();
-  final String _baseUrl = 'http://localhost:8080/api';
+  final String _baseUrl = ApiConfig.baseUrl;
 
   bool isLoading = true;
 
   // KPIS
   double totalCobrado = 0;
   double totalPendiente = 0;
+
+  // Badge global (Sidebar)
+  int globalPendingCount = 0;
 
   // Tabla de pendientes
   List<Pago> listaPendientes = [];
@@ -34,7 +37,9 @@ class PaymentsProvider extends ChangeNotifier {
   final int pageSize = 8;
   Timer? _debounce;
 
-  PaymentsProvider();
+  PaymentsProvider() {
+    checkPendingCount();
+  }
 
   @override
   void dispose() {
@@ -47,13 +52,10 @@ class PaymentsProvider extends ChangeNotifier {
     if (_debounce?.isActive ?? false) _debounce!.cancel();
     _debounce = Timer(const Duration(milliseconds: 500), () {
       currentSearchTerm = query;
-      loadAll(fechaInicio, fechaFin);
+      getPagosPendientes(page: 0);
+      getPagosHistorial(page: 0);
     });
   }
-
-  // Helper para headers
-  Options get _authOptions =>
-      Options(headers: {'Authorization': 'Bearer ${LocalStorage.getToken()}'});
 
   Future<void> loadAll(DateTime start, DateTime end) async {
     fechaInicio = start;
@@ -82,13 +84,12 @@ class PaymentsProvider extends ChangeNotifier {
   // Carga las tarjetas KPIs
   Future<void> _fetchKpis() async {
     try {
-      final response = await _dio.get(
+      final response = await ApiService.dio.get(
         '$_baseUrl/pagos/balance',
         queryParameters: {
           'fechaInicio': fechaInicio.toIso8601String(),
           'fechaFin': fechaFin.toIso8601String(),
         },
-        options: _authOptions,
       );
 
       if (response.data != null) {
@@ -110,7 +111,7 @@ class PaymentsProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final response = await _dio.get(
+      final response = await ApiService.dio.get(
         '$_baseUrl/pagos',
         queryParameters: {
           'page': page,
@@ -118,7 +119,6 @@ class PaymentsProvider extends ChangeNotifier {
           'pagado': false,
           if (currentSearchTerm.isNotEmpty) 'search': currentSearchTerm,
         },
-        options: _authOptions,
       );
 
       final data = response.data;
@@ -141,7 +141,7 @@ class PaymentsProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final response = await _dio.get(
+      final response = await ApiService.dio.get(
         '$_baseUrl/pagos',
         queryParameters: {
           'page': page,
@@ -151,7 +151,6 @@ class PaymentsProvider extends ChangeNotifier {
           'fechaFin': fechaFin.toIso8601String(),
           if (currentSearchTerm.isNotEmpty) 'search': currentSearchTerm,
         },
-        options: _authOptions,
       );
 
       final data = response.data;
@@ -167,31 +166,45 @@ class PaymentsProvider extends ChangeNotifier {
     }
   }
 
+  // Comprobación ligera para el Sidebar
+  Future<void> checkPendingCount() async {
+    try {
+      final response = await ApiService.dio.get(
+        '$_baseUrl/pagos',
+        queryParameters: {'page': 0, 'size': 1, 'pagado': false},
+      );
+      if (response.data != null && response.data['totalElements'] != null) {
+        globalPendingCount = response.data['totalElements'];
+        notifyListeners();
+      }
+    } catch (e) {
+      print("Error comprobando badge pagos: $e");
+    }
+  }
+
   Future<String?> confirmarPago(int idPago) async {
     try {
-      // 1. Llamada API
-      await _dio.put(
-        '$_baseUrl/pagos/$idPago/confirmar',
-        options: _authOptions,
-      );
+      await ApiService.dio.put('$_baseUrl/pagos/$idPago/confirmar');
 
-      // 2. Actualización Optimista (Local)
       final index = listaPendientes.indexWhere((p) => p.idPago == idPago);
       if (index != -1) {
         final pago = listaPendientes[index];
 
-        // Actualizar KPIs
         totalCobrado += pago.monto;
         totalPendiente -= pago.monto;
 
-        // Remover de la lista
         listaPendientes.removeAt(index);
         totalPendientesCount--;
 
-        notifyListeners(); // Actualiza UI inmediatamente sin spinner global
+        notifyListeners();
+        checkPendingCount();
+
+        // 3. Comprobar si la página se ha quedado vacía
+        if (listaPendientes.isEmpty && pagePendientes > 0) {
+          getPagosPendientes(page: pagePendientes - 1);
+        }
       }
 
-      // 3. Actualizar Historial en segundo plano (silencioso)
       getPagosHistorial(page: 0);
 
       return null;

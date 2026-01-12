@@ -1,12 +1,13 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:quiropractico_front/config/api_config.dart';
+import 'package:quiropractico_front/services/api_service.dart';
 import 'package:quiropractico_front/models/bloqueo_agenda.dart';
-import 'package:quiropractico_front/services/local_storage.dart';
+
 import 'package:quiropractico_front/utils/error_handler.dart';
 
 class AgendaBloqueoProvider extends ChangeNotifier {
-  final Dio _dio = Dio();
-  final String _baseUrl = 'http://localhost:8080/api';
+  final String _baseUrl = ApiConfig.baseUrl;
 
   List<BloqueoAgenda> bloqueos = [];
   bool isLoading = true;
@@ -15,18 +16,11 @@ class AgendaBloqueoProvider extends ChangeNotifier {
     loadBloqueos();
   }
 
-  Options get _authOptions => Options(headers: {
-    'Authorization': 'Bearer ${LocalStorage.getToken()}'
-  });
-
   Future<void> loadBloqueos() async {
     isLoading = true;
     notifyListeners();
     try {
-      final response = await _dio.get(
-        '$_baseUrl/agenda/bloqueos', 
-        options: _authOptions
-      );
+      final response = await ApiService.dio.get('$_baseUrl/agenda/bloqueos');
       final List<dynamic> data = response.data;
       bloqueos = data.map((e) => BloqueoAgenda.fromJson(e)).toList();
     } catch (e) {
@@ -37,21 +31,22 @@ class AgendaBloqueoProvider extends ChangeNotifier {
     }
   }
 
-  // CREAR 
-  Future<String?> crearBloqueo(DateTime inicio, DateTime fin, String motivo, int? idQuiro) async {
+  // CREAR
+  Future<String?> crearBloqueo(
+    DateTime inicio,
+    DateTime fin,
+    String motivo,
+    int? idQuiro,
+  ) async {
     try {
       final data = {
         "fechaInicio": inicio.toIso8601String(),
         "fechaFin": fin.toIso8601String(),
         "motivo": motivo,
-        "idQuiropractico": idQuiro
+        "idQuiropractico": idQuiro,
       };
 
-      await _dio.post(
-        '$_baseUrl/agenda/bloqueos', 
-        data: data, 
-        options: _authOptions
-      );
+      await ApiService.dio.post('$_baseUrl/agenda/bloqueos', data: data);
       await loadBloqueos();
       return null;
     } catch (e) {
@@ -62,33 +57,35 @@ class AgendaBloqueoProvider extends ChangeNotifier {
   // BORRAR
   Future<String?> borrarBloqueo(int id) async {
     try {
-      await _dio.delete(
-        '$_baseUrl/agenda/bloqueos/$id', 
-        options: _authOptions
-      );
+      await ApiService.dio.delete('$_baseUrl/agenda/bloqueos/$id');
       await loadBloqueos();
       return null;
     } catch (e) {
       return ErrorHandler.extractMessage(e);
     }
   }
-  
-  Future<String?> editarBloqueo(int idBloqueo, DateTime inicio, DateTime fin, String motivo, int? idUsuario) async {
+
+  Future<String?> editarBloqueo(
+    int idBloqueo,
+    DateTime inicio,
+    DateTime fin,
+    String motivo,
+    int? idUsuario,
+  ) async {
     try {
       final data = {
         "fechaInicio": inicio.toIso8601String(),
         "fechaFin": fin.toIso8601String(),
         "motivo": motivo,
-        "idQuiropractico": idUsuario
+        "idQuiropractico": idUsuario,
       };
-      
-      await _dio.put(
-        '$_baseUrl/agenda/bloqueos/$idBloqueo', 
-        data: data, 
-        options: _authOptions
+
+      await ApiService.dio.put(
+        '$_baseUrl/agenda/bloqueos/$idBloqueo',
+        data: data,
       );
-      
-      await loadBloqueos(); 
+
+      await loadBloqueos();
       return null;
     } catch (e) {
       if (e is DioException) {

@@ -32,6 +32,9 @@ dependencies:
   syncfusion_flutter_charts: ^31.1.19
   flutter_localizations:
     sdk: flutter
+  dio_cache_interceptor: ^3.5.1
+  dio_cache_interceptor_hive_store: ^4.0.0
+  path_provider: ^2.1.5
 
 dev_dependencies:
   flutter_test:

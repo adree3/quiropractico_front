@@ -1,12 +1,12 @@
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import 'package:quiropractico_front/models/servicio.dart'; // Asegúrate de tener este modelo
-import 'package:quiropractico_front/services/local_storage.dart';
+import 'package:quiropractico_front/config/api_config.dart';
+import 'package:quiropractico_front/services/api_service.dart';
+import 'package:quiropractico_front/models/servicio.dart';
+
 import 'package:quiropractico_front/utils/error_handler.dart';
 
 class ServicesProvider extends ChangeNotifier {
-  final Dio _dio = Dio();
-  final String _baseUrl = 'http://localhost:8080/api';
+  final String _baseUrl = ApiConfig.baseUrl;
 
   List<Servicio> servicios = [];
   bool isLoading = true;
@@ -15,11 +15,6 @@ class ServicesProvider extends ChangeNotifier {
   ServicesProvider() {
     loadServices();
   }
-
-  // Helper para headers
-  Options get _authOptions => Options(headers: {
-    'Authorization': 'Bearer ${LocalStorage.getToken()}'
-  });
 
   // Cargar servicios ordenados
   Future<void> loadServices() async {
@@ -32,10 +27,9 @@ class ServicesProvider extends ChangeNotifier {
         params['activo'] = filterActive;
       }
 
-      final response = await _dio.get(
-        '$_baseUrl/servicios', 
+      final response = await ApiService.dio.get(
+        '$_baseUrl/servicios',
         queryParameters: params,
-        options: _authOptions
       );
 
       final List<dynamic> data = response.data;
@@ -43,7 +37,7 @@ class ServicesProvider extends ChangeNotifier {
       tempList.sort((a, b) {
         bool aEsSesion = a.sesiones == null;
         bool bEsSesion = b.sesiones == null;
-        
+
         if (aEsSesion && !bEsSesion) return -1;
         if (!aEsSesion && bEsSesion) return 1;
 
@@ -65,21 +59,22 @@ class ServicesProvider extends ChangeNotifier {
   }
 
   // CREAR
-  Future<String?> createService(String nombre, double precio, String tipo, int? sesiones) async {
+  Future<String?> createService(
+    String nombre,
+    double precio,
+    String tipo,
+    int? sesiones,
+  ) async {
     try {
       final data = {
         "nombreServicio": nombre,
         "precio": precio,
         "tipo": tipo,
-        "sesionesIncluidas": sesiones
+        "sesionesIncluidas": sesiones,
       };
 
-      await _dio.post(
-        '$_baseUrl/servicios',
-        data: data,
-        options: _authOptions
-      );
-      
+      await ApiService.dio.post('$_baseUrl/servicios', data: data);
+
       await loadServices();
       return null;
     } catch (e) {
@@ -88,21 +83,23 @@ class ServicesProvider extends ChangeNotifier {
   }
 
   // EDITAR
-  Future<String?> updateService(int id, String nombre, double precio, String tipo, int? sesiones) async {
+  Future<String?> updateService(
+    int id,
+    String nombre,
+    double precio,
+    String tipo,
+    int? sesiones,
+  ) async {
     try {
-       final data = {
+      final data = {
         "nombreServicio": nombre,
         "precio": precio,
         "tipo": tipo,
-        "sesionesIncluidas": sesiones
+        "sesionesIncluidas": sesiones,
       };
 
-      await _dio.put(
-        '$_baseUrl/servicios/$id',
-        data: data,
-        options: _authOptions
-      );
-      
+      await ApiService.dio.put('$_baseUrl/servicios/$id', data: data);
+
       await loadServices();
       return null;
     } catch (e) {
@@ -113,13 +110,10 @@ class ServicesProvider extends ChangeNotifier {
   // BORRAR
   Future<String?> deleteService(int id) async {
     try {
-      await _dio.delete(
-        '$_baseUrl/servicios/$id', 
-        options: _authOptions
-      );
+      await ApiService.dio.delete('$_baseUrl/servicios/$id');
       await loadServices();
       return null;
-    } catch (e) { 
+    } catch (e) {
       return ErrorHandler.extractMessage(e);
     }
   }
@@ -127,13 +121,10 @@ class ServicesProvider extends ChangeNotifier {
   // RECUPERAR
   Future<String?> recoverService(int id) async {
     try {
-      await _dio.put(
-        '$_baseUrl/servicios/$id/recuperar', 
-        options: _authOptions
-        );
+      await ApiService.dio.put('$_baseUrl/servicios/$id/recuperar');
       await loadServices();
       return null;
-    } catch (e) { 
+    } catch (e) {
       return ErrorHandler.extractMessage(e);
     }
   }

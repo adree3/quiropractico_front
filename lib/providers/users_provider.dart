@@ -1,12 +1,13 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:quiropractico_front/config/api_config.dart';
+import 'package:quiropractico_front/services/api_service.dart';
 import 'package:quiropractico_front/models/usuario.dart';
 import 'package:quiropractico_front/services/local_storage.dart';
 import 'package:quiropractico_front/utils/error_handler.dart';
 
 class UsersProvider extends ChangeNotifier {
-  final Dio _dio = Dio();
-  final String _baseUrl = 'http://localhost:8080/api';
+  final String _baseUrl = ApiConfig.baseUrl;
 
   List<Usuario> usuarios = [];
   bool isLoading = true;
@@ -23,33 +24,23 @@ class UsersProvider extends ChangeNotifier {
     getUsers();
   }
 
-  // Helper para headers
-  Options get _authOptions => Options(headers: {
-    'Authorization': 'Bearer ${LocalStorage.getToken()}'
-  });
-
   Future<void> getUsers() async {
     isLoading = true;
     notifyListeners();
     try {
-      final Map<String, dynamic> params = {
-        'page': 0, 
-        'size': 20
-      };
+      final Map<String, dynamic> params = {'page': 0, 'size': 20};
       if (filterActive != null) {
         params['activo'] = filterActive;
       }
 
-      final response = await _dio.get(
+      final response = await ApiService.dio.get(
         '$_baseUrl/usuarios',
         queryParameters: params,
-        options: _authOptions
       );
-      
+
       final List<dynamic> data = response.data['content'];
       usuarios = data.map((e) => Usuario.fromJson(e)).toList();
       await _checkNotifications();
-
     } catch (e) {
       print('Error cargando usuarios: ${ErrorHandler.extractMessage(e)}');
     } finally {
@@ -60,7 +51,9 @@ class UsersProvider extends ChangeNotifier {
 
   Future<void> _checkNotifications() async {
     try {
-      final response = await _dio.get('$_baseUrl/usuarios/bloqueados/count', options: _authOptions);
+      final response = await ApiService.dio.get(
+        '$_baseUrl/usuarios/bloqueados/count',
+      );
       _realBlockedCount = response.data;
 
       final int lastSeen = LocalStorage.getLastSeenBlockedCount();
@@ -78,7 +71,9 @@ class UsersProvider extends ChangeNotifier {
 
   Future<void> checkBlockedCount() async {
     try {
-      final response = await _dio.get('$_baseUrl/usuarios/bloqueados/count', options: _authOptions);
+      final response = await ApiService.dio.get(
+        '$_baseUrl/usuarios/bloqueados/count',
+      );
       blockedCount = response.data;
       notifyListeners();
     } catch (e) {
@@ -89,7 +84,7 @@ class UsersProvider extends ChangeNotifier {
   Future<void> markAsSeen() async {
     if (_showBadge) {
       _showBadge = false;
-      await LocalStorage.saveLastSeenBlockedCount(_realBlockedCount); 
+      await LocalStorage.saveLastSeenBlockedCount(_realBlockedCount);
       notifyListeners();
     }
   }
@@ -101,20 +96,21 @@ class UsersProvider extends ChangeNotifier {
   }
 
   // CREAR
-  Future<String?> createUser(String nombre, String username, String password, String rol) async {
+  Future<String?> createUser(
+    String nombre,
+    String username,
+    String password,
+    String rol,
+  ) async {
     isLoading = true;
     try {
       final data = {
         "nombreCompleto": nombre,
         "username": username,
         "password": password,
-        "rol": rol
+        "rol": rol,
       };
-      await _dio.post(
-        '$_baseUrl/usuarios', 
-        data: data, 
-        options: _authOptions
-      );
+      await ApiService.dio.post('$_baseUrl/usuarios', data: data);
       await getUsers();
       return null;
     } on DioException catch (e) {
@@ -131,21 +127,22 @@ class UsersProvider extends ChangeNotifier {
   }
 
   // EDITAR
-  Future<String?> updateUser(int id, String nombre, String? password, String rol) async {
+  Future<String?> updateUser(
+    int id,
+    String nombre,
+    String? password,
+    String rol,
+  ) async {
     try {
       final data = {
         "nombreCompleto": nombre,
         "rol": rol,
-        if (password != null && password.isNotEmpty) "password": password
+        if (password != null && password.isNotEmpty) "password": password,
       };
-      await _dio.put(
-        '$_baseUrl/usuarios/$id', 
-        data: data, 
-        options: _authOptions
-        );
+      await ApiService.dio.put('$_baseUrl/usuarios/$id', data: data);
       await getUsers();
       return null;
-    } catch (e) { 
+    } catch (e) {
       return ErrorHandler.extractMessage(e);
     }
   }
@@ -153,13 +150,10 @@ class UsersProvider extends ChangeNotifier {
   // DESACTIVAR
   Future<String?> deleteUser(int id) async {
     try {
-      await _dio.delete(
-        '$_baseUrl/usuarios/$id', 
-        options: _authOptions
-      );
+      await ApiService.dio.delete('$_baseUrl/usuarios/$id');
       await getUsers();
       return null;
-    } catch (e) { 
+    } catch (e) {
       return ErrorHandler.extractMessage(e);
     }
   }
@@ -167,13 +161,10 @@ class UsersProvider extends ChangeNotifier {
   // REACTIVAR
   Future<String?> recoverUser(int id) async {
     try {
-      await _dio.put(
-        '$_baseUrl/usuarios/$id/recuperar',
-        options: _authOptions
-        );
+      await ApiService.dio.put('$_baseUrl/usuarios/$id/recuperar');
       await getUsers();
       return null;
-    } catch (e) { 
+    } catch (e) {
       return ErrorHandler.extractMessage(e);
     }
   }
@@ -181,13 +172,10 @@ class UsersProvider extends ChangeNotifier {
   // DESBLOQUEAR
   Future<String?> unlockUser(int id) async {
     try {
-      await _dio.put(
-        '$_baseUrl/usuarios/$id/desbloquear', 
-        options: _authOptions
-      );
-      await getUsers();      
+      await ApiService.dio.put('$_baseUrl/usuarios/$id/desbloquear');
+      await getUsers();
       return null;
-    } catch (e) { 
+    } catch (e) {
       return ErrorHandler.extractMessage(e);
     }
   }

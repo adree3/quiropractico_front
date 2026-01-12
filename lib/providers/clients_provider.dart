@@ -1,17 +1,16 @@
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:quiropractico_front/config/api_config.dart';
+import 'package:quiropractico_front/services/api_service.dart';
 import 'package:quiropractico_front/models/cliente.dart';
-import 'package:quiropractico_front/services/local_storage.dart';
+
 import 'package:quiropractico_front/utils/error_handler.dart';
 
 class ClientsProvider extends ChangeNotifier {
-  
-  final Dio _dio = Dio();
-  final String _baseUrl = 'http://localhost:8080/api';
-  
+  final String _baseUrl = ApiConfig.baseUrl;
+
   List<Cliente> clients = [];
   bool isLoading = true;
-  bool isSearching = false; 
+  bool isSearching = false;
   bool filterActive = true;
   String? errorMessage;
 
@@ -22,29 +21,26 @@ class ClientsProvider extends ChangeNotifier {
   int totalElements = 0;
 
   ClientsProvider() {
-    getPaginatedClients(); 
+    getPaginatedClients();
   }
 
-  Options get _authOptions => Options(headers: {
-    'Authorization': 'Bearer ${LocalStorage.getToken()}'
-  });
-
-  Future<String?> createClient(String nombre, String apellidos, String telefono, String? email, String? direccion) async {
+  Future<String?> createClient(
+    String nombre,
+    String apellidos,
+    String telefono,
+    String? email,
+    String? direccion,
+  ) async {
     try {
-      
       final data = {
         "nombre": nombre,
         "apellidos": apellidos,
         "telefono": telefono,
         "email": email,
-        "direccion": direccion
+        "direccion": direccion,
       };
 
-      await _dio.post(
-        '$_baseUrl/clientes',
-        data: data,
-        options: _authOptions
-      );
+      await ApiService.dio.post('$_baseUrl/clientes', data: data);
 
       getPaginatedClients(page: 0);
       return null;
@@ -52,6 +48,7 @@ class ClientsProvider extends ChangeNotifier {
       return ErrorHandler.extractMessage(e);
     }
   }
+
   Future<void> getPaginatedClients({int page = 0}) async {
     isLoading = true;
     currentPage = page;
@@ -59,19 +56,16 @@ class ClientsProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      
-      final response = await _dio.get(
+      final response = await ApiService.dio.get(
         '$_baseUrl/clientes',
         queryParameters: {
           'activo': filterActive,
           'page': page,
           'size': pageSize,
-          'sort': 'id_cliente,desc' 
+          'sort': 'id_cliente,desc',
         },
-        options: _authOptions
       );
 
-    
       final List<dynamic> data = response.data['content'];
       totalPages = response.data['totalPages'];
       totalElements = response.data['totalElements'];
@@ -84,7 +78,7 @@ class ClientsProvider extends ChangeNotifier {
       notifyListeners();
     }
   }
-  
+
   void nextPage() {
     if (currentPage < totalPages - 1) {
       if (isSearching) {
@@ -107,27 +101,28 @@ class ClientsProvider extends ChangeNotifier {
 
   List<Cliente> filterClients(String query) {
     if (query.isEmpty) return clients;
-    return clients.where((c) => 
-      c.nombre.toLowerCase().contains(query.toLowerCase()) ||
-      c.apellidos.toLowerCase().contains(query.toLowerCase()) ||
-      c.telefono.contains(query)
-    ).toList();
+    return clients
+        .where(
+          (c) =>
+              c.nombre.toLowerCase().contains(query.toLowerCase()) ||
+              c.apellidos.toLowerCase().contains(query.toLowerCase()) ||
+              c.telefono.contains(query),
+        )
+        .toList();
   }
 
   Future<List<Cliente>> searchClientesByName(String query) async {
     if (query.isEmpty) return [];
 
-    try {      
-      final response = await _dio.get(
+    try {
+      final response = await ApiService.dio.get(
         '$_baseUrl/clientes/buscar',
-        queryParameters: {'texto': query}, 
-        options: _authOptions
+        queryParameters: {'texto': query},
       );
 
-      final List<dynamic> data = response.data; 
-      
-      return data.map((json) => Cliente.fromJson(json)).toList();
+      final List<dynamic> data = response.data;
 
+      return data.map((json) => Cliente.fromJson(json)).toList();
     } catch (e) {
       print('Error buscando clientes: $e');
       return [];
@@ -150,25 +145,17 @@ class ClientsProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      
-      final response = await _dio.get(
+      final response = await ApiService.dio.get(
         '$_baseUrl/clientes/buscar-complejo',
-        queryParameters: {
-          'texto': query,
-          'page': page,     
-          'size': pageSize, 
-        },
-        options: _authOptions
-        
+        queryParameters: {'texto': query, 'page': page, 'size': pageSize},
       );
 
       final List<dynamic> data = response.data['content'];
-      
+
       totalPages = response.data['totalPages'];
       totalElements = response.data['totalElements'];
-      
-      clients = data.map((json) => Cliente.fromJson(json)).toList();
 
+      clients = data.map((json) => Cliente.fromJson(json)).toList();
     } catch (e) {
       errorMessage = ErrorHandler.extractMessage(e);
       print('Error en búsqueda global: $errorMessage');
@@ -181,11 +168,8 @@ class ClientsProvider extends ChangeNotifier {
   // Borrado Lógico
   Future<String?> deleteClient(int idCliente) async {
     try {
-      await _dio.delete(
-        '$_baseUrl/clientes/$idCliente', 
-        options: _authOptions
-      );
-      
+      await ApiService.dio.delete('$_baseUrl/clientes/$idCliente');
+
       _refreshCurrentView();
       return null;
     } catch (e) {
@@ -194,33 +178,45 @@ class ClientsProvider extends ChangeNotifier {
   }
 
   void _refreshCurrentView() {
-      if (isSearching) {
-        searchGlobal(currentSearchTerm, page: currentPage);
-      } else {
-        getPaginatedClients(page: currentPage);
-      }
+    if (isSearching) {
+      searchGlobal(currentSearchTerm, page: currentPage);
+    } else {
+      getPaginatedClients(page: currentPage);
+    }
   }
 
   void toggleFilter(bool isActive) {
     filterActive = isActive;
     getPaginatedClients(page: 0);
   }
-  
-  // Editar Cliente
-  Future<String?> updateClient(int id, String nombre, String apellidos, String telefono, String? email, String? direccion) async {
-    try {
-      final data = { "nombre": nombre, "apellidos": apellidos, "telefono": telefono, "email": email, "direccion": direccion };
 
-      final response = await _dio.put( 
+  // Editar Cliente
+  Future<String?> updateClient(
+    int id,
+    String nombre,
+    String apellidos,
+    String telefono,
+    String? email,
+    String? direccion,
+  ) async {
+    try {
+      final data = {
+        "nombre": nombre,
+        "apellidos": apellidos,
+        "telefono": telefono,
+        "email": email,
+        "direccion": direccion,
+      };
+
+      final response = await ApiService.dio.put(
         '$_baseUrl/clientes/$id',
         data: data,
-        options: _authOptions
       );
 
       final index = clients.indexWhere((c) => c.idCliente == id);
       if (index != -1) {
-         clients[index] = Cliente.fromJson(response.data);
-         notifyListeners();
+        clients[index] = Cliente.fromJson(response.data);
+        notifyListeners();
       }
       return null;
     } catch (e) {
@@ -230,15 +226,12 @@ class ClientsProvider extends ChangeNotifier {
 
   Future<String?> recoverClient(int idCliente) async {
     try {
-      await _dio.put(
-        '$_baseUrl/clientes/$idCliente/recuperar', 
-        options: _authOptions
-      );
-      
+      await ApiService.dio.put('$_baseUrl/clientes/$idCliente/recuperar');
+
       _refreshCurrentView();
       return null;
     } catch (e) {
-      return  ErrorHandler.extractMessage(e);
+      return ErrorHandler.extractMessage(e);
     }
   }
 
@@ -246,13 +239,9 @@ class ClientsProvider extends ChangeNotifier {
     try {
       try {
         return clients.firstWhere((c) => c.idCliente == id);
-      } catch (_) {
-      }
+      } catch (_) {}
 
-      final response = await _dio.get(
-        '$_baseUrl/clientes/$id',
-        options: _authOptions
-      );
+      final response = await ApiService.dio.get('$_baseUrl/clientes/$id');
 
       return Cliente.fromJson(response.data);
     } catch (e) {

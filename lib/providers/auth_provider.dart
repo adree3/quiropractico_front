@@ -1,15 +1,15 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:quiropractico_front/config/api_config.dart';
+import 'package:quiropractico_front/services/api_service.dart';
 import 'package:quiropractico_front/models/api_error.dart';
 import 'package:quiropractico_front/services/local_storage.dart';
 
 enum AuthStatus { checking, authenticated, notAuthenticated, locked }
 
 class AuthProvider extends ChangeNotifier {
-  
   AuthStatus authStatus = AuthStatus.checking;
-  final Dio _dio = Dio();
-  final String _baseUrl = 'http://localhost:8080/api';
+  final String _baseUrl = ApiConfig.baseUrl;
   String? role;
 
   String? errorMessage;
@@ -25,13 +25,10 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final response = await _dio.post(
+      final response = await ApiService.dio.post(
         '$_baseUrl/auth/login',
-        data: {
-          'username': username,
-          'password': password
-        },
-        options: Options(validateStatus: (status) => status! < 500)
+        data: {'username': username, 'password': password},
+        options: Options(validateStatus: (status) => status! < 500),
       );
 
       if (response.statusCode == 200) {
@@ -39,13 +36,13 @@ class AuthProvider extends ChangeNotifier {
         final String userRole = response.data['rol'];
         await LocalStorage.saveToken(token);
         await LocalStorage.saveRole(userRole);
-        
+
         role = userRole;
         authStatus = AuthStatus.authenticated;
         isLoginLoading = false;
         notifyListeners();
         return true;
-      } else{
+      } else {
         final apiError = ApiError.fromJson(response.data);
         errorMessage = apiError.message;
         if (apiError.errorType == 'ACCOUNT_LOCKED') {
@@ -56,7 +53,7 @@ class AuthProvider extends ChangeNotifier {
       }
     } on DioException catch (e) {
       authStatus = AuthStatus.notAuthenticated;
-      if (e.type == DioExceptionType.connectionTimeout || 
+      if (e.type == DioExceptionType.connectionTimeout ||
           e.type == DioExceptionType.receiveTimeout ||
           e.type == DioExceptionType.connectionError) {
         errorMessage = 'Error de conexión. Verifica tu red.';
@@ -67,7 +64,7 @@ class AuthProvider extends ChangeNotifier {
       errorMessage = 'Error inesperado: $e';
       authStatus = AuthStatus.notAuthenticated;
     }
-    
+
     isLoginLoading = false;
     notifyListeners();
     return false;
@@ -86,7 +83,7 @@ class AuthProvider extends ChangeNotifier {
     authStatus = AuthStatus.authenticated;
     notifyListeners();
   }
-  
+
   // Cerrar sesión
   void logout() {
     LocalStorage.deleteToken();

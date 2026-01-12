@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:quiropractico_front/services/navigation_service.dart';
 import 'package:quiropractico_front/providers/auth_provider.dart';
 import 'package:quiropractico_front/ui/layouts/dashboard_layout.dart';
 import 'package:quiropractico_front/ui/views/auth/login_view.dart';
@@ -14,8 +15,8 @@ import 'package:quiropractico_front/ui/views/dashboard/clients_view.dart';
 import 'package:quiropractico_front/ui/views/dashboard/home_view.dart';
 import 'package:quiropractico_front/ui/views/dashboard/payments_view.dart';
 
-final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
-final GlobalKey<NavigatorState> _shellNavigatorKey = GlobalKey<NavigatorState>();
+final GlobalKey<NavigatorState> _shellNavigatorKey =
+    GlobalKey<NavigatorState>();
 
 class AppRouter {
   final AuthProvider authProvider;
@@ -23,40 +24,39 @@ class AppRouter {
   AppRouter(this.authProvider);
 
   late final GoRouter router = GoRouter(
-    navigatorKey: _rootNavigatorKey,
+    navigatorKey: NavigationService.navigatorKey,
     initialLocation: '/agenda',
     refreshListenable: authProvider,
-    
+
     redirect: (context, state) {
       final isGoingToLogin = state.matchedLocation == '/login';
       final authStatus = authProvider.authStatus;
       final role = authProvider.role;
 
-      if ((authStatus == AuthStatus.notAuthenticated || authStatus == AuthStatus.locked) && !isGoingToLogin) {
+      if ((authStatus == AuthStatus.notAuthenticated ||
+              authStatus == AuthStatus.locked) &&
+          !isGoingToLogin) {
         return '/login';
       }
 
       if (authStatus == AuthStatus.authenticated && isGoingToLogin) {
         if (role == 'admin' || role == 'quiropráctico') {
-           return '/agenda';
+          return '/agenda';
         } else {
-           return '/agenda';
+          return '/agenda';
         }
       }
 
-      return null; 
+      return null;
     },
 
     routes: [
-      GoRoute(
-        path: '/login',
-        builder: (context, state) => const LoginView(),
-      ),
+      GoRoute(path: '/login', builder: (context, state) => const LoginView()),
 
       ShellRoute(
         navigatorKey: _shellNavigatorKey,
         builder: (context, state, child) {
-          return DashboardLayout(child: child); 
+          return DashboardLayout(child: child);
         },
         routes: [
           GoRoute(
@@ -84,7 +84,7 @@ class AppRouter {
           ),
           GoRoute(
             path: '/servicios',
-            builder: (context, state) => const ServicesView(), 
+            builder: (context, state) => const ServicesView(),
           ),
           GoRoute(
             path: '/usuarios',

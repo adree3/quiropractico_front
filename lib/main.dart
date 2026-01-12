@@ -16,11 +16,13 @@ import 'package:quiropractico_front/providers/services_provider.dart';
 import 'package:quiropractico_front/providers/stats_provider.dart';
 import 'package:quiropractico_front/providers/ventas_provider.dart';
 import 'package:quiropractico_front/providers/users_provider.dart';
+import 'package:quiropractico_front/services/api_service.dart';
 import 'package:quiropractico_front/services/local_storage.dart';
 
-void main() async{
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await LocalStorage.configurePrefs();
+  await ApiService.configureDio();
   await initializeDateFormatting();
   runApp(
     MultiProvider(
@@ -39,7 +41,7 @@ void main() async{
         ChangeNotifierProvider(create: (_) => AuditoriaProvider()),
       ],
       child: const MyApp(),
-    )
+    ),
   );
 }
 

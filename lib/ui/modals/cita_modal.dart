@@ -23,15 +23,17 @@ class CitaModal extends StatefulWidget {
 
 class _CitaModalState extends State<CitaModal> {
   final _formKey = GlobalKey<FormState>();
-  
+
   final notasCtrl = TextEditingController();
   final fechaCtrl = TextEditingController();
+  final _clientSearchController = TextEditingController();
+  final _clientFocusNode = FocusNode();
   bool _isLoading = false;
 
   // Selecciones
   Cliente? selectedCliente;
   Usuario? selectedQuiro;
-  Map<String, String>? selectedHueco; 
+  Map<String, String>? selectedHueco;
   late DateTime fechaSeleccionada;
   late TimeOfDay horaInicio;
   late TimeOfDay horaFin;
@@ -62,17 +64,22 @@ class _CitaModalState extends State<CitaModal> {
       final agendaProv = Provider.of<AgendaProvider>(context, listen: false);
 
       // Cargar listas si están vacías
-      if (clientsProv.clients.isEmpty) await clientsProv.getPaginatedClients(page: 0);
-      if (agendaProv.quiropracticos.isEmpty) await agendaProv.loadQuiropracticos();
+      if (clientsProv.clients.isEmpty)
+        await clientsProv.getPaginatedClients(page: 0);
+      if (agendaProv.quiropracticos.isEmpty)
+        await agendaProv.loadQuiropracticos();
 
       // Determinar Doctor Inicial
       Usuario? doctorInicial;
       if (isEditing) {
         try {
-          doctorInicial = agendaProv.quiropracticos.firstWhere((u) => u.idUsuario == widget.citaExistente!.idQuiropractico);
+          doctorInicial = agendaProv.quiropracticos.firstWhere(
+            (u) => u.idUsuario == widget.citaExistente!.idQuiropractico,
+          );
         } catch (_) {}
       } else {
-        if (agendaProv.quiropracticos.isNotEmpty) doctorInicial = agendaProv.quiropracticos.first;
+        if (agendaProv.quiropracticos.isNotEmpty)
+          doctorInicial = agendaProv.quiropracticos.first;
       }
 
       // Cargar Huecos Disponibles
@@ -80,50 +87,61 @@ class _CitaModalState extends State<CitaModal> {
         await agendaProv.cargarHuecos(
           doctorInicial.idUsuario,
           fechaSeleccionada,
-          idCitaExcluir: isEditing ? widget.citaExistente!.idCita : null 
+          idCitaExcluir: isEditing ? widget.citaExistente!.idCita : null,
         );
       }
       Cliente? clienteEncontrado;
       if (isEditing) {
         final idClienteDeLaCita = widget.citaExistente!.idCliente;
-        clienteEncontrado = await clientsProv.getClientePorId(idClienteDeLaCita);
+        clienteEncontrado = await clientsProv.getClientePorId(
+          idClienteDeLaCita,
+        );
       }
 
       if (mounted) {
         setState(() {
           selectedQuiro = doctorInicial;
-          
+
           if (isEditing && clienteEncontrado != null) {
             selectedCliente = clienteEncontrado;
+            _clientSearchController.text =
+                "${clienteEncontrado.nombre} ${clienteEncontrado.apellidos} (${clienteEncontrado.telefono})";
           }
 
           if (doctorInicial != null) {
-             final targetTime = isEditing 
-              ? widget.citaExistente!.fechaHoraInicio
-              : widget.selectedDate!;
-             final targetTimeStr = "${targetTime.hour.toString().padLeft(2,'0')}:${targetTime.minute.toString().padLeft(2,'0')}";
-             
-             try {
-               final huecoEncontrado = agendaProv.huecosDisponibles.firstWhere(
-                 (h) => h['horaInicio'] == targetTimeStr
-               );
-               selectedHueco = huecoEncontrado;
-               _actualizarHorasDesdeHueco(huecoEncontrado);
-             } catch (e) {
-               print("No se pudo pre-seleccionar el hueco: $targetTimeStr");
-             }
+            final targetTime =
+                isEditing
+                    ? widget.citaExistente!.fechaHoraInicio
+                    : widget.selectedDate!;
+            final targetTimeStr =
+                "${targetTime.hour.toString().padLeft(2, '0')}:${targetTime.minute.toString().padLeft(2, '0')}";
+
+            try {
+              final huecoEncontrado = agendaProv.huecosDisponibles.firstWhere(
+                (h) => h['horaInicio'] == targetTimeStr,
+              );
+              selectedHueco = huecoEncontrado;
+              _actualizarHorasDesdeHueco(huecoEncontrado);
+            } catch (e) {
+              print("No se pudo pre-seleccionar el hueco: $targetTimeStr");
+            }
           }
         });
       }
     });
   }
 
-
   void _actualizarHorasDesdeHueco(Map<String, String> hueco) {
     final partsInicio = hueco['horaInicio']!.split(':');
     final partsFin = hueco['horaFin']!.split(':');
-    horaInicio = TimeOfDay(hour: int.parse(partsInicio[0]), minute: int.parse(partsInicio[1]));
-    horaFin = TimeOfDay(hour: int.parse(partsFin[0]), minute: int.parse(partsFin[1]));
+    horaInicio = TimeOfDay(
+      hour: int.parse(partsInicio[0]),
+      minute: int.parse(partsInicio[1]),
+    );
+    horaFin = TimeOfDay(
+      hour: int.parse(partsFin[0]),
+      minute: int.parse(partsFin[1]),
+    );
   }
 
   DateTime _joinDateTime(DateTime date, TimeOfDay time) {
@@ -137,16 +155,23 @@ class _CitaModalState extends State<CitaModal> {
 
     Color colorTema;
     switch (_estadoSeleccionado) {
-      case 'completada': colorTema = Colors.green; break;
-      case 'cancelada': colorTema = Colors.red; break;
-      case 'ausente': colorTema = Colors.grey; break;
-      default: colorTema = AppTheme.primaryColor;
+      case 'completada':
+        colorTema = Colors.green;
+        break;
+      case 'cancelada':
+        colorTema = Colors.red;
+        break;
+      case 'ausente':
+        colorTema = Colors.grey;
+        break;
+      default:
+        colorTema = AppTheme.primaryColor;
     }
 
     return AlertDialog(
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(15), 
-        side: BorderSide(color: colorTema, width: 2)
+        borderRadius: BorderRadius.circular(15),
+        side: BorderSide(color: colorTema, width: 2),
       ),
       title: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -155,7 +180,7 @@ class _CitaModalState extends State<CitaModal> {
             isEditing ? 'Editar Cita' : 'Nueva Cita',
             style: TextStyle(color: colorTema, fontWeight: FontWeight.bold),
           ),
-          
+
           const SizedBox(width: 10),
 
           if (isEditing)
@@ -164,21 +189,21 @@ class _CitaModalState extends State<CitaModal> {
               decoration: BoxDecoration(
                 color: colorTema.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: colorTema)
+                border: Border.all(color: colorTema),
               ),
               child: Text(
                 _estadoSeleccionado.toUpperCase(),
                 style: TextStyle(
-                  color: colorTema, 
+                  color: colorTema,
                   fontSize: 10,
                   fontWeight: FontWeight.bold,
-                  letterSpacing: 0.5
+                  letterSpacing: 0.5,
                 ),
               ),
             ),
         ],
       ),
-      
+
       content: SizedBox(
         width: AppTheme.dialogWidth,
         child: Form(
@@ -187,12 +212,14 @@ class _CitaModalState extends State<CitaModal> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                
                 // FECHA
                 TextFormField(
                   controller: fechaCtrl,
                   readOnly: true,
-                  decoration: const InputDecoration(labelText: 'Fecha', prefixIcon: Icon(Icons.calendar_today)),
+                  decoration: const InputDecoration(
+                    labelText: 'Fecha',
+                    prefixIcon: Icon(Icons.calendar_today),
+                  ),
                   onTap: () async {
                     final picked = await showDatePicker(
                       context: context,
@@ -201,22 +228,26 @@ class _CitaModalState extends State<CitaModal> {
                       lastDate: DateTime(2030),
                       locale: const Locale('es', 'ES'),
                       selectableDayPredicate: (DateTime date) {
-                        return date.weekday != DateTime.saturday && date.weekday != DateTime.sunday;
+                        return date.weekday != DateTime.saturday &&
+                            date.weekday != DateTime.sunday;
                       },
                     );
 
                     if (picked != null) {
                       setState(() {
                         fechaSeleccionada = picked;
-                        fechaCtrl.text = DateFormat('dd/MM/yyyy').format(picked);
+                        fechaCtrl.text = DateFormat(
+                          'dd/MM/yyyy',
+                        ).format(picked);
                         selectedHueco = null;
                       });
-                      
+
                       if (selectedQuiro != null) {
                         agendaProvider.cargarHuecos(
-                          selectedQuiro!.idUsuario, 
+                          selectedQuiro!.idUsuario,
                           picked,
-                          idCitaExcluir: isEditing ? widget.citaExistente!.idCita : null
+                          idCitaExcluir:
+                              isEditing ? widget.citaExistente!.idCita : null,
                         );
                       }
                     }
@@ -231,31 +262,48 @@ class _CitaModalState extends State<CitaModal> {
                     prefixIcon: Icon(Icons.watch_later_outlined),
                   ),
                   value: selectedHueco,
-                  items: agendaProvider.huecosDisponibles.map((hueco) {
-                    return DropdownMenuItem(
-                      value: hueco,
-                      child: Text(hueco['texto']!),
-                    );
-                  }).toList(),
+                  items:
+                      agendaProvider.huecosDisponibles.map((hueco) {
+                        return DropdownMenuItem(
+                          value: hueco,
+                          child: Text(hueco['texto']!),
+                        );
+                      }).toList(),
                   onChanged: (val) {
                     setState(() {
                       selectedHueco = val;
                       if (val != null) _actualizarHorasDesdeHueco(val);
                     });
                   },
-                  hint: agendaProvider.huecosDisponibles.isEmpty 
-                      ? const Text("No hay huecos o cargando...", style: TextStyle(color: Colors.grey)) 
-                      : const Text("Selecciona hora"),
-                  validator: (val) => val == null ? 'Selecciona un horario' : null,
+                  hint:
+                      agendaProvider.huecosDisponibles.isEmpty
+                          ? const Text(
+                            "No hay huecos o cargando...",
+                            style: TextStyle(color: Colors.grey),
+                          )
+                          : const Text("Selecciona hora"),
+                  validator:
+                      (val) => val == null ? 'Selecciona un horario' : null,
                 ),
-                
+
                 const SizedBox(height: 15),
 
                 // DOCTOR
                 DropdownButtonFormField<Usuario>(
-                  decoration: const InputDecoration(labelText: 'Doctor', prefixIcon: Icon(Icons.medical_services_outlined)),
+                  decoration: const InputDecoration(
+                    labelText: 'Doctor',
+                    prefixIcon: Icon(Icons.medical_services_outlined),
+                  ),
                   value: selectedQuiro,
-                  items: agendaProvider.quiropracticos.map((u) => DropdownMenuItem(value: u, child: Text(u.nombreCompleto))).toList(),
+                  items:
+                      agendaProvider.quiropracticos
+                          .map(
+                            (u) => DropdownMenuItem(
+                              value: u,
+                              child: Text(u.nombreCompleto),
+                            ),
+                          )
+                          .toList(),
                   onChanged: (val) {
                     setState(() {
                       selectedQuiro = val;
@@ -263,53 +311,84 @@ class _CitaModalState extends State<CitaModal> {
                     });
                     if (val != null) {
                       agendaProvider.cargarHuecos(
-                        val.idUsuario, 
+                        val.idUsuario,
                         fechaSeleccionada,
-                        idCitaExcluir: isEditing ? widget.citaExistente!.idCita : null
+                        idCitaExcluir:
+                            isEditing ? widget.citaExistente!.idCita : null,
                       );
                     }
                   },
-                  validator: (val) => val == null ? 'Selecciona un doctor' : null,
+                  validator:
+                      (val) => val == null ? 'Selecciona un doctor' : null,
                 ),
                 const SizedBox(height: 15),
 
                 // PACIENTE
-                Autocomplete<Cliente>(
-                  displayStringForOption: (Cliente option) => "${option.nombre} ${option.apellidos} (${option.telefono})",
+                RawAutocomplete<Cliente>(
+                  textEditingController: _clientSearchController,
+                  focusNode: _clientFocusNode,
+                  displayStringForOption:
+                      (Cliente option) =>
+                          "${option.nombre} ${option.apellidos} (${option.telefono})",
 
                   // Lógica de Búsqueda
                   optionsBuilder: (TextEditingValue textEditingValue) async {
                     if (textEditingValue.text.isEmpty) {
                       return const Iterable<Cliente>.empty();
                     }
-                    return await clientsProvider.searchClientesByName(textEditingValue.text);
+                    return await clientsProvider.searchClientesByName(
+                      textEditingValue.text,
+                    );
                   },
 
                   onSelected: (Cliente selection) {
                     setState(() {
                       selectedCliente = selection;
+                      // RawAutocomplete actualiza el texto automáticamente al seleccionar
                     });
                   },
 
-                  // Diseño del Input 
-                  fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
-
-                    if (selectedCliente != null && controller.text.isEmpty && !focusNode.hasFocus) {
-                      controller.text = "${selectedCliente!.nombre} ${selectedCliente!.apellidos} (${selectedCliente!.telefono})";
-                    }
-
+                  // Diseño del Input
+                  fieldViewBuilder: (
+                    context,
+                    controller,
+                    focusNode,
+                    onFieldSubmitted,
+                  ) {
                     return TextFormField(
                       controller: controller,
                       focusNode: focusNode,
                       decoration: InputDecoration(
                         labelText: 'Paciente (Nombre o Teléfono)',
                         prefixIcon: const Icon(Icons.person_search),
-                        suffixIcon: selectedCliente != null 
-                            ? const Icon(Icons.check_circle, color: Colors.green, size: 20) 
-                            : null,
+                        suffixIcon:
+                            selectedCliente != null
+                                ? IconButton(
+                                  icon: const Icon(
+                                    Icons.clear,
+                                    color: Colors.grey,
+                                  ),
+                                  onPressed: () {
+                                    controller.clear();
+                                    setState(() {
+                                      selectedCliente = null;
+                                    });
+                                  },
+                                )
+                                : null,
                       ),
+                      onChanged: (text) {
+                        // Si el usuario edita el texto, reseteamos la selección para obligar a re-seleccionar
+                        if (selectedCliente != null) {
+                          setState(() {
+                            selectedCliente = null;
+                          });
+                        }
+                      },
                       validator: (value) {
-                        if (selectedCliente == null) return 'Debes buscar y seleccionar un paciente';
+                        // Validamos que haya un OBJETO seleccionado, no solo texto
+                        if (selectedCliente == null)
+                          return 'Busca y selecciona un paciente de la lista';
                         return null;
                       },
                     );
@@ -333,11 +412,17 @@ class _CitaModalState extends State<CitaModal> {
                               final Cliente option = options.elementAt(index);
                               return ListTile(
                                 leading: const CircleAvatar(
-                                  radius: 15, 
-                                  backgroundColor: AppTheme.primaryColor, 
-                                  child: Icon(Icons.person, size: 16, color: Colors.white)
+                                  radius: 15,
+                                  backgroundColor: AppTheme.primaryColor,
+                                  child: Icon(
+                                    Icons.person,
+                                    size: 16,
+                                    color: Colors.white,
+                                  ),
                                 ),
-                                title: Text("${option.nombre} ${option.apellidos}"),
+                                title: Text(
+                                  "${option.nombre} ${option.apellidos}",
+                                ),
                                 subtitle: Text(option.telefono),
                                 onTap: () => onSelected(option),
                               );
@@ -353,7 +438,10 @@ class _CitaModalState extends State<CitaModal> {
                 // NOTAS
                 TextFormField(
                   controller: notasCtrl,
-                  decoration: const InputDecoration(labelText: 'Notas', prefixIcon: Icon(Icons.note_alt_outlined)),
+                  decoration: const InputDecoration(
+                    labelText: 'Notas',
+                    prefixIcon: Icon(Icons.note_alt_outlined),
+                  ),
                   maxLines: 2,
                 ),
               ],
@@ -361,255 +449,372 @@ class _CitaModalState extends State<CitaModal> {
           ),
         ),
       ),
-      
+
       // BOTONES DE ACCIÓN
       actionsPadding: const EdgeInsets.all(16),
       actionsAlignment: MainAxisAlignment.spaceBetween,
-      
+
       actions: [
-        if (isEditing) 
+        if (isEditing)
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               IconButton(
                 tooltip: 'Marcar para Cancelar',
                 icon: Icon(
-                    _estadoSeleccionado == 'cancelada' ? Icons.cancel : Icons.cancel_outlined, 
-                    color: _estadoSeleccionado == 'cancelada' ? Colors.red : Colors.grey
+                  _estadoSeleccionado == 'cancelada'
+                      ? Icons.cancel
+                      : Icons.cancel_outlined,
+                  color:
+                      _estadoSeleccionado == 'cancelada'
+                          ? Colors.red
+                          : Colors.grey,
                 ),
-                onPressed: () => setState(() => _estadoSeleccionado = 'cancelada'),
+                onPressed:
+                    () => setState(() => _estadoSeleccionado = 'cancelada'),
               ),
               IconButton(
                 tooltip: 'Marcar Ausente',
                 icon: Icon(
-                    _estadoSeleccionado == 'ausente' ? Icons.person_off : Icons.person_off_outlined, 
-                    color: _estadoSeleccionado == 'ausente' ? Colors.black87 : Colors.grey
+                  _estadoSeleccionado == 'ausente'
+                      ? Icons.person_off
+                      : Icons.person_off_outlined,
+                  color:
+                      _estadoSeleccionado == 'ausente'
+                          ? Colors.black87
+                          : Colors.grey,
                 ),
-                onPressed: () => setState(() => _estadoSeleccionado = 'ausente'),
+                onPressed:
+                    () => setState(() => _estadoSeleccionado = 'ausente'),
               ),
               IconButton(
                 tooltip: 'Marcar Completada',
                 icon: Icon(
-                    _estadoSeleccionado == 'completada' ? Icons.check_circle : Icons.check_circle_outline, 
-                    color: _estadoSeleccionado == 'completada' ? Colors.green : Colors.grey
+                  _estadoSeleccionado == 'completada'
+                      ? Icons.check_circle
+                      : Icons.check_circle_outline,
+                  color:
+                      _estadoSeleccionado == 'completada'
+                          ? Colors.green
+                          : Colors.grey,
                 ),
-                onPressed: () => setState(() => _estadoSeleccionado = 'completada'),
+                onPressed:
+                    () => setState(() => _estadoSeleccionado = 'completada'),
               ),
               if (_estadoSeleccionado != 'programada')
                 IconButton(
                   tooltip: 'Restaurar a Programada',
                   icon: const Icon(Icons.undo, color: Colors.blue),
-                  onPressed: () => setState(() => _estadoSeleccionado = 'programada'),
+                  onPressed:
+                      () => setState(() => _estadoSeleccionado = 'programada'),
                 ),
             ],
           )
-        else 
+        else
           const SizedBox(),
 
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextButton(
-              onPressed: () => Navigator.pop(context), 
-              child: const Text('Cerrar')
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cerrar'),
             ),
             const SizedBox(width: 10),
             ElevatedButton(
-              onPressed: _isLoading ? null : () async {
-                if (_formKey.currentState!.validate()) {
-                  setState(() { 
-                    _isLoading = true; 
-                  });
-                  
-                  try{
-                    final inicioFinal = _joinDateTime(fechaSeleccionada, horaInicio);
-                    final finFinal = _joinDateTime(fechaSeleccionada, horaFin);
-                    int? idBonoElegido;
-                    
-                    if (!isEditing) {
-                      final resultado = await showDialog(
-                          context: context,
-                          builder: (_) => PaymentSelectionModal(cliente: selectedCliente!)
-                      );
+              onPressed:
+                  _isLoading
+                      ? null
+                      : () async {
+                        if (_formKey.currentState!.validate()) {
+                          setState(() {
+                            _isLoading = true;
+                          });
 
-                      if (resultado == null){
-                        if (mounted) setState(() { _isLoading = false; });
-                        return;
-                      }
-                      if (resultado is int) {
-                          idBonoElegido = resultado;
-                      }
-                    }
-
-                    String? error;
-                    if (isEditing) {
-                      error = await agendaProvider.editarCita(
-                        widget.citaExistente!.idCita,
-                        selectedCliente!.idCliente,
-                        selectedQuiro!.idUsuario,
-                        inicioFinal,
-                        finFinal,
-                        notasCtrl.text,
-                        _estadoSeleccionado
-                      );
-                    } else {
-                      error = await agendaProvider.crearCita(
-                        selectedCliente!.idCliente,
-                        selectedQuiro!.idUsuario,
-                        inicioFinal,
-                        finFinal,
-                        notasCtrl.text,
-                        idBonoAUtilizar: idBonoElegido
-                      );
-                    }
-                    if (!context.mounted) return;
-                    if (error == null) {
-                      if (mounted) setState(() { _isLoading = false; });
-                      Navigator.pop(context);
-                      CustomSnackBar.show(context,
-                        message: isEditing ? 'Cita actualizada' : 'Cita creada', 
-                        type: SnackBarType.success
-                      );
-                    } else {
-                      if (mounted) setState(() { _isLoading = false; });
-                      if (error.toLowerCase().contains("no tiene bonos") || error.toLowerCase().contains("saldo")) {
-                        // Diálogo
-                        final quiereComprar = await showDialog<bool>(
-                          context: context,
-                          builder: (ctx) => AlertDialog(
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                            contentPadding: EdgeInsets.zero,
-                            content: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                // CABECERA VISUAL
-                                Container(
-                                  width: double.infinity,
-                                  padding: const EdgeInsets.symmetric(vertical: 30),
-                                  decoration: BoxDecoration(
-                                    color: Colors.orange.shade50, // Fondo naranja muy suave
-                                    borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-                                  ),
-                                  child: Column(
-                                    children: [
-                                      Icon(Icons.account_balance_wallet_outlined, size: 60, color: Colors.orange.shade800),
-                                      const SizedBox(height: 10),
-                                      Text(
-                                        "Saldo Insuficiente",
-                                        style: TextStyle(
-                                          fontSize: 20, 
-                                          fontWeight: FontWeight.bold, 
-                                          color: Colors.orange.shade900
-                                        )
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                
-                                // MENSAJE EXPLICATIVO
-                                Padding(
-                                  padding: const EdgeInsets.all(25),
-                                  child: Text(
-                                    "El paciente no dispone de sesiones activas para asignar esta cita.\n\n¿Quieres realizar una venta ahora mismo?",
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(fontSize: 15, color: Colors.grey[700], height: 1.5),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            
-                            // ACCIONES
-                            actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                            actionsAlignment: MainAxisAlignment.center, // Centrados
-                            actions: [
-                              // Cancelar
-                              TextButton(
-                                onPressed: () => Navigator.pop(ctx, false), 
-                                style: TextButton.styleFrom(foregroundColor: Colors.grey),
-                                child: const Text("No, cancelar")
-                              ),
-                              const SizedBox(width: 10),
-                              
-                              // Comprar
-                              ElevatedButton.icon(
-                                onPressed: () => Navigator.pop(ctx, true), 
-                                icon: const Icon(Icons.shopping_cart),
-                                label: const Text("Vender Bono"),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.green, 
-                                  foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 12),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))
-                                ),
-                              ),
-                            ],
-                          )
-                        );
-
-                        if (quiereComprar == true && context.mounted) {
-                          // Abrir Modal de Venta
-                          final ventaExitosa = await showDialog<bool>(
-                            context: context,
-                            builder: (_) => VentaBonoModal(cliente: selectedCliente!)
-                          );
-
-                          // Si compro un bono reintentamos la cita
-                          if (ventaExitosa == true && context.mounted) {                            
-                            setState(() { _isLoading = true; });
-                            final reintentoError = await agendaProvider.crearCita(
-                              selectedCliente!.idCliente,
-                              selectedQuiro!.idUsuario,
-                              inicioFinal,
-                              finFinal,
-                              notasCtrl.text
+                          try {
+                            final inicioFinal = _joinDateTime(
+                              fechaSeleccionada,
+                              horaInicio,
                             );
-                            if (!context.mounted) return;
-                            setState(() { _isLoading = false; });
-                            if (reintentoError == null) {
-                              Navigator.pop(context);
-                              
-                              CustomSnackBar.show(context, 
-                                title: "Proceso completado",
-                                message: "Bono comprado y cita agendada correctamente.", 
-                                type: SnackBarType.success,
-                                duration: const Duration(seconds: 5)
+                            final finFinal = _joinDateTime(
+                              fechaSeleccionada,
+                              horaFin,
+                            );
+                            int? idBonoElegido;
+
+                            if (!isEditing) {
+                              final resultado = await showDialog(
+                                context: context,
+                                builder:
+                                    (_) => PaymentSelectionModal(
+                                      cliente: selectedCliente!,
+                                    ),
+                              );
+
+                              if (resultado == null) {
+                                if (mounted)
+                                  setState(() {
+                                    _isLoading = false;
+                                  });
+                                return;
+                              }
+                              if (resultado is int) {
+                                idBonoElegido = resultado;
+                              }
+                            }
+
+                            String? error;
+                            if (isEditing) {
+                              error = await agendaProvider.editarCita(
+                                widget.citaExistente!.idCita,
+                                selectedCliente!.idCliente,
+                                selectedQuiro!.idUsuario,
+                                inicioFinal,
+                                finFinal,
+                                notasCtrl.text,
+                                _estadoSeleccionado,
                               );
                             } else {
-                              CustomSnackBar.show(context, 
-                                title: "Bono comprado",
-                                message: "El bono se compró, pero falló la cita: $reintentoError", 
-                                type: SnackBarType.error
+                              error = await agendaProvider.crearCita(
+                                selectedCliente!.idCliente,
+                                selectedQuiro!.idUsuario,
+                                inicioFinal,
+                                finFinal,
+                                notasCtrl.text,
+                                idBonoAUtilizar: idBonoElegido,
                               );
                             }
+                            if (!context.mounted) return;
+                            if (error == null) {
+                              if (mounted)
+                                setState(() {
+                                  _isLoading = false;
+                                });
+                              Navigator.pop(context);
+                              CustomSnackBar.show(
+                                context,
+                                message:
+                                    isEditing
+                                        ? 'Cita actualizada'
+                                        : 'Cita creada',
+                                type: SnackBarType.success,
+                              );
+                            } else {
+                              if (mounted)
+                                setState(() {
+                                  _isLoading = false;
+                                });
+                              if (error.toLowerCase().contains(
+                                    "no tiene bonos",
+                                  ) ||
+                                  error.toLowerCase().contains("saldo")) {
+                                // Diálogo
+                                final quiereComprar = await showDialog<bool>(
+                                  context: context,
+                                  builder:
+                                      (ctx) => AlertDialog(
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            20,
+                                          ),
+                                        ),
+                                        contentPadding: EdgeInsets.zero,
+                                        content: Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            // CABECERA VISUAL
+                                            Container(
+                                              width: double.infinity,
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    vertical: 30,
+                                                  ),
+                                              decoration: BoxDecoration(
+                                                color:
+                                                    Colors
+                                                        .orange
+                                                        .shade50, // Fondo naranja muy suave
+                                                borderRadius:
+                                                    const BorderRadius.vertical(
+                                                      top: Radius.circular(20),
+                                                    ),
+                                              ),
+                                              child: Column(
+                                                children: [
+                                                  Icon(
+                                                    Icons
+                                                        .account_balance_wallet_outlined,
+                                                    size: 60,
+                                                    color:
+                                                        Colors.orange.shade800,
+                                                  ),
+                                                  const SizedBox(height: 10),
+                                                  Text(
+                                                    "Saldo Insuficiente",
+                                                    style: TextStyle(
+                                                      fontSize: 20,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      color:
+                                                          Colors
+                                                              .orange
+                                                              .shade900,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+
+                                            // MENSAJE EXPLICATIVO
+                                            Padding(
+                                              padding: const EdgeInsets.all(25),
+                                              child: Text(
+                                                "El paciente no dispone de sesiones activas para asignar esta cita.\n\n¿Quieres realizar una venta ahora mismo?",
+                                                textAlign: TextAlign.center,
+                                                style: TextStyle(
+                                                  fontSize: 15,
+                                                  color: Colors.grey[700],
+                                                  height: 1.5,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+
+                                        // ACCIONES
+                                        actionsPadding:
+                                            const EdgeInsets.fromLTRB(
+                                              20,
+                                              0,
+                                              20,
+                                              20,
+                                            ),
+                                        actionsAlignment:
+                                            MainAxisAlignment
+                                                .center, // Centrados
+                                        actions: [
+                                          // Cancelar
+                                          TextButton(
+                                            onPressed:
+                                                () => Navigator.pop(ctx, false),
+                                            style: TextButton.styleFrom(
+                                              foregroundColor: Colors.grey,
+                                            ),
+                                            child: const Text("No, cancelar"),
+                                          ),
+                                          const SizedBox(width: 10),
+
+                                          // Comprar
+                                          ElevatedButton.icon(
+                                            onPressed:
+                                                () => Navigator.pop(ctx, true),
+                                            icon: const Icon(
+                                              Icons.shopping_cart,
+                                            ),
+                                            label: const Text("Vender Bono"),
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: Colors.green,
+                                              foregroundColor: Colors.white,
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 25,
+                                                    vertical: 12,
+                                                  ),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(10),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                );
+
+                                if (quiereComprar == true && context.mounted) {
+                                  // Abrir Modal de Venta
+                                  final ventaExitosa = await showDialog<bool>(
+                                    context: context,
+                                    builder:
+                                        (_) => VentaBonoModal(
+                                          cliente: selectedCliente!,
+                                        ),
+                                  );
+
+                                  // Si compro un bono reintentamos la cita
+                                  if (ventaExitosa == true && context.mounted) {
+                                    setState(() {
+                                      _isLoading = true;
+                                    });
+                                    final reintentoError = await agendaProvider
+                                        .crearCita(
+                                          selectedCliente!.idCliente,
+                                          selectedQuiro!.idUsuario,
+                                          inicioFinal,
+                                          finFinal,
+                                          notasCtrl.text,
+                                        );
+                                    if (!context.mounted) return;
+                                    setState(() {
+                                      _isLoading = false;
+                                    });
+                                    if (reintentoError == null) {
+                                      Navigator.pop(context);
+
+                                      CustomSnackBar.show(
+                                        context,
+                                        title: "Proceso completado",
+                                        message:
+                                            "Bono comprado y cita agendada correctamente.",
+                                        type: SnackBarType.success,
+                                        duration: const Duration(seconds: 5),
+                                      );
+                                    } else {
+                                      CustomSnackBar.show(
+                                        context,
+                                        title: "Bono comprado",
+                                        message:
+                                            "El bono se compró, pero falló la cita: $reintentoError",
+                                        type: SnackBarType.error,
+                                      );
+                                    }
+                                  }
+                                }
+                              } else {
+                                CustomSnackBar.show(
+                                  context,
+                                  message: error,
+                                  type: SnackBarType.error,
+                                );
+                              }
+                            }
+                          } catch (e) {
+                            if (mounted)
+                              setState(() {
+                                _isLoading = false;
+                              });
+                            CustomSnackBar.show(
+                              context,
+                              message: "Error inesperado: $e",
+                              type: SnackBarType.error,
+                            );
                           }
                         }
-                      } else {
-                        CustomSnackBar.show(context, 
-                          message: error, 
-                          type: SnackBarType.error
-                        );
-                      }
-                    }
-                  } catch (e) {
-                    if (mounted) setState(() { _isLoading = false; });
-                    CustomSnackBar.show(context, 
-                      message: "Error inesperado: $e", 
-                      type: SnackBarType.error
-                    );
-                  }
-                }
-              }, 
+                      },
               style: ElevatedButton.styleFrom(
                 disabledBackgroundColor: AppTheme.primaryColor.withOpacity(0.6),
                 disabledForegroundColor: Colors.white,
               ),
-              child: _isLoading 
-                ? const SizedBox(
-                    width: 20, 
-                    height: 20, 
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)
-                  )
-                : Text(isEditing ? 'Guardar Cambios' : 'Agendar')
+              child:
+                  _isLoading
+                      ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                      : Text(isEditing ? 'Guardar Cambios' : 'Agendar'),
             ),
           ],
         ),

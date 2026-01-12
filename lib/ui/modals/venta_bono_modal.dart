@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:quiropractico_front/models/cliente.dart';
 import 'package:quiropractico_front/models/servicio.dart';
 import 'package:quiropractico_front/providers/ventas_provider.dart';
+import 'package:quiropractico_front/providers/payments_provider.dart';
 import 'package:quiropractico_front/ui/widgets/custom_snackbar.dart';
 
 class VentaBonoModal extends StatefulWidget {
@@ -16,7 +17,7 @@ class VentaBonoModal extends StatefulWidget {
 
 class _VentaBonoModalState extends State<VentaBonoModal> {
   final _formKey = GlobalKey<FormState>();
-  
+
   Servicio? selectedServicio;
   String selectedMetodo = 'transferencia';
 
@@ -24,7 +25,10 @@ class _VentaBonoModalState extends State<VentaBonoModal> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<VentasProvider>(context, listen: false).loadServiciosDisponibles();
+      Provider.of<VentasProvider>(
+        context,
+        listen: false,
+      ).loadServiciosDisponibles();
     });
   }
 
@@ -38,11 +42,17 @@ class _VentaBonoModalState extends State<VentaBonoModal> {
         children: [
           Container(
             padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(color: Colors.green.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+            decoration: BoxDecoration(
+              color: Colors.green.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
             child: const Icon(Icons.shopping_cart, color: Colors.green),
           ),
           const SizedBox(width: 10),
-          const Text('Nueva Venta', style: TextStyle(fontWeight: FontWeight.bold)),
+          const Text(
+            'Nueva Venta',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
         ],
       ),
       content: SizedBox(
@@ -53,7 +63,10 @@ class _VentaBonoModalState extends State<VentaBonoModal> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text("Cliente: ${widget.cliente.nombre} ${widget.cliente.apellidos}", style: const TextStyle(color: Colors.grey)),
+              Text(
+                "Cliente: ${widget.cliente.nombre} ${widget.cliente.apellidos}",
+                style: const TextStyle(color: Colors.grey),
+              ),
               const SizedBox(height: 20),
               // SELECTOR DE BONO
               DropdownButtonFormField<Servicio>(
@@ -64,29 +77,36 @@ class _VentaBonoModalState extends State<VentaBonoModal> {
                   border: OutlineInputBorder(),
                 ),
                 value: selectedServicio,
-                items: ventasProvider.listaServicios.map((servicio) {
-                  final texto = "${servicio.nombreServicio}  |  ${servicio.precio}€";
-                  return DropdownMenuItem(
-                    value: servicio,
-                    child: Text(
-                      texto,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 14),
-                    ),
-                  );
-                }).toList(),
+                items:
+                    ventasProvider.listaServicios.map((servicio) {
+                      final texto =
+                          "${servicio.nombreServicio}  |  ${servicio.precio}€";
+                      return DropdownMenuItem(
+                        value: servicio,
+                        child: Text(
+                          texto,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 14),
+                        ),
+                      );
+                    }).toList(),
                 onChanged: (val) => setState(() => selectedServicio = val),
-                validator: (val) => val == null ? 'Selecciona un producto' : null,
-                hint: ventasProvider.listaServicios.isEmpty 
-                    ? const Text("Cargando...") 
-                    : (ventasProvider.listaServicios.isEmpty 
-                        ? const Text("No hay servicios activos", style: TextStyle(color: Colors.red))
-                        : const Text("Selecciona una opción")),
+                validator:
+                    (val) => val == null ? 'Selecciona un producto' : null,
+                hint:
+                    ventasProvider.listaServicios.isEmpty
+                        ? const Text("Cargando...")
+                        : (ventasProvider.listaServicios.isEmpty
+                            ? const Text(
+                              "No hay servicios activos",
+                              style: TextStyle(color: Colors.red),
+                            )
+                            : const Text("Selecciona una opción")),
               ),
-              
+
               const SizedBox(height: 20),
 
-              // MÉTODO DE PAGO 
+              // MÉTODO DE PAGO
               DropdownButtonFormField<String>(
                 decoration: const InputDecoration(
                   labelText: 'Método de Pago',
@@ -97,7 +117,10 @@ class _VentaBonoModalState extends State<VentaBonoModal> {
                 items: const [
                   DropdownMenuItem(value: 'tarjeta', child: Text("Tarjeta")),
                   DropdownMenuItem(value: 'efectivo', child: Text("Efectivo")),
-                  DropdownMenuItem(value: 'transferencia', child: Text("Transferencia")),
+                  DropdownMenuItem(
+                    value: 'transferencia',
+                    child: Text("Transferencia"),
+                  ),
                 ],
                 onChanged: (val) => setState(() => selectedMetodo = val!),
               ),
@@ -111,15 +134,22 @@ class _VentaBonoModalState extends State<VentaBonoModal> {
                   decoration: BoxDecoration(
                     color: Colors.green.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: Colors.green)
+                    border: Border.all(color: Colors.green),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text("TOTAL A COBRAR:", style: TextStyle(fontWeight: FontWeight.bold)),
+                      const Text(
+                        "TOTAL A COBRAR:",
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
                       Text(
-                        "${selectedServicio!.precio} €", 
-                        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.green)
+                        "${selectedServicio!.precio} €",
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.green,
+                        ),
                       ),
                     ],
                   ),
@@ -135,36 +165,53 @@ class _VentaBonoModalState extends State<VentaBonoModal> {
           child: const Text('Cancelar'),
         ),
         ElevatedButton(
-          onPressed: ventasProvider.isLoading 
-            ? null 
-            : () async {
-              if (_formKey.currentState!.validate()) {
-                final String? error = await ventasProvider.venderBono(
-                  widget.cliente.idCliente,
-                  selectedServicio!.idServicio,
-                  selectedMetodo
-                );
+          onPressed:
+              ventasProvider.isLoading
+                  ? null
+                  : () async {
+                    if (_formKey.currentState!.validate()) {
+                      final String? error = await ventasProvider.venderBono(
+                        widget.cliente.idCliente,
+                        selectedServicio!.idServicio,
+                        selectedMetodo,
+                      );
 
-                if (context.mounted) {
-                  if (error == null) {
-                    Navigator.pop(context, true); 
-                    CustomSnackBar.show(context, 
-                      message: 'Venta realizada con éxito', 
-                      type: SnackBarType.success
-                    );
-                  } else {
-                    CustomSnackBar.show(context, 
-                      message: error, 
-                      type: SnackBarType.error
-                    );
-                  }
-                }
-              }
-            },
-          style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
-          child: ventasProvider.isLoading 
-              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white))
-              : const Text('Confirmar Venta'),
+                      if (context.mounted) {
+                        if (error == null) {
+                          // Actualizar Badge de Pagos
+                          Provider.of<PaymentsProvider>(
+                            context,
+                            listen: false,
+                          ).checkPendingCount();
+
+                          Navigator.pop(context, true);
+                          CustomSnackBar.show(
+                            context,
+                            message: 'Venta realizada con éxito',
+                            type: SnackBarType.success,
+                          );
+                        } else {
+                          CustomSnackBar.show(
+                            context,
+                            message: error,
+                            type: SnackBarType.error,
+                          );
+                        }
+                      }
+                    }
+                  },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.green,
+            foregroundColor: Colors.white,
+          ),
+          child:
+              ventasProvider.isLoading
+                  ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(color: Colors.white),
+                  )
+                  : const Text('Confirmar Venta'),
         ),
       ],
     );
