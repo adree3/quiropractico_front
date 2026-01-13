@@ -14,14 +14,18 @@ class AgendaHeader extends StatelessWidget {
     final fechaActual = provider.selectedDate;
 
     final int diaSemana = fechaActual.weekday;
-    final DateTime lunesSemana = fechaActual.subtract(Duration(days: diaSemana - 1));
+    final DateTime lunesSemana = fechaActual.subtract(
+      Duration(days: diaSemana - 1),
+    );
     final hoy = DateTime.now();
 
-    final tituloMes = DateFormat('MMMM yyyy', 'es_ES').format(fechaActual).toUpperCase();
+    final tituloMes =
+        DateFormat('MMMM yyyy', 'es_ES').format(fechaActual).toUpperCase();
     final bool mostrarBotonHoy = !isSameDay(fechaActual, hoy);
-    
+
     const double buttonHeight = 42.0;
-    const double sideWidth = 100.0;
+    // Aumentamos el ancho lateral para que quepa el toggle sin desplazar el centro
+    const double sideWidth = 120.0;
 
     return Column(
       children: [
@@ -29,13 +33,13 @@ class AgendaHeader extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.only(top: 20, bottom: 5),
           child: Text(
-            tituloMes, 
+            tituloMes,
             style: TextStyle(
-              fontSize: 18, 
-              fontWeight: FontWeight.w900, 
+              fontSize: 18,
+              fontWeight: FontWeight.w900,
               color: AppTheme.primaryColor,
-              letterSpacing: 1.5
-            )
+              letterSpacing: 1.5,
+            ),
           ),
         ),
 
@@ -52,10 +56,17 @@ class AgendaHeader extends StatelessWidget {
                   child: ElevatedButton.icon(
                     onPressed: () {
                       final now = DateTime.now();
-                      final horaInicio = DateTime(fechaActual.year, fechaActual.month, fechaActual.day, now.hour + 1, 0);
+                      final horaInicio = DateTime(
+                        fechaActual.year,
+                        fechaActual.month,
+                        fechaActual.day,
+                        now.hour + 1,
+                        0,
+                      );
                       showDialog(
                         context: context,
-                        builder: (context) => CitaModal(selectedDate: horaInicio),
+                        builder:
+                            (context) => CitaModal(selectedDate: horaInicio),
                       );
                     },
                     label: const Text("+ Cita"),
@@ -65,7 +76,9 @@ class AgendaHeader extends StatelessWidget {
                       elevation: 0,
                       fixedSize: const Size.fromHeight(buttonHeight),
                       padding: const EdgeInsets.symmetric(horizontal: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                   ),
                 ),
@@ -90,13 +103,14 @@ class AgendaHeader extends StatelessWidget {
                 ),
               ),
 
-              // CALENDARIO
+              // CALENDARIO Y TOGGLE
               SizedBox(
                 width: sideWidth,
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    
+                    const SizedBox(width: 15),
+
                     // Volver a Hoy
                     if (mostrarBotonHoy) ...[
                       IconButton(
@@ -105,8 +119,10 @@ class AgendaHeader extends StatelessWidget {
                         tooltip: "Volver al día de hoy",
                         color: Colors.grey[600],
                         style: IconButton.styleFrom(
-                          backgroundColor: Colors.grey[100], 
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          backgroundColor: Colors.grey[100],
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
                           fixedSize: const Size(buttonHeight, buttonHeight),
                         ),
                       ),
@@ -123,7 +139,9 @@ class AgendaHeader extends StatelessWidget {
                         backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
                         foregroundColor: AppTheme.primaryColor,
                         fixedSize: const Size(buttonHeight, buttonHeight),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                       ),
                     ),
                   ],
@@ -132,14 +150,17 @@ class AgendaHeader extends StatelessWidget {
             ],
           ),
         ),
-        
+
         const Divider(height: 1, color: Color(0xFFEEEEEE)),
       ],
     );
   }
 
-  // Date picker 
-  Future<void> _abrirPickerNativo(BuildContext context, AgendaProvider provider) async {
+  // Date picker
+  Future<void> _abrirPickerNativo(
+    BuildContext context,
+    AgendaProvider provider,
+  ) async {
     final DateTime? picked = await showDatePicker(
       context: context,
       initialDate: provider.selectedDate,
@@ -147,20 +168,23 @@ class AgendaHeader extends StatelessWidget {
       lastDate: DateTime(2030),
       locale: const Locale('es', 'ES'),
       initialEntryMode: DatePickerEntryMode.calendarOnly,
-      helpText: '', 
+      helpText: '',
       selectableDayPredicate: (DateTime date) {
-        return date.weekday != DateTime.saturday && date.weekday != DateTime.sunday;
+        return date.weekday != DateTime.saturday &&
+            date.weekday != DateTime.sunday;
       },
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: const ColorScheme.light(
-              primary: AppTheme.primaryColor, 
-              onPrimary: Colors.white, 
-              onSurface: Colors.black, 
+              primary: AppTheme.primaryColor,
+              onPrimary: Colors.white,
+              onSurface: Colors.black,
             ),
             textButtonTheme: TextButtonThemeData(
-              style: TextButton.styleFrom(foregroundColor: AppTheme.primaryColor),
+              style: TextButton.styleFrom(
+                foregroundColor: AppTheme.primaryColor,
+              ),
             ),
           ),
           child: child!,
@@ -194,7 +218,10 @@ class _DayCircle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dayName = DateFormat('E', 'es_ES').format(date).toUpperCase().replaceAll('.', '');
+    final dayName = DateFormat(
+      'E',
+      'es_ES',
+    ).format(date).toUpperCase().replaceAll('.', '');
     final dayNumber = date.day.toString();
 
     return GestureDetector(
@@ -202,50 +229,63 @@ class _DayCircle extends StatelessWidget {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         margin: const EdgeInsets.symmetric(horizontal: 10),
-        width: 50, 
+        width: 50,
         height: 50,
         decoration: BoxDecoration(
           color: isSelected ? AppTheme.primaryColor : Colors.white,
           shape: BoxShape.circle,
-          border: isSelected ? null : Border.all(color: isToday ? AppTheme.primaryColor : Colors.grey[300]!),
-          boxShadow: isSelected 
-              ? [BoxShadow(color: AppTheme.primaryColor.withOpacity(0.3), blurRadius: 6, offset: const Offset(0, 3))]
-              : [],
+          border:
+              isSelected
+                  ? null
+                  : Border.all(
+                    color: isToday ? AppTheme.primaryColor : Colors.grey[300]!,
+                  ),
+          boxShadow:
+              isSelected
+                  ? [
+                    BoxShadow(
+                      color: AppTheme.primaryColor.withOpacity(0.3),
+                      blurRadius: 6,
+                      offset: const Offset(0, 3),
+                    ),
+                  ]
+                  : [],
         ),
-        child: isToday
-            // Solo texto centrado
-            ? Center(
-                child: Text(
-                  "HOY",
-                  style: TextStyle(
-                    color: isSelected ? Colors.white : AppTheme.primaryColor,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w900
+        child:
+            isToday
+                // Solo texto centrado
+                ? Center(
+                  child: Text(
+                    "HOY",
+                    style: TextStyle(
+                      color: isSelected ? Colors.white : AppTheme.primaryColor,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
+                )
+                // Día + Número
+                : Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      dayName,
+                      style: TextStyle(
+                        color: isSelected ? Colors.white : Colors.grey,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      dayNumber,
+                      style: TextStyle(
+                        color: isSelected ? Colors.white : Colors.black87,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
                 ),
-              )
-            // Día + Número
-            : Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    dayName,
-                    style: TextStyle(
-                      color: isSelected ? Colors.white : Colors.grey,
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold
-                    ),
-                  ),
-                  Text(
-                    dayNumber,
-                    style: TextStyle(
-                      color: isSelected ? Colors.white : Colors.black87,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold
-                    ),
-                  ),
-                ],
-              ),
       ),
     );
   }
