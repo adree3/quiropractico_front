@@ -1,5 +1,4 @@
 import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -47,7 +46,7 @@ class _AuditoriaViewState extends State<AuditoriaView> {
     final logs = provider.logs;
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(0, 10, 0, 10),
+      padding: const EdgeInsets.fromLTRB(0, 0, 0, 10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -86,7 +85,7 @@ class _AuditoriaViewState extends State<AuditoriaView> {
                       prefixIcon: const Icon(Icons.search, color: Colors.grey),
                       border: InputBorder.none,
                       isDense: true,
-                      contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 8),
                       suffixIcon:
                           searchCtrl.text.isNotEmpty
                               ? IconButton(
@@ -182,7 +181,9 @@ class _AuditoriaViewState extends State<AuditoriaView> {
                                 child: SizedBox(
                                   width: double.infinity,
                                   child: DataTable(
-                                    headingRowColor: WidgetStateProperty.all(Color(0xFF00AEEF)),
+                                    headingRowColor: WidgetStateProperty.all(
+                                      Color(0xFF00AEEF),
+                                    ),
                                     dataRowMinHeight: 60,
                                     dataRowMaxHeight: 60,
                                     headingRowHeight: 50,
@@ -277,7 +278,7 @@ class _AuditoriaViewState extends State<AuditoriaView> {
       "HISTORIAL_CLINICO",
       "SERVICIO",
       "GRUPO_FAMILIAR",
-    ]; // Could move this to a static const or provider getter
+    ];
 
     final options = <DropdownOption<String?>>[
       const DropdownOption(
@@ -298,10 +299,7 @@ class _AuditoriaViewState extends State<AuditoriaView> {
 
     return DashboardDropdown<String?>(
       selectedValue: provider.filtroEntidad,
-      customLabel:
-          provider.filtroEntidad == null
-              ? "Todos"
-              : null, 
+      customLabel: provider.filtroEntidad == null ? "Todos" : null,
       onSelected: (val) => provider.setFiltroEntidad(val),
       options: options,
     );

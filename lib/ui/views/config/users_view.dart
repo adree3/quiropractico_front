@@ -55,7 +55,7 @@ class _UsersViewState extends State<UsersView> {
     });
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(0, 10, 0, 10),
+      padding: const EdgeInsets.fromLTRB(0, 0, 0, 10),
       child: Column(
         children: [
           // Cabecera

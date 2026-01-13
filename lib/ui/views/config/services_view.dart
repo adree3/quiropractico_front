@@ -41,7 +41,7 @@ class ServicesView extends StatelessWidget {
       return b.idServicio.compareTo(a.idServicio);
     });
     return Container(
-      padding: const EdgeInsets.fromLTRB(0, 10, 0, 10),
+      padding: const EdgeInsets.fromLTRB(0, 0, 0, 10),
       child: Column(
         children: [
           Container(

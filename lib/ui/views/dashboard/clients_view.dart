@@ -43,7 +43,7 @@ class _ClientsViewState extends State<ClientsView> {
     final clientes = clientsProvider.clients;
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(0, 10, 0, 10),
+      padding: const EdgeInsets.fromLTRB(0, 0, 0, 10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -171,7 +171,9 @@ class _ClientsViewState extends State<ClientsView> {
                                 child: SizedBox(
                                   width: double.infinity,
                                   child: DataTable(
-                                    headingRowColor: WidgetStateProperty.all(Color(0xFF00AEEF)),
+                                    headingRowColor: WidgetStateProperty.all(
+                                      Color(0xFF00AEEF),
+                                    ),
                                     dataRowMinHeight: 55,
                                     dataRowMaxHeight: 55,
                                     columnSpacing: 20,

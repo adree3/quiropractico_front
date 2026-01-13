@@ -68,7 +68,7 @@ class _ScheduleViewState extends State<ScheduleView> {
     );
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(0, 10, 0, 10),
+      padding: const EdgeInsets.fromLTRB(0, 0, 0, 10),
       child: Column(
         children: [
           // header

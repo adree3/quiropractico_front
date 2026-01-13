@@ -134,7 +134,7 @@ class _PaymentsViewState extends State<PaymentsView> {
     return DefaultTabController(
       length: 2,
       child: Container(
-        padding: const EdgeInsets.fromLTRB(0, 10, 0, 10),
+        padding: const EdgeInsets.fromLTRB(0, 0, 0, 10),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -871,7 +871,9 @@ class _PaginatedTable extends StatelessWidget {
                         child: SizedBox(
                           width: double.infinity,
                           child: DataTable(
-                            headingRowColor: WidgetStateProperty.all(Color(0xFF00AEEF)),
+                            headingRowColor: WidgetStateProperty.all(
+                              Color(0xFF00AEEF),
+                            ),
                             columnSpacing: 20,
                             dataRowMinHeight: 55,
                             dataRowMaxHeight: 55,
