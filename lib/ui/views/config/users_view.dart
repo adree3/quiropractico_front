@@ -6,6 +6,7 @@ import 'package:quiropractico_front/providers/users_provider.dart';
 import 'package:quiropractico_front/ui/modals/user_modal.dart';
 import 'package:quiropractico_front/ui/widgets/custom_snackbar.dart';
 import 'package:quiropractico_front/ui/widgets/dashboard_dropdown.dart';
+import 'package:quiropractico_front/ui/widgets/paginated_table.dart';
 
 class UsersView extends StatefulWidget {
   const UsersView({super.key});
@@ -29,6 +30,7 @@ class _UsersViewState extends State<UsersView> {
     }
   }
 
+  @override
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<UsersProvider>(context);
@@ -140,314 +142,198 @@ class _UsersViewState extends State<UsersView> {
 
           // Tabla
           Expanded(
-            child: Container(
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: Colors.grey.shade300),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 5,
-                    offset: const Offset(0, 2),
+            child: PaginatedTable(
+              isLoading: provider.isLoading,
+              isEmpty: usuariosOrdenados.isEmpty,
+              emptyMessage: mensajeVacio,
+              totalElements: provider.totalElements,
+              pageSize: provider.pageSize,
+              currentPage: provider.currentPage,
+              onPageChanged: (page) => provider.getUsers(page: page),
+              columns: const [
+                DataColumn(
+                  label: Text(
+                    "#",
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
                   ),
-                ],
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(10),
-                child:
-                    provider.isLoading
-                        ? const Center(child: CircularProgressIndicator())
-                        : usuariosOrdenados.isEmpty
-                        ? Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.people_outline,
-                                size: 50,
-                                color: Colors.grey[300],
-                              ),
-                              const SizedBox(height: 10),
-                              Text(
-                                mensajeVacio,
-                                style: TextStyle(
-                                  color: Colors.grey[600],
-                                  fontSize: 16,
-                                ),
-                              ),
-                            ],
-                          ),
-                        )
-                        : Column(
-                          children: [
-                            Expanded(
-                              child: SingleChildScrollView(
-                                child: SizedBox(
-                                  width: double.infinity,
-                                  child: DataTable(
-                                    headingRowColor: WidgetStateProperty.all(
-                                      Color(0xFF00AEEF),
-                                    ),
-                                    columnSpacing: 20,
-                                    dataRowMinHeight: 60,
-                                    dataRowMaxHeight: 60,
-
-                                    border: const TableBorder(
-                                      bottom: BorderSide(
-                                        color: Colors.transparent,
-                                      ),
-                                    ),
-
-                                    columns: const [
-                                      DataColumn(
-                                        label: Text(
-                                          "#",
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                      ),
-                                      DataColumn(
-                                        label: Text(
-                                          "Nombre",
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                      ),
-                                      DataColumn(
-                                        label: Text(
-                                          "Usuario",
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                      ),
-                                      DataColumn(
-                                        label: Text(
-                                          "Rol",
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                      ),
-                                      DataColumn(
-                                        label: Text(
-                                          "Acciones",
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.white,
-                                          ),
-                                          textAlign: TextAlign.end,
-                                        ),
-                                      ),
-                                    ],
-
-                                    rows:
-                                        usuariosOrdenados.asMap().entries.map((
-                                          entry,
-                                        ) {
-                                          final int index = entry.key + 1;
-                                          final Usuario usuario = entry.value;
-                                          final colorTexto =
-                                              usuario.activo
-                                                  ? Colors.black87
-                                                  : Colors.grey;
-
-                                          Color baseColor;
-                                          switch (usuario.rol.toLowerCase()) {
-                                            case 'admin':
-                                              baseColor = Colors.purple;
-                                              break;
-                                            case 'quiropráctico':
-                                              baseColor = Colors.blue;
-                                              break;
-                                            default:
-                                              baseColor = Colors.orange;
-                                          }
-
-                                          final rowColor =
-                                              !usuario.activo
-                                                  ? Colors.grey.shade50
-                                                  : baseColor.withOpacity(0.04);
-
-                                          return DataRow(
-                                            color: MaterialStateProperty.all(
-                                              rowColor,
-                                            ),
-                                            cells: [
-                                              DataCell(
-                                                Text(
-                                                  "$index",
-                                                  style: TextStyle(
-                                                    color: Colors.grey[400],
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
-                                              ),
-
-                                              DataCell(
-                                                Row(
-                                                  children: [
-                                                    CircleAvatar(
-                                                      radius: 14,
-                                                      backgroundColor: baseColor
-                                                          .withOpacity(0.1),
-                                                      child: Text(
-                                                        usuario
-                                                                .nombreCompleto
-                                                                .isNotEmpty
-                                                            ? usuario
-                                                                .nombreCompleto[0]
-                                                                .toUpperCase()
-                                                            : "?",
-                                                        style: TextStyle(
-                                                          color: baseColor,
-                                                          fontSize: 12,
-                                                          fontWeight:
-                                                              FontWeight.bold,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                    const SizedBox(width: 10),
-                                                    Text(
-                                                      usuario.nombreCompleto,
-                                                      style: TextStyle(
-                                                        color: colorTexto,
-                                                        fontWeight:
-                                                            FontWeight.w600,
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-
-                                              DataCell(
-                                                Text(
-                                                  usuario.username,
-                                                  style: TextStyle(
-                                                    color: colorTexto,
-                                                  ),
-                                                ),
-                                              ),
-
-                                              // CHIP
-                                              DataCell(
-                                                Chip(
-                                                  backgroundColor: baseColor
-                                                      .withOpacity(0.1),
-                                                  side: BorderSide(
-                                                    color: baseColor,
-                                                  ),
-                                                  padding: const EdgeInsets.all(
-                                                    0,
-                                                  ),
-                                                  labelPadding:
-                                                      const EdgeInsets.symmetric(
-                                                        horizontal: 10,
-                                                      ),
-                                                  visualDensity:
-                                                      VisualDensity.compact,
-                                                  label: Text(
-                                                    usuario.rol.toUpperCase(),
-                                                    style: TextStyle(
-                                                      color: baseColor,
-                                                      fontSize: 10,
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                    ),
-                                                  ),
-                                                ),
-                                              ),
-
-                                              // ACCIONES
-                                              DataCell(
-                                                Row(
-                                                  mainAxisSize:
-                                                      MainAxisSize.min,
-                                                  children: [
-                                                    IconButton(
-                                                      tooltip: "Editar",
-                                                      splashRadius: 20,
-                                                      icon: Badge(
-                                                        isLabelVisible:
-                                                            usuario
-                                                                .cuentaBloqueada,
-                                                        smallSize: 8,
-                                                        backgroundColor:
-                                                            Colors.red,
-                                                        child: const Icon(
-                                                          Icons.edit_outlined,
-                                                          color:
-                                                              AppTheme
-                                                                  .primaryColor,
-                                                          size: 20,
-                                                        ),
-                                                      ),
-                                                      onPressed:
-                                                          () => showDialog(
-                                                            context: context,
-                                                            builder:
-                                                                (
-                                                                  _,
-                                                                ) => UserModal(
-                                                                  usuarioExistente:
-                                                                      usuario,
-                                                                ),
-                                                          ),
-                                                    ),
-                                                    const SizedBox(width: 10),
-                                                    IconButton(
-                                                      splashRadius: 20,
-                                                      icon: Icon(
-                                                        usuario.activo
-                                                            ? Icons
-                                                                .delete_outline
-                                                            : Icons
-                                                                .restore_from_trash,
-                                                        color:
-                                                            usuario.activo
-                                                                ? Colors
-                                                                    .redAccent
-                                                                : Colors.green,
-                                                        size: 20,
-                                                      ),
-                                                      tooltip:
-                                                          usuario.activo
-                                                              ? 'Eliminar'
-                                                              : 'Reactivar',
-                                                      onPressed: () async {
-                                                        _confirmarAccion(
-                                                          context,
-                                                          provider,
-                                                          usuario,
-                                                        );
-                                                      },
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                            ],
-                                          );
-                                        }).toList(),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-              ),
+                ),
+                DataColumn(
+                  label: Text(
+                    "Nombre",
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+                DataColumn(
+                  label: Text(
+                    "Usuario",
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+                DataColumn(
+                  label: Text(
+                    "Rol",
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+                DataColumn(
+                  label: Text(
+                    "Acciones",
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                    textAlign: TextAlign.end,
+                  ),
+                ),
+              ],
+              rows: _generateRows(usuariosOrdenados, provider),
             ),
           ),
         ],
       ),
     );
+  }
+
+  // Generar filas (ya vienen paginadas del backend)
+  List<DataRow> _generateRows(List<Usuario> usuarios, UsersProvider provider) {
+    if (usuarios.isEmpty) return [];
+
+    final int start = provider.currentPage * provider.pageSize;
+
+    return usuarios.asMap().entries.map((entry) {
+      final int index = start + entry.key + 1; // Indice global
+      final Usuario usuario = entry.value;
+      final colorTexto = usuario.activo ? Colors.black87 : Colors.grey;
+
+      Color baseColor;
+      switch (usuario.rol.toLowerCase()) {
+        case 'admin':
+          baseColor = Colors.purple;
+          break;
+        case 'quiropráctico':
+          baseColor = Colors.blue;
+          break;
+        default:
+          baseColor = Colors.orange;
+      }
+
+      final rowColor =
+          !usuario.activo ? Colors.grey.shade50 : baseColor.withOpacity(0.04);
+
+      return DataRow(
+        color: MaterialStateProperty.all(rowColor),
+        cells: [
+          DataCell(
+            Text(
+              "$index",
+              style: TextStyle(
+                color: Colors.grey[400],
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          DataCell(
+            Row(
+              children: [
+                CircleAvatar(
+                  radius: 14,
+                  backgroundColor: baseColor.withOpacity(0.1),
+                  child: Text(
+                    usuario.nombreCompleto.isNotEmpty
+                        ? usuario.nombreCompleto[0].toUpperCase()
+                        : "?",
+                    style: TextStyle(
+                      color: baseColor,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  usuario.nombreCompleto,
+                  style: TextStyle(
+                    color: colorTexto,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          DataCell(Text(usuario.username, style: TextStyle(color: colorTexto))),
+          DataCell(
+            Chip(
+              backgroundColor: baseColor.withOpacity(0.1),
+              side: BorderSide(color: baseColor),
+              padding: const EdgeInsets.all(0),
+              labelPadding: const EdgeInsets.symmetric(horizontal: 10),
+              visualDensity: VisualDensity.compact,
+              label: Text(
+                usuario.rol.toUpperCase(),
+                style: TextStyle(
+                  color: baseColor,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+          DataCell(
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  tooltip: "Editar",
+                  splashRadius: 20,
+                  icon: Badge(
+                    isLabelVisible: usuario.cuentaBloqueada,
+                    smallSize: 8,
+                    backgroundColor: Colors.red,
+                    child: const Icon(
+                      Icons.edit_outlined,
+                      color: AppTheme.primaryColor,
+                      size: 20,
+                    ),
+                  ),
+                  onPressed:
+                      () => showDialog(
+                        context: context,
+                        builder: (_) => UserModal(usuarioExistente: usuario),
+                      ),
+                ),
+                const SizedBox(width: 10),
+                IconButton(
+                  splashRadius: 20,
+                  icon: Icon(
+                    usuario.activo
+                        ? Icons.delete_outline
+                        : Icons.restore_from_trash,
+                    color: usuario.activo ? Colors.redAccent : Colors.green,
+                    size: 20,
+                  ),
+                  tooltip: usuario.activo ? 'Eliminar' : 'Reactivar',
+                  onPressed: () async {
+                    _confirmarAccion(context, provider, usuario);
+                  },
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+    }).toList();
   }
 
   // Lógica de confirmación

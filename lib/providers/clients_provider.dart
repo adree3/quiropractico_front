@@ -16,7 +16,7 @@ class ClientsProvider extends ChangeNotifier {
 
   String currentSearchTerm = '';
   int currentPage = 0;
-  int pageSize = 10;
+  int pageSize = 11;
   int totalPages = 0;
   int totalElements = 0;
 

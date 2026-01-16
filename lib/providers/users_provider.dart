@@ -18,17 +18,25 @@ class UsersProvider extends ChangeNotifier {
 
   int blockedCount = 0;
 
+  int currentPage = 0;
+  int pageSize = 11;
+  int totalElements = 0;
+  int totalPages = 0;
+
   int get blockedCountDisplay => _showBadge ? _realBlockedCount : 0;
 
   UsersProvider() {
     getUsers();
   }
 
-  Future<void> getUsers() async {
-    isLoading = true;
-    notifyListeners();
+  Future<void> getUsers({int page = 0, bool silent = false}) async {
+    if (!silent) {
+      isLoading = true;
+      notifyListeners();
+    }
+    currentPage = page;
     try {
-      final Map<String, dynamic> params = {'page': 0, 'size': 20};
+      final Map<String, dynamic> params = {'page': page, 'size': pageSize};
       if (filterActive != null) {
         params['activo'] = filterActive;
       }
@@ -39,6 +47,9 @@ class UsersProvider extends ChangeNotifier {
       );
 
       final List<dynamic> data = response.data['content'];
+      totalElements = response.data['totalElements'];
+      totalPages = response.data['totalPages'];
+
       usuarios = data.map((e) => Usuario.fromJson(e)).toList();
       await _checkNotifications();
     } catch (e) {
