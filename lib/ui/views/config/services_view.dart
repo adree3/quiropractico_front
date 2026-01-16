@@ -7,9 +7,16 @@ import 'package:quiropractico_front/ui/modals/service_modal.dart';
 import 'package:quiropractico_front/ui/widgets/custom_snackbar.dart';
 import 'package:quiropractico_front/ui/widgets/dashboard_dropdown.dart';
 
-class ServicesView extends StatelessWidget {
+import 'package:quiropractico_front/ui/widgets/paginated_table.dart';
+
+class ServicesView extends StatefulWidget {
   const ServicesView({super.key});
 
+  @override
+  State<ServicesView> createState() => _ServicesViewState();
+}
+
+class _ServicesViewState extends State<ServicesView> {
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<ServicesProvider>(context);
@@ -40,6 +47,7 @@ class ServicesView extends StatelessWidget {
       }
       return b.idServicio.compareTo(a.idServicio);
     });
+
     return Container(
       padding: const EdgeInsets.fromLTRB(0, 0, 0, 10),
       child: Column(
@@ -126,379 +134,256 @@ class ServicesView extends StatelessWidget {
 
           // TABLA
           Expanded(
-            child: Container(
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: Colors.grey.shade300),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 5,
-                    offset: const Offset(0, 2),
+            child: PaginatedTable(
+              isLoading: provider.isLoading,
+              isEmpty: serviciosOrdenados.isEmpty,
+              emptyMessage: mensajeVacio,
+              totalElements: provider.totalElements,
+              pageSize: provider.pageSize,
+              currentPage: provider.currentPage,
+              onPageChanged: (page) => provider.loadServices(page: page),
+              columns: const [
+                DataColumn(
+                  label: Text(
+                    "#",
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
                   ),
-                ],
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(10),
-                child:
-                    provider.isLoading
-                        ? const Center(child: CircularProgressIndicator())
-                        : serviciosOrdenados.isEmpty
-                        ? Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.apps_outage_sharp,
-                                size: 50,
-                                color: Colors.grey[300],
-                              ),
-                              const SizedBox(height: 10),
-                              Text(
-                                mensajeVacio,
-                                style: TextStyle(
-                                  color: Colors.grey[600],
-                                  fontSize: 16,
-                                ),
-                              ),
-                            ],
-                          ),
-                        )
-                        : Column(
-                          children: [
-                            Expanded(
-                              child: SingleChildScrollView(
-                                child: SizedBox(
-                                  width: double.infinity,
-                                  child: DataTable(
-                                    headingRowColor: WidgetStateProperty.all(
-                                      Color(0xFF00AEEF),
-                                    ),
-                                    columnSpacing: 20,
-                                    dataRowMinHeight: 60,
-                                    dataRowMaxHeight: 60,
-                                    dividerThickness: 0.5,
-                                    border: const TableBorder(
-                                      bottom: BorderSide(
-                                        color: Colors.transparent,
-                                      ),
-                                    ),
-
-                                    columns: const [
-                                      DataColumn(
-                                        label: Text(
-                                          "#",
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                      ),
-                                      DataColumn(
-                                        label: Text(
-                                          "Nombre",
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                      ),
-                                      DataColumn(
-                                        label: Text(
-                                          "Tipo",
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                      ),
-                                      DataColumn(
-                                        label: Text(
-                                          "Precio",
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                      ),
-                                      DataColumn(
-                                        label: Text(
-                                          "Sesiones",
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                      ),
-                                      DataColumn(
-                                        label: Expanded(
-                                          child: Text(
-                                            "Acciones",
-                                            style: TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              color: Colors.white,
-                                            ),
-                                            textAlign: TextAlign.end,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-
-                                    rows:
-                                        serviciosOrdenados.asMap().entries.map((
-                                          entry,
-                                        ) {
-                                          final int index = entry.key + 1;
-                                          final Servicio servicio = entry.value;
-                                          final bool esBono =
-                                              servicio.tipo.toLowerCase() ==
-                                              'bono';
-
-                                          // Colores
-                                          final Color baseColor =
-                                              esBono
-                                                  ? Colors.blue
-                                                  : Colors.purple;
-                                          final Color rowColor =
-                                              servicio.activo
-                                                  ? baseColor.withOpacity(0.04)
-                                                  : Colors.grey.shade50;
-                                          final Color textColor =
-                                              servicio.activo
-                                                  ? Colors.black87
-                                                  : Colors.grey;
-
-                                          return DataRow(
-                                            color: MaterialStateProperty.all(
-                                              rowColor,
-                                            ),
-                                            cells: [
-                                              // Indice
-                                              DataCell(
-                                                Text(
-                                                  "$index",
-                                                  style: TextStyle(
-                                                    color: Colors.grey[400],
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
-                                              ),
-
-                                              // Nombre
-                                              DataCell(
-                                                Text(
-                                                  servicio.nombreServicio,
-                                                  style: TextStyle(
-                                                    color: textColor,
-                                                    fontWeight: FontWeight.w600,
-                                                    fontSize: 14,
-                                                  ),
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                ),
-                                              ),
-
-                                              // Tipo (Chip)
-                                              DataCell(
-                                                Chip(
-                                                  backgroundColor: baseColor
-                                                      .withOpacity(0.1),
-                                                  side: BorderSide(
-                                                    color: baseColor,
-                                                  ),
-                                                  padding: EdgeInsets.zero,
-                                                  labelPadding:
-                                                      const EdgeInsets.symmetric(
-                                                        horizontal: 10,
-                                                      ),
-                                                  visualDensity:
-                                                      VisualDensity.compact,
-                                                  label: Text(
-                                                    esBono ? 'BONO' : 'SESIÓN',
-                                                    style: TextStyle(
-                                                      color: baseColor,
-                                                      fontSize: 10,
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                    ),
-                                                  ),
-                                                ),
-                                              ),
-
-                                              // Precio
-                                              DataCell(
-                                                Text(
-                                                  "${servicio.precio} €",
-                                                  style: TextStyle(
-                                                    color: textColor,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
-                                              ),
-
-                                              // Sesiones
-                                              DataCell(
-                                                esBono
-                                                    ? Container(
-                                                      padding:
-                                                          const EdgeInsets.symmetric(
-                                                            horizontal: 8,
-                                                            vertical: 2,
-                                                          ),
-                                                      decoration: BoxDecoration(
-                                                        color: Colors.white,
-                                                        borderRadius:
-                                                            BorderRadius.circular(
-                                                              4,
-                                                            ),
-                                                        border: Border.all(
-                                                          color:
-                                                              Colors
-                                                                  .grey
-                                                                  .shade300,
-                                                        ),
-                                                      ),
-                                                      child: Text(
-                                                        "${servicio.sesiones}",
-                                                        style: TextStyle(
-                                                          color: textColor,
-                                                          fontWeight:
-                                                              FontWeight.bold,
-                                                          fontSize: 12,
-                                                        ),
-                                                      ),
-                                                    )
-                                                    : Text(
-                                                      "-",
-                                                      style: TextStyle(
-                                                        color: textColor
-                                                            .withOpacity(0.5),
-                                                      ),
-                                                    ),
-                                              ),
-
-                                              // Acciones
-                                              DataCell(
-                                                Align(
-                                                  alignment:
-                                                      Alignment.centerRight,
-                                                  child: Row(
-                                                    mainAxisSize:
-                                                        MainAxisSize.min,
-                                                    children: [
-                                                      IconButton(
-                                                        icon: const Icon(
-                                                          Icons.edit_outlined,
-                                                          size: 20,
-                                                          color:
-                                                              AppTheme
-                                                                  .primaryColor,
-                                                        ),
-                                                        onPressed:
-                                                            () => showDialog(
-                                                              context: context,
-                                                              builder:
-                                                                  (
-                                                                    _,
-                                                                  ) => ServiceModal(
-                                                                    servicioExistente:
-                                                                        servicio,
-                                                                  ),
-                                                            ),
-                                                        tooltip: "Editar",
-                                                        splashRadius: 20,
-                                                        padding:
-                                                            EdgeInsets.zero,
-                                                        constraints:
-                                                            const BoxConstraints(),
-                                                      ),
-
-                                                      const SizedBox(width: 15),
-
-                                                      IconButton(
-                                                        icon: Icon(
-                                                          servicio.activo
-                                                              ? Icons
-                                                                  .delete_outline
-                                                              : Icons
-                                                                  .restore_from_trash,
-                                                          color:
-                                                              servicio.activo
-                                                                  ? Colors
-                                                                      .redAccent
-                                                                  : Colors
-                                                                      .green,
-                                                          size: 20,
-                                                        ),
-                                                        tooltip:
-                                                            servicio.activo
-                                                                ? 'Eliminar'
-                                                                : 'Reactivar',
-                                                        splashRadius: 20,
-                                                        padding:
-                                                            EdgeInsets.zero,
-                                                        constraints:
-                                                            const BoxConstraints(),
-                                                        onPressed: () async {
-                                                          String? error;
-                                                          if (servicio.activo) {
-                                                            error = await provider
-                                                                .deleteService(
-                                                                  servicio
-                                                                      .idServicio,
-                                                                );
-                                                          } else {
-                                                            error = await provider
-                                                                .recoverService(
-                                                                  servicio
-                                                                      .idServicio,
-                                                                );
-                                                          }
-                                                          if (context.mounted) {
-                                                            if (error == null) {
-                                                              CustomSnackBar.show(
-                                                                context,
-                                                                message:
-                                                                    servicio.activo
-                                                                        ? 'Servicio eliminado'
-                                                                        : 'Servicio reactivado',
-                                                                type:
-                                                                    SnackBarType
-                                                                        .success,
-                                                              );
-                                                            } else {
-                                                              CustomSnackBar.show(
-                                                                context,
-                                                                message: error,
-                                                                type:
-                                                                    SnackBarType
-                                                                        .error,
-                                                              );
-                                                            }
-                                                          }
-                                                        },
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
-                                          );
-                                        }).toList(),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-              ),
+                ),
+                DataColumn(
+                  label: Text(
+                    "Nombre",
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+                DataColumn(
+                  label: Text(
+                    "Tipo",
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+                DataColumn(
+                  label: Text(
+                    "Precio",
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+                DataColumn(
+                  label: Text(
+                    "Sesiones",
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+                DataColumn(
+                  label: Expanded(
+                    child: Text(
+                      "Acciones",
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+              rows: _generateRows(serviciosOrdenados, provider, context),
             ),
           ),
         ],
       ),
     );
+  }
+
+  List<DataRow> _generateRows(
+    List<Servicio> serviciosOrdenados,
+    ServicesProvider provider,
+    BuildContext context,
+  ) {
+    if (serviciosOrdenados.isEmpty) return [];
+
+    final int start = provider.currentPage * provider.pageSize;
+
+    return serviciosOrdenados.asMap().entries.map((entry) {
+      final int index = start + entry.key + 1;
+      final Servicio servicio = entry.value;
+      final bool esBono = servicio.tipo.toLowerCase() == 'bono';
+
+      // Colores
+      final Color baseColor = esBono ? Colors.blue : Colors.purple;
+      final Color rowColor =
+          servicio.activo ? baseColor.withOpacity(0.04) : Colors.grey.shade50;
+      final Color textColor = servicio.activo ? Colors.black87 : Colors.grey;
+
+      return DataRow(
+        color: MaterialStateProperty.all(rowColor),
+        cells: [
+          // Indice
+          DataCell(
+            Text(
+              "$index",
+              style: TextStyle(
+                color: Colors.grey[400],
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+
+          // Nombre
+          DataCell(
+            Text(
+              servicio.nombreServicio,
+              style: TextStyle(
+                color: textColor,
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+
+          // Tipo (Chip)
+          DataCell(
+            Chip(
+              backgroundColor: baseColor.withOpacity(0.1),
+              side: BorderSide(color: baseColor),
+              padding: EdgeInsets.zero,
+              labelPadding: const EdgeInsets.symmetric(horizontal: 10),
+              visualDensity: VisualDensity.compact,
+              label: Text(
+                esBono ? 'BONO' : 'SESIÓN',
+                style: TextStyle(
+                  color: baseColor,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+
+          // Precio
+          DataCell(
+            Text(
+              "${servicio.precio} €",
+              style: TextStyle(color: textColor, fontWeight: FontWeight.bold),
+            ),
+          ),
+
+          // Sesiones
+          DataCell(
+            esBono
+                ? Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(color: Colors.grey.shade300),
+                  ),
+                  child: Text(
+                    "${servicio.sesiones}",
+                    style: TextStyle(
+                      color: textColor,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                )
+                : Text(
+                  "-",
+                  style: TextStyle(color: textColor.withOpacity(0.5)),
+                ),
+          ),
+
+          // Acciones
+          DataCell(
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  icon: const Icon(
+                    Icons.edit_outlined,
+                    size: 20,
+                    color: AppTheme.primaryColor,
+                  ),
+                  onPressed:
+                      () => showDialog(
+                        context: context,
+                        builder:
+                            (_) => ServiceModal(servicioExistente: servicio),
+                      ),
+                  tooltip: "Editar",
+                  splashRadius: 20,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                ),
+
+                const SizedBox(width: 15),
+
+                IconButton(
+                  icon: Icon(
+                    servicio.activo
+                        ? Icons.delete_outline
+                        : Icons.restore_from_trash,
+                    color: servicio.activo ? Colors.redAccent : Colors.green,
+                    size: 20,
+                  ),
+                  tooltip: servicio.activo ? 'Eliminar' : 'Reactivar',
+                  splashRadius: 20,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  onPressed: () async {
+                    String? error;
+                    if (servicio.activo) {
+                      error = await provider.deleteService(
+                        servicio.idServicio,
+                      );
+                    } else {
+                      error = await provider.recoverService(
+                        servicio.idServicio,
+                      );
+                    }
+                    if (context.mounted) {
+                      if (error == null) {
+                        CustomSnackBar.show(
+                          context,
+                          message:
+                              servicio.activo
+                                  ? 'Servicio eliminado'
+                                  : 'Servicio reactivado',
+                          type: SnackBarType.success,
+                        );
+                      } else {
+                        CustomSnackBar.show(
+                          context,
+                          message: error,
+                          type: SnackBarType.error,
+                        );
+                      }
+                    }
+                  },
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+    }).toList();
   }
 }
 

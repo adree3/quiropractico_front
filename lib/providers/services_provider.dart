@@ -12,17 +12,29 @@ class ServicesProvider extends ChangeNotifier {
   bool isLoading = true;
   bool? filterActive = true;
 
+  // Paginación
+  int currentPage = 0;
+  int pageSize = 11;
+  int totalElements = 0;
+  int totalPages = 0;
+
   ServicesProvider() {
     loadServices();
   }
 
   // Cargar servicios ordenados
-  Future<void> loadServices() async {
+  Future<void> loadServices({int page = 0}) async {
     isLoading = true;
     notifyListeners();
+    currentPage = page;
 
     try {
-      final Map<String, dynamic> params = {};
+      final Map<String, dynamic> params = {
+        'page': page,
+        'size': pageSize,
+        'sortBy': 'idServicio',
+        'direction': 'desc',
+      };
       if (filterActive != null) {
         params['activo'] = filterActive;
       }
@@ -32,18 +44,11 @@ class ServicesProvider extends ChangeNotifier {
         queryParameters: params,
       );
 
-      final List<dynamic> data = response.data;
-      List<Servicio> tempList = data.map((e) => Servicio.fromJson(e)).toList();
-      tempList.sort((a, b) {
-        bool aEsSesion = a.sesiones == null;
-        bool bEsSesion = b.sesiones == null;
+      final List<dynamic> data = response.data['content'];
+      totalElements = response.data['totalElements'];
+      totalPages = response.data['totalPages'];
 
-        if (aEsSesion && !bEsSesion) return -1;
-        if (!aEsSesion && bEsSesion) return 1;
-
-        return b.idServicio.compareTo(a.idServicio);
-      });
-      servicios = tempList;
+      servicios = data.map((e) => Servicio.fromJson(e)).toList();
     } catch (e) {
       print('Error cargando servicios: ${ErrorHandler.extractMessage(e)}');
     } finally {
