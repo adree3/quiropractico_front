@@ -7,6 +7,7 @@ import 'package:quiropractico_front/models/auditoria_log.dart';
 import 'package:quiropractico_front/providers/auditoria_provider.dart';
 import 'package:quiropractico_front/ui/widgets/custom_snackbar.dart';
 import 'package:quiropractico_front/ui/widgets/dashboard_dropdown.dart';
+import 'package:quiropractico_front/ui/widgets/paginated_table.dart';
 
 class AuditoriaView extends StatefulWidget {
   const AuditoriaView({super.key});
@@ -148,116 +149,66 @@ class _AuditoriaViewState extends State<AuditoriaView> {
 
           // Tabla + paginador
           Expanded(
-            child: Container(
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(10),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, 5),
+            child: PaginatedTable(
+              isLoading: provider.isLoading,
+              isEmpty: logs.isEmpty,
+              emptyMessage: "No hay registros de auditoría",
+              totalElements: provider.totalElements,
+              pageSize: provider.pageSize,
+              currentPage: provider.currentPage,
+              onPageChanged: (p) => provider.getLogs(page: p),
+              columns: const [
+                DataColumn(
+                  label: Text(
+                    'Fecha',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
                   ),
-                ],
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(10),
-                child:
-                    provider.isLoading
-                        ? const SizedBox(
-                          height: 400,
-                          child: Center(child: CircularProgressIndicator()),
-                        )
-                        : logs.isEmpty
-                        ? const SizedBox(
-                          height: 200,
-                          child: Center(child: Text("No hay logs disponibles")),
-                        )
-                        : Column(
-                          children: [
-                            Expanded(
-                              child: SingleChildScrollView(
-                                child: SizedBox(
-                                  width: double.infinity,
-                                  child: DataTable(
-                                    headingRowColor: WidgetStateProperty.all(
-                                      Color(0xFF00AEEF),
-                                    ),
-                                    dataRowMinHeight: 60,
-                                    dataRowMaxHeight: 60,
-                                    headingRowHeight: 50,
-                                    dividerThickness: 0.5,
-                                    columnSpacing: 20,
-                                    columns: const [
-                                      DataColumn(
-                                        label: Text(
-                                          'Fecha',
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                      ),
-                                      DataColumn(
-                                        label: Text(
-                                          'Usuario',
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                      ),
-                                      DataColumn(
-                                        label: Text(
-                                          'Acción',
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                      ),
-                                      DataColumn(
-                                        label: Text(
-                                          'Entidad',
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                      ),
-                                      DataColumn(
-                                        label: Expanded(
-                                          child: Text(
-                                            'Detalle',
-                                            style: TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              color: Colors.white,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                    rows:
-                                        logs
-                                            .map(
-                                              (log) =>
-                                                  _buildDataRow(log, context),
-                                            )
-                                            .toList(),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-              ),
+                ),
+                DataColumn(
+                  label: Text(
+                    'Usuario',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+                DataColumn(
+                  label: Text(
+                    'Acción',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+                DataColumn(
+                  label: Text(
+                    'Entidad',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+                DataColumn(
+                  label: Expanded(
+                    child: Text(
+                      'Detalle',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+              rows: logs.map((log) => _buildDataRow(log, context)).toList(),
             ),
           ),
-          const SizedBox(height: 10),
-
-          // Paginacion con contador
-          _buildPaginationFooter(provider),
         ],
       ),
     );
@@ -302,69 +253,6 @@ class _AuditoriaViewState extends State<AuditoriaView> {
       customLabel: provider.filtroEntidad == null ? "Todos" : null,
       onSelected: (val) => provider.setFiltroEntidad(val),
       options: options,
-    );
-  }
-
-  // Footer del paginatioon
-  Widget _buildPaginationFooter(AuditoriaProvider provider) {
-    int start = (provider.currentPage * provider.pageSize) + 1;
-    int end = (provider.currentPage * provider.pageSize) + provider.logs.length;
-    if (provider.totalElements == 0) start = 0;
-
-    int totalPages = (provider.totalElements / provider.pageSize).ceil();
-    if (totalPages == 0) totalPages = 1;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 5,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          Text(
-            'Mostrando $start - $end de ${provider.totalElements} registros',
-            style: const TextStyle(
-              color: Colors.grey,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-
-          const Spacer(),
-
-          IconButton(
-            onPressed:
-                provider.currentPage > 0
-                    ? () => provider.getLogs(page: provider.currentPage - 1)
-                    : null,
-            icon: const Icon(Icons.chevron_left),
-          ),
-
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            child: Text(
-              'Página ${provider.currentPage + 1} de $totalPages',
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-          ),
-
-          IconButton(
-            onPressed:
-                (provider.currentPage + 1) * provider.pageSize <
-                        provider.totalElements
-                    ? () => provider.getLogs(page: provider.currentPage + 1)
-                    : null,
-            icon: const Icon(Icons.chevron_right),
-          ),
-        ],
-      ),
     );
   }
 
