@@ -166,6 +166,7 @@ class _AuditoriaViewState extends State<AuditoriaView> {
               emptyMessage: "No hay registros de auditoría",
               totalElements: provider.totalElements,
               pageSize: provider.pageSize,
+              dataRowHeight: 52.0,
               currentPage: provider.currentPage,
               onPageChanged: (p) => provider.getLogs(page: p),
               columns: const [
@@ -504,7 +505,7 @@ class _AuditoriaViewState extends State<AuditoriaView> {
         border: Border.all(color: color.withOpacity(0.3)),
       ),
       child: Text(
-        accion,
+        accion == 'ELIMINAR_LOGICO' ? 'ELIMINAR' : accion,
         style: TextStyle(
           color: color,
           fontSize: 10,
