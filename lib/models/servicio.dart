@@ -21,7 +21,7 @@ class Servicio {
       nombreServicio: json['nombreServicio'],
       precio: (json['precio'] as num).toDouble(),
       sesiones: json['sesionesIncluidas'],
-      activo: json['activo']?? true,
+      activo: json['activo'] ?? true,
       tipo: json['tipo'] ?? 'sesion_unica',
     );
   }
@@ -34,7 +34,25 @@ class Servicio {
 
   @override
   int get hashCode => idServicio.hashCode;
-  
+
   @override
   String toString() => nombreServicio;
+
+  Servicio copyWith({
+    int? idServicio,
+    String? nombreServicio,
+    double? precio,
+    int? sesiones,
+    bool? activo,
+    String? tipo,
+  }) {
+    return Servicio(
+      idServicio: idServicio ?? this.idServicio,
+      nombreServicio: nombreServicio ?? this.nombreServicio,
+      precio: precio ?? this.precio,
+      sesiones: sesiones ?? this.sesiones,
+      activo: activo ?? this.activo,
+      tipo: tipo ?? this.tipo,
+    );
+  }
 }

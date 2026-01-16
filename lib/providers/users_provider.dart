@@ -161,8 +161,22 @@ class UsersProvider extends ChangeNotifier {
   // DESACTIVAR
   Future<String?> deleteUser(int id) async {
     try {
+      // Optimistic Update
+      final index = usuarios.indexWhere((u) => u.idUsuario == id);
+      if (index != -1) {
+        if (filterActive == true) {
+          usuarios.removeAt(index);
+          totalElements--;
+        } else {
+          usuarios[index] = usuarios[index].copyWith(activo: false);
+        }
+        notifyListeners();
+      }
+
       await ApiService.dio.delete('$_baseUrl/usuarios/$id');
-      await getUsers();
+
+      // Silent Refresh
+      getUsers(page: currentPage, silent: true);
       return null;
     } catch (e) {
       return ErrorHandler.extractMessage(e);
@@ -172,8 +186,22 @@ class UsersProvider extends ChangeNotifier {
   // REACTIVAR
   Future<String?> recoverUser(int id) async {
     try {
+      // Optimistic Update
+      final index = usuarios.indexWhere((u) => u.idUsuario == id);
+      if (index != -1) {
+        if (filterActive == false) {
+          usuarios.removeAt(index);
+          totalElements--;
+        } else {
+          usuarios[index] = usuarios[index].copyWith(activo: true);
+        }
+        notifyListeners();
+      }
+
       await ApiService.dio.put('$_baseUrl/usuarios/$id/recuperar');
-      await getUsers();
+
+      // Silent Refresh
+      getUsers(page: currentPage, silent: true);
       return null;
     } catch (e) {
       return ErrorHandler.extractMessage(e);
@@ -183,8 +211,17 @@ class UsersProvider extends ChangeNotifier {
   // DESBLOQUEAR
   Future<String?> unlockUser(int id) async {
     try {
+      // Optimistic Update
+      final index = usuarios.indexWhere((u) => u.idUsuario == id);
+      if (index != -1) {
+        usuarios[index] = usuarios[index].copyWith(cuentaBloqueada: false);
+        notifyListeners();
+      }
+
       await ApiService.dio.put('$_baseUrl/usuarios/$id/desbloquear');
-      await getUsers();
+
+      // Silent Refresh
+      getUsers(page: currentPage, silent: true);
       return null;
     } catch (e) {
       return ErrorHandler.extractMessage(e);

@@ -23,9 +23,11 @@ class ServicesProvider extends ChangeNotifier {
   }
 
   // Cargar servicios ordenados
-  Future<void> loadServices({int page = 0}) async {
-    isLoading = true;
-    notifyListeners();
+  Future<void> loadServices({int page = 0, bool notifyLoading = true}) async {
+    if (notifyLoading) {
+      isLoading = true;
+      notifyListeners();
+    }
     currentPage = page;
 
     try {
@@ -115,10 +117,25 @@ class ServicesProvider extends ChangeNotifier {
   // BORRAR
   Future<String?> deleteService(int id) async {
     try {
+      // Optimistic Update
+      final index = servicios.indexWhere((s) => s.idServicio == id);
+      if (index != -1) {
+        if (filterActive == true) {
+          servicios.removeAt(index);
+          totalElements--;
+        } else {
+          servicios[index] = servicios[index].copyWith(activo: false);
+        }
+        notifyListeners();
+      }
+
       await ApiService.dio.delete('$_baseUrl/servicios/$id');
-      await loadServices();
+
+      // Silent Refresh
+      loadServices(page: currentPage, notifyLoading: false);
       return null;
     } catch (e) {
+      // Revert if needed, but for now just returning error
       return ErrorHandler.extractMessage(e);
     }
   }
@@ -126,8 +143,22 @@ class ServicesProvider extends ChangeNotifier {
   // RECUPERAR
   Future<String?> recoverService(int id) async {
     try {
+      // Optimistic Update
+      final index = servicios.indexWhere((s) => s.idServicio == id);
+      if (index != -1) {
+        if (filterActive == false) {
+          servicios.removeAt(index);
+          totalElements--;
+        } else {
+          servicios[index] = servicios[index].copyWith(activo: true);
+        }
+        notifyListeners();
+      }
+
       await ApiService.dio.put('$_baseUrl/servicios/$id/recuperar');
-      await loadServices();
+
+      // Silent Refresh
+      loadServices(page: currentPage, notifyLoading: false);
       return null;
     } catch (e) {
       return ErrorHandler.extractMessage(e);
