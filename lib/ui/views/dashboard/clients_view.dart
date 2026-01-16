@@ -7,6 +7,7 @@ import 'package:quiropractico_front/ui/modals/client_modal.dart';
 import 'package:go_router/go_router.dart';
 import 'package:quiropractico_front/ui/widgets/custom_snackbar.dart';
 import 'package:quiropractico_front/ui/widgets/dashboard_dropdown.dart';
+import 'package:quiropractico_front/ui/widgets/paginated_table.dart';
 
 class ClientsView extends StatefulWidget {
   const ClientsView({super.key});
@@ -136,209 +137,161 @@ class _ClientsViewState extends State<ClientsView> {
 
           // TABLA
           Expanded(
-            child: Container(
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(10),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, 5),
+            child: PaginatedTable(
+              isLoading: clientsProvider.isLoading,
+              isEmpty: clientes.isEmpty,
+              emptyMessage: "No hay pacientes registrados",
+              totalElements: clientsProvider.totalElements,
+              pageSize: clientsProvider.pageSize,
+              currentPage: clientsProvider.currentPage,
+              onPageChanged: (page) {
+                if (clientsProvider.isSearching) {
+                  clientsProvider.searchGlobal(
+                    clientsProvider.currentSearchTerm,
+                    page: page,
+                  );
+                } else {
+                  clientsProvider.getPaginatedClients(page: page);
+                }
+              },
+              columns: const [
+                DataColumn(
+                  label: Text(
+                    "#",
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
                   ),
-                ],
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(10),
-                child:
-                    clientsProvider.isLoading
-                        ? const SizedBox(
-                          height: 400,
-                          child: Center(child: CircularProgressIndicator()),
-                        )
-                        : clientes.isEmpty
-                        ? const SizedBox(
-                          height: 200,
-                          child: Center(
-                            child: Text("No hay pacientes registrados"),
+                ),
+                DataColumn(
+                  label: Text(
+                    "Nombre Completo",
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+                DataColumn(
+                  label: Text(
+                    "Teléfono",
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+                DataColumn(
+                  label: Text(
+                    "Acciones",
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ],
+              rows:
+                  clientes.asMap().entries.map((entry) {
+                    final cliente = entry.value;
+                    final index = entry.key;
+                    final realIndex =
+                        (clientsProvider.currentPage *
+                            clientsProvider.pageSize) +
+                        index +
+                        1;
+                    final rowColor =
+                        !clientsProvider.filterActive
+                            ? Colors.grey.shade50
+                            : null;
+
+                    return DataRow(
+                      color: MaterialStateProperty.all(rowColor),
+                      cells: [
+                        DataCell(
+                          Text(
+                            "$realIndex",
+                            style: const TextStyle(
+                              color: Colors.grey,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
-                        )
-                        : Column(
-                          children: [
-                            Expanded(
-                              child: SingleChildScrollView(
-                                child: SizedBox(
-                                  width: double.infinity,
-                                  child: DataTable(
-                                    headingRowColor: WidgetStateProperty.all(
-                                      Color(0xFF00AEEF),
-                                    ),
-                                    dataRowMinHeight: 55,
-                                    dataRowMaxHeight: 55,
-                                    columnSpacing: 20,
-                                    columns: const [
-                                      DataColumn(
-                                        label: Text(
-                                          '#',
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                      ),
-                                      DataColumn(
-                                        label: Text(
-                                          'Nombre Completo',
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                      ),
-                                      DataColumn(
-                                        label: Text(
-                                          'Teléfono',
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                      ),
-                                      DataColumn(
-                                        label: Expanded(
-                                          child: Text(
-                                            'Acciones',
-                                            textAlign: TextAlign.end,
-                                            style: TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              color: Colors.white,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-
-                                    rows: List.generate(clientes.length, (
-                                      index,
-                                    ) {
-                                      final cliente = clientes[index];
-                                      final realIndex =
-                                          (clientsProvider.currentPage *
-                                              clientsProvider.pageSize) +
-                                          index +
-                                          1;
-
-                                      return DataRow(
-                                        cells: [
-                                          DataCell(
-                                            Text(
-                                              "$realIndex",
-                                              style: const TextStyle(
-                                                color: Colors.grey,
-                                                fontWeight: FontWeight.w600,
-                                              ),
-                                            ),
-                                          ),
-
-                                          // Nombre con Avatar (Opcional, queda bonito)
-                                          DataCell(
-                                            Row(
-                                              children: [
-                                                CircleAvatar(
-                                                  radius: 14,
-                                                  backgroundColor: AppTheme
-                                                      .primaryColor
-                                                      .withOpacity(0.1),
-                                                  child: Text(
-                                                    cliente.nombre.isNotEmpty
-                                                        ? cliente.nombre[0]
-                                                            .toUpperCase()
-                                                        : "?",
-                                                    style: const TextStyle(
-                                                      color:
-                                                          AppTheme.primaryColor,
-                                                      fontSize: 12,
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                    ),
-                                                  ),
-                                                ),
-                                                const SizedBox(width: 10),
-                                                Text(
-                                                  '${cliente.nombre} ${cliente.apellidos}',
-                                                  style: const TextStyle(
-                                                    fontWeight: FontWeight.w500,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-
-                                          DataCell(Text(cliente.telefono)),
-
-                                          DataCell(
-                                            Align(
-                                              alignment: Alignment.centerRight,
-                                              child: Row(
-                                                mainAxisSize: MainAxisSize.min,
-                                                children: [
-                                                  IconButton(
-                                                    icon: const Icon(
-                                                      Icons.visibility_outlined,
-                                                      color:
-                                                          AppTheme.primaryColor,
-                                                    ),
-                                                    tooltip: 'Detalles',
-                                                    onPressed:
-                                                        () => context.go(
-                                                          '/pacientes/${cliente.idCliente}',
-                                                        ),
-                                                  ),
-                                                  IconButton(
-                                                    icon: Icon(
-                                                      clientsProvider
-                                                              .filterActive
-                                                          ? Icons.delete_outline
-                                                          : Icons
-                                                              .restore_from_trash,
-                                                      color:
-                                                          clientsProvider
-                                                                  .filterActive
-                                                              ? Colors.redAccent
-                                                              : Colors.green,
-                                                    ),
-                                                    tooltip:
-                                                        clientsProvider
-                                                                .filterActive
-                                                            ? 'Eliminar'
-                                                            : 'Reactivar',
-                                                    onPressed: () async {
-                                                      _confirmarAccion(
-                                                        context,
-                                                        clientsProvider,
-                                                        cliente,
-                                                      );
-                                                    },
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      );
-                                    }),
+                        ),
+                        DataCell(
+                          Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 14,
+                                backgroundColor: AppTheme.primaryColor
+                                    .withOpacity(0.1),
+                                child: Text(
+                                  cliente.nombre.isNotEmpty
+                                      ? cliente.nombre[0].toUpperCase()
+                                      : "?",
+                                  style: const TextStyle(
+                                    color: AppTheme.primaryColor,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
                                   ),
                                 ),
                               ),
-                            ),
-                          ],
+                              const SizedBox(width: 10),
+                              Text(
+                                '${cliente.nombre} ${cliente.apellidos}',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-              ),
+                        DataCell(Text(cliente.telefono)),
+                        DataCell(
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.visibility_outlined,
+                                  color: AppTheme.primaryColor,
+                                ),
+                                tooltip: 'Detalles',
+                                onPressed:
+                                    () => context.go(
+                                      '/pacientes/${cliente.idCliente}',
+                                    ),
+                              ),
+                              IconButton(
+                                icon: Icon(
+                                  clientsProvider.filterActive
+                                      ? Icons.delete_outline
+                                      : Icons.restore_from_trash,
+                                  color:
+                                      clientsProvider.filterActive
+                                          ? Colors.redAccent
+                                          : Colors.green,
+                                ),
+                                tooltip:
+                                    clientsProvider.filterActive
+                                        ? 'Eliminar'
+                                        : 'Reactivar',
+                                onPressed: () async {
+                                  _confirmarAccion(
+                                    context,
+                                    clientsProvider,
+                                    cliente,
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    );
+                  }).toList(),
             ),
           ),
-          const SizedBox(height: 20),
-          _buildPaginationFooter(clientsProvider),
         ],
       ),
     );
@@ -363,64 +316,6 @@ class _ClientsViewState extends State<ClientsView> {
           color: Colors.redAccent,
         ),
       ],
-    );
-  }
-
-  // Paginacion
-  Widget _buildPaginationFooter(ClientsProvider provider) {
-    int start = (provider.currentPage * provider.pageSize) + 1;
-    int end =
-        (provider.currentPage * provider.pageSize) + provider.clients.length;
-    if (provider.totalElements == 0) start = 0;
-
-    int totalPages = (provider.totalElements / provider.pageSize).ceil();
-    if (totalPages == 0) totalPages = 1;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 5,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          Text(
-            'Mostrando $start - $end de ${provider.totalElements} registros',
-            style: const TextStyle(
-              color: Colors.grey,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const Spacer(),
-          IconButton(
-            onPressed:
-                provider.currentPage > 0 ? () => provider.prevPage() : null,
-            icon: const Icon(Icons.chevron_left),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            child: Text(
-              'Página ${provider.currentPage + 1} de $totalPages',
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-          ),
-          IconButton(
-            onPressed:
-                provider.currentPage < provider.totalPages - 1
-                    ? () => provider.nextPage()
-                    : null,
-            icon: const Icon(Icons.chevron_right),
-          ),
-        ],
-      ),
     );
   }
 
@@ -483,9 +378,7 @@ class _ClientsViewState extends State<ClientsView> {
   }
 }
 
-// -----------------------------------------------------------
-// WIDGET EXTRA: BOTÓN HOVERABLE (Igual que en Auditoría pero adaptado)
-// -----------------------------------------------------------
+// BOTÓN HOVERABLE (Igual que en Auditoría pero adaptado)
 class _HoverableActionButton extends StatefulWidget {
   final VoidCallback onTap;
   final String label;
