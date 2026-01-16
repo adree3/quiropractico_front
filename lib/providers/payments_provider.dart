@@ -105,10 +105,15 @@ class PaymentsProvider extends ChangeNotifier {
   }
 
   // Obtiene los pagos pendientes
-  Future<void> getPagosPendientes({required int page}) async {
-    isLoadingPendientes = true;
+  Future<void> getPagosPendientes({
+    required int page,
+    bool notifyLoading = true,
+  }) async {
+    if (notifyLoading) {
+      isLoadingPendientes = true;
+      notifyListeners();
+    }
     pagePendientes = page;
-    notifyListeners();
 
     try {
       final response = await ApiService.dio.get(
@@ -199,9 +204,17 @@ class PaymentsProvider extends ChangeNotifier {
         notifyListeners();
         checkPendingCount();
 
-        // 3. Comprobar si la página se ha quedado vacía
+        notifyListeners();
+        checkPendingCount();
+
+        // Silent refresh to fill the gap (or handle empty page)
         if (listaPendientes.isEmpty && pagePendientes > 0) {
+          // Si se vació la página, volvemos atrás (con loading normal o silent?)
+          // Mejor normal para que se vea el cambio de página claro, o silent.
           getPagosPendientes(page: pagePendientes - 1);
+        } else {
+          // Rellenar hueco silenciosamente
+          getPagosPendientes(page: pagePendientes, notifyLoading: false);
         }
       }
 

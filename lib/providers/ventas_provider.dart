@@ -27,11 +27,11 @@ class VentasProvider extends ChangeNotifier {
     }
   }
 
-  // Cargar Servicios ACTIVOS
-  Future<void> loadServiciosDisponibles() async {
+  // Cargar Servicios ACTIVOS (Dropdown)
+  Future<void> loadServiciosDropdown() async {
     try {
       final response = await ApiService.dio.get(
-        '$_baseUrl/servicios',
+        '$_baseUrl/servicios/list',
         queryParameters: {'activo': true},
       );
 
@@ -40,7 +40,9 @@ class VentasProvider extends ChangeNotifier {
 
       notifyListeners();
     } catch (e) {
-      print('Error cargando servicios: ${ErrorHandler.extractMessage(e)}');
+      print(
+        'Error cargando servicios dropdown: ${ErrorHandler.extractMessage(e)}',
+      );
     }
   }
 

@@ -209,8 +209,7 @@ class _PaymentsViewState extends State<PaymentsView> {
 
                   // Filtro de Fecha (Dropdown)
                   DashboardDropdown<String>(
-                    selectedValue:
-                        'CUSTOM', // Dummy value or track actual selected key if possible
+                    selectedValue: 'CUSTOM',
                     customLabel: _filtroLabel,
                     customIcon: Icons.calendar_today,
                     onSelected: _aplicarFiltro,
@@ -317,7 +316,7 @@ class _PaymentsViewState extends State<PaymentsView> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.history, size: 20),
+                        const Icon(Icons.history, size: 20),
                         SizedBox(width: 8),
                         Text("HISTORIAL"),
                       ],
@@ -843,101 +842,124 @@ class _PaginatedTable extends StatelessWidget {
       ),
       child: ClipRRect(
         borderRadius: const BorderRadius.vertical(bottom: Radius.circular(10)),
-        child: Column(
+        child: Stack(
           children: [
-            Expanded(
-              child:
-                  isLoading
-                      ? const Center(child: CircularProgressIndicator())
-                      : isEmpty
-                      ? Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.inbox,
-                              size: 40,
-                              color: Colors.grey[300],
+            Column(
+              children: [
+                Expanded(
+                  child:
+                      isEmpty && !isLoading
+                          ? Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.inbox,
+                                  size: 40,
+                                  color: Colors.grey[300],
+                                ),
+                                const SizedBox(height: 10),
+                                Text(
+                                  emptyMessage,
+                                  style: TextStyle(color: Colors.grey[600]),
+                                ),
+                              ],
                             ),
-                            const SizedBox(height: 10),
-                            Text(
-                              emptyMessage,
-                              style: TextStyle(color: Colors.grey[600]),
+                          )
+                          : SingleChildScrollView(
+                            child: SizedBox(
+                              width: double.infinity,
+                              child: IgnorePointer(
+                                ignoring: isLoading,
+                                child: Opacity(
+                                  opacity: isLoading ? 0.5 : 1.0,
+                                  child: DataTable(
+                                    headingRowColor: WidgetStateProperty.all(
+                                      Color(0xFF00AEEF),
+                                    ),
+                                    columnSpacing: 20,
+                                    dataRowMinHeight: 55,
+                                    dataRowMaxHeight: 55,
+                                    columns: columns,
+                                    rows: rows,
+                                  ),
+                                ),
+                              ),
                             ),
-                          ],
-                        ),
-                      )
-                      : SingleChildScrollView(
-                        child: SizedBox(
-                          width: double.infinity,
-                          child: DataTable(
-                            headingRowColor: WidgetStateProperty.all(
-                              Color(0xFF00AEEF),
-                            ),
-                            columnSpacing: 20,
-                            dataRowMinHeight: 55,
-                            dataRowMaxHeight: 55,
-                            columns: columns,
-                            rows: rows,
                           ),
-                        ),
-                      ),
-            ),
+                ),
 
-            if (showPagination && !isLoading && !isEmpty)
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 10,
-                ),
-                decoration: BoxDecoration(
-                  border: Border(top: BorderSide(color: Colors.grey.shade200)),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      "Mostrando $startRecord - $endRecord de $totalElements registros",
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: Colors.grey[600],
-                        fontWeight: FontWeight.w500,
+                if (showPagination && !isEmpty)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      border: Border(
+                        top: BorderSide(color: Colors.grey.shade200),
                       ),
                     ),
-
-                    Row(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        IconButton(
-                          icon: const Icon(Icons.chevron_left),
-                          onPressed:
-                              currentPage > 0
-                                  ? () => onPageChanged(currentPage - 1)
-                                  : null,
-                          padding: EdgeInsets.zero,
-                          tooltip: "Anterior",
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 10),
-                          child: Text(
-                            "Página ${currentPage + 1} de $totalPages",
-                            style: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
-                            ),
+                        Text(
+                          "Mostrando $startRecord - $endRecord de $totalElements registros",
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.grey[600],
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
-                        IconButton(
-                          icon: const Icon(Icons.chevron_right),
-                          onPressed:
-                              currentPage < totalPages - 1
-                                  ? () => onPageChanged(currentPage + 1)
-                                  : null,
-                          padding: EdgeInsets.zero,
-                          tooltip: "Siguiente",
+
+                        IgnorePointer(
+                          ignoring: isLoading,
+                          child: Row(
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.chevron_left),
+                                onPressed:
+                                    currentPage > 0
+                                        ? () => onPageChanged(currentPage - 1)
+                                        : null,
+                                padding: EdgeInsets.zero,
+                                tooltip: "Anterior",
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                ),
+                                child: Text(
+                                  "Página ${currentPage + 1} de $totalPages",
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.chevron_right),
+                                onPressed:
+                                    currentPage < totalPages - 1
+                                        ? () => onPageChanged(currentPage + 1)
+                                        : null,
+                                padding: EdgeInsets.zero,
+                                tooltip: "Siguiente",
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                     ),
-                  ],
+                  ),
+              ],
+            ),
+
+            if (isLoading)
+              Positioned.fill(
+                child: Container(
+                  color: Colors.white.withOpacity(0.5),
+                  child: const Center(child: CircularProgressIndicator()),
                 ),
               ),
           ],

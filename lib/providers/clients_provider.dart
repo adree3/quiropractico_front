@@ -49,11 +49,16 @@ class ClientsProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> getPaginatedClients({int page = 0}) async {
-    isLoading = true;
+  Future<void> getPaginatedClients({
+    int page = 0,
+    bool notifyLoading = true,
+  }) async {
+    if (notifyLoading) {
+      isLoading = true;
+      notifyListeners();
+    }
     currentPage = page;
     errorMessage = null;
-    notifyListeners();
 
     try {
       final response = await ApiService.dio.get(
@@ -130,7 +135,11 @@ class ClientsProvider extends ChangeNotifier {
   }
 
   // Barra de busqueda
-  Future<void> searchGlobal(String query, {int page = 0}) async {
+  Future<void> searchGlobal(
+    String query, {
+    int page = 0,
+    bool notifyLoading = true,
+  }) async {
     if (query.isEmpty) {
       isSearching = false;
       currentSearchTerm = '';
@@ -138,11 +147,13 @@ class ClientsProvider extends ChangeNotifier {
       return;
     }
 
-    isLoading = true;
+    if (notifyLoading) {
+      isLoading = true;
+      notifyListeners();
+    }
     isSearching = true;
     currentSearchTerm = query;
     currentPage = page;
-    notifyListeners();
 
     try {
       final response = await ApiService.dio.get(
@@ -170,18 +181,37 @@ class ClientsProvider extends ChangeNotifier {
     try {
       await ApiService.dio.delete('$_baseUrl/clientes/$idCliente');
 
-      _refreshCurrentView();
+      final index = clients.indexWhere((c) => c.idCliente == idCliente);
+      if (index != -1) {
+        if (filterActive) {
+          // Si estamos viendo "activos" y se borra uno, lo quitamos de la lista
+          clients.removeAt(index);
+          totalElements--; // Ajustamos contador visualmente
+        } else {
+          // Si estamos viendo "inactivos" o "todos", quizás solo cambiamos su estado
+          // Pero tu lógica de backend dirá. Asumiendo borrado lógico:
+          // Si es "Todos", lo marcamos inactivo. Si es "Inactivos", no debería estar aquí si estaba activo.
+          clients[index] = clients[index].copyWith(activo: false);
+        }
+        notifyListeners();
+        // Silent refresh to fill the gap
+        _refreshCurrentView(notifyLoading: false);
+      }
       return null;
     } catch (e) {
       return ErrorHandler.extractMessage(e);
     }
   }
 
-  void _refreshCurrentView() {
+  void _refreshCurrentView({bool notifyLoading = true}) {
     if (isSearching) {
-      searchGlobal(currentSearchTerm, page: currentPage);
+      searchGlobal(
+        currentSearchTerm,
+        page: currentPage,
+        notifyLoading: notifyLoading,
+      );
     } else {
-      getPaginatedClients(page: currentPage);
+      getPaginatedClients(page: currentPage, notifyLoading: notifyLoading);
     }
   }
 
@@ -228,7 +258,23 @@ class ClientsProvider extends ChangeNotifier {
     try {
       await ApiService.dio.put('$_baseUrl/clientes/$idCliente/recuperar');
 
-      _refreshCurrentView();
+      final index = clients.indexWhere((c) => c.idCliente == idCliente);
+      if (index != -1) {
+        if (!filterActive) {
+          // Si estamos viendo "eliminados" y se recupera, se va de la lista
+          clients.removeAt(index);
+          totalElements--;
+        } else {
+          // Si estamos viendo "todos", se marca activo
+          clients[index] = clients[index].copyWith(activo: true);
+        }
+        notifyListeners();
+        // Silent refresh to fill the gap
+        _refreshCurrentView(notifyLoading: false);
+      } else {
+        // Edge case: no está en la lista visible (raro), refrescamos por si acaso
+        _refreshCurrentView();
+      }
       return null;
     } catch (e) {
       return ErrorHandler.extractMessage(e);

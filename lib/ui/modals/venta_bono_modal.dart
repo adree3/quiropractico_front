@@ -28,7 +28,7 @@ class _VentaBonoModalState extends State<VentaBonoModal> {
       Provider.of<VentasProvider>(
         context,
         listen: false,
-      ).loadServiciosDisponibles();
+      ).loadServiciosDropdown();
     });
   }
 

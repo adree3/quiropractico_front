@@ -14,6 +14,7 @@ class Cliente {
     required this.telefono,
     this.email,
     this.direccion,
+    this.activo = true,
   });
 
   factory Cliente.fromJson(Map<String, dynamic> json) {
@@ -24,6 +25,29 @@ class Cliente {
       telefono: json['telefono'] ?? '',
       email: json['email'],
       direccion: json['direccion'],
+      activo: json['activo'] ?? true,
+    );
+  }
+
+  final bool activo;
+
+  Cliente copyWith({
+    int? idCliente,
+    String? nombre,
+    String? apellidos,
+    String? telefono,
+    String? email,
+    String? direccion,
+    bool? activo,
+  }) {
+    return Cliente(
+      idCliente: idCliente ?? this.idCliente,
+      nombre: nombre ?? this.nombre,
+      apellidos: apellidos ?? this.apellidos,
+      telefono: telefono ?? this.telefono,
+      email: email ?? this.email,
+      direccion: direccion ?? this.direccion,
+      activo: activo ?? this.activo,
     );
   }
 }
