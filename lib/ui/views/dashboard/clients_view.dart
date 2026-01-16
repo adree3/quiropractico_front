@@ -76,34 +76,45 @@ class _ClientsViewState extends State<ClientsView> {
                 const SizedBox(width: 15),
                 // Buscador
                 Expanded(
-                  child: TextField(
-                    controller: searchCtrl,
-                    decoration: InputDecoration(
-                      hintText: 'Buscar por nombre, apellido o teléfono',
-                      prefixIcon: const Icon(Icons.search, color: Colors.grey),
-                      border: InputBorder.none,
-                      isDense: true,
-                      contentPadding: const EdgeInsets.symmetric(vertical: 8),
-                      suffixIcon:
-                          searchCtrl.text.isNotEmpty
-                              ? IconButton(
-                                icon: const Icon(
-                                  Icons.clear,
-                                  size: 18,
-                                  color: Colors.grey,
-                                ),
-                                onPressed: () {
-                                  searchCtrl.clear();
-                                  _debounce?.cancel();
-                                  Provider.of<ClientsProvider>(
-                                    context,
-                                    listen: false,
-                                  ).searchGlobal('');
-                                },
-                              )
-                              : null,
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 400),
+                      child: TextField(
+                        controller: searchCtrl,
+                        decoration: InputDecoration(
+                          hintText: 'Buscar por nombre, apellido o teléfono',
+                          prefixIcon: const Icon(
+                            Icons.search,
+                            color: Colors.grey,
+                          ),
+                          border: InputBorder.none,
+                          isDense: true,
+                          contentPadding: const EdgeInsets.symmetric(
+                            vertical: 8,
+                          ),
+                          suffixIcon:
+                              searchCtrl.text.isNotEmpty
+                                  ? IconButton(
+                                    icon: const Icon(
+                                      Icons.clear,
+                                      size: 18,
+                                      color: Colors.grey,
+                                    ),
+                                    onPressed: () {
+                                      searchCtrl.clear();
+                                      _debounce?.cancel();
+                                      Provider.of<ClientsProvider>(
+                                        context,
+                                        listen: false,
+                                      ).searchGlobal('');
+                                    },
+                                  )
+                                  : null,
+                        ),
+                        onChanged: _onSearchChanged,
+                      ),
                     ),
-                    onChanged: _onSearchChanged,
                   ),
                 ),
                 const SizedBox(width: 15),

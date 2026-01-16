@@ -79,31 +79,42 @@ class _AuditoriaViewState extends State<AuditoriaView> {
                 const SizedBox(width: 20),
                 // Buscador
                 Expanded(
-                  child: TextField(
-                    controller: searchCtrl,
-                    decoration: InputDecoration(
-                      hintText: 'Buscar por usuario, detalles...',
-                      prefixIcon: const Icon(Icons.search, color: Colors.grey),
-                      border: InputBorder.none,
-                      isDense: true,
-                      contentPadding: const EdgeInsets.symmetric(vertical: 8),
-                      suffixIcon:
-                          searchCtrl.text.isNotEmpty
-                              ? IconButton(
-                                icon: const Icon(
-                                  Icons.clear,
-                                  size: 18,
-                                  color: Colors.grey,
-                                ),
-                                onPressed: () {
-                                  searchCtrl.clear();
-                                  _debounce?.cancel();
-                                  provider.setSearch('');
-                                },
-                              )
-                              : null,
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 400),
+                      child: TextField(
+                        controller: searchCtrl,
+                        decoration: InputDecoration(
+                          hintText: 'Buscar por usuario, detalles...',
+                          prefixIcon: const Icon(
+                            Icons.search,
+                            color: Colors.grey,
+                          ),
+                          border: InputBorder.none,
+                          isDense: true,
+                          contentPadding: const EdgeInsets.symmetric(
+                            vertical: 8,
+                          ),
+                          suffixIcon:
+                              searchCtrl.text.isNotEmpty
+                                  ? IconButton(
+                                    icon: const Icon(
+                                      Icons.clear,
+                                      size: 18,
+                                      color: Colors.grey,
+                                    ),
+                                    onPressed: () {
+                                      searchCtrl.clear();
+                                      _debounce?.cancel();
+                                      provider.setSearch('');
+                                    },
+                                  )
+                                  : null,
+                        ),
+                        onChanged: _onSearchChanged,
+                      ),
                     ),
-                    onChanged: _onSearchChanged,
                   ),
                 ),
                 const SizedBox(width: 20),
@@ -195,13 +206,11 @@ class _AuditoriaViewState extends State<AuditoriaView> {
                   ),
                 ),
                 DataColumn(
-                  label: Expanded(
-                    child: Text(
-                      'Detalle',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
+                  label: Text(
+                    'Detalle',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
                     ),
                   ),
                 ),

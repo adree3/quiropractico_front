@@ -171,35 +171,42 @@ class _PaymentsViewState extends State<PaymentsView> {
                   Container(width: 1, height: 30, color: Colors.grey.shade300),
                   const SizedBox(width: 15),
 
-                  // Buscador
                   Expanded(
-                    child: TextField(
-                      controller: _searchCtrl,
-                      decoration: InputDecoration(
-                        hintText: 'Buscar por paciente o concepto...',
-                        prefixIcon: const Icon(
-                          Icons.search,
-                          color: Colors.grey,
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 400),
+                        child: TextField(
+                          controller: _searchCtrl,
+                          decoration: InputDecoration(
+                            hintText: 'Buscar por paciente o concepto...',
+                            prefixIcon: const Icon(
+                              Icons.search,
+                              color: Colors.grey,
+                            ),
+                            border: InputBorder.none,
+                            isDense: true,
+                            contentPadding: const EdgeInsets.symmetric(
+                              vertical: 8,
+                            ),
+                            suffixIcon:
+                                provider.currentSearchTerm.isNotEmpty
+                                    ? IconButton(
+                                      icon: const Icon(
+                                        Icons.clear,
+                                        size: 18,
+                                        color: Colors.grey,
+                                      ),
+                                      onPressed: () {
+                                        _searchCtrl.clear();
+                                        provider.onSearchChanged('');
+                                      },
+                                    )
+                                    : null,
+                          ),
+                          onChanged: (val) => provider.onSearchChanged(val),
                         ),
-                        border: InputBorder.none,
-                        isDense: true,
-                        contentPadding: const EdgeInsets.symmetric(vertical: 8),
-                        suffixIcon:
-                            provider.currentSearchTerm.isNotEmpty
-                                ? IconButton(
-                                  icon: const Icon(
-                                    Icons.clear,
-                                    size: 18,
-                                    color: Colors.grey,
-                                  ),
-                                  onPressed: () {
-                                    _searchCtrl.clear();
-                                    provider.onSearchChanged('');
-                                  },
-                                )
-                                : null,
                       ),
-                      onChanged: (val) => provider.onSearchChanged(val),
                     ),
                   ),
 
