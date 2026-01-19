@@ -166,6 +166,106 @@ class _AgendaViewState extends State<AgendaView> {
     return regions;
   }
 
+  // Calcular horas límite dinámicas para un día y turno específico
+  Map<String, double> _calculateHourBoundaries(
+    List<Horario> horarios,
+    DateTime date,
+    bool esTurnoManana,
+  ) {
+    // Filtramos solo los horarios que aplican al día seleccionado
+    final horariosDia =
+        horarios.where((h) => h.diaSemana == date.weekday).toList();
+
+    // Filtramos según el turno
+    // Mañana: Horarios que empiezan antes de las 15:00
+    // Tarde: Horarios que terminan después de las 15:00
+    final horariosTurno =
+        horariosDia.where((h) {
+          final startHour = h.horaInicio.hour + h.horaInicio.minute / 60.0;
+          final endHour = h.horaFin.hour + h.horaFin.minute / 60.0;
+          if (esTurnoManana) {
+            return startHour < 15.0;
+          } else {
+            return endHour > 15.0;
+          }
+        }).toList();
+
+    if (horariosTurno.isEmpty) {
+      // Defaults si no hay nadie
+      return esTurnoManana
+          ? {'min': 8.0, 'max': 15.0}
+          : {'min': 15.0, 'max': 21.0};
+    }
+
+    int minMinutes = 24 * 60;
+    int maxMinutes = 0;
+
+    for (var h in horariosTurno) {
+      final start = h.horaInicio.hour * 60 + h.horaInicio.minute;
+      final end = h.horaFin.hour * 60 + h.horaFin.minute;
+
+      if (start < minMinutes) minMinutes = start;
+      if (end > maxMinutes) maxMinutes = end;
+    }
+
+    // Calcular horas base
+    double minHour = (minMinutes / 30).floor() * 0.5;
+    double maxHour = (maxMinutes / 30).ceil() * 0.5;
+
+    // Ajustes específicos por Turno
+    if (esTurnoManana) {
+      // Mañana:
+      // Start: Dynamic (clamped 0-15)
+      minHour = (minHour - 0.5).clamp(0.0, 15.0);
+
+      // End: Dynamic.
+      // Antes estaba fijo a 15.0. Ahora el usuario quiere que si acaban a las 14, se muestre hasta las 14.
+      // Pero si acaban a las 14:00, visualmente necesitamos hasta las 14:00 (que es 14.0 o 14.5?).
+      // Si maxHour calculado es 14.0, SfCalendar renderiza HASTA 14.0 (excluido) o INCLUIDO?
+      // EndHour es exclusivo. Si pones 14.0, la última celda es 13:30-14:00.
+      // Si el turno acaba a las 14:00, maxHour debería ser 14.0.
+      // El calculo base ya hace ceil. S i acaba 14:00 -> maxMinutes/30.ceil -> 14.0.
+      // Aplicamos un margen de +0.5 si se quiere ver "espacio", pero el usuario pidió "si trabaja hasta las 15 que aparezca, sino no".
+      // Vamos a probar SIN margen extra al final si coincide exacto, o +0 para que sea justo.
+      // Pero SfCalendar corta. Si endHour es 14:00, no ves la línea de las 14:00 al final del todo? Si.
+      // DEJAMOS maxHour tal cual viene del calculo (que ya tiene margen arriba? no, arriba le puse +0.5).
+      // Reviso el calculo base:
+      // double maxHour = (maxMinutes / 30).ceil() * 0.5;
+      // Si acaban a las 14:00 -> 14.0.
+
+      // La logica anterior tenia: maxHour = (maxHour + 0.5).clamp...
+      // Vamos a aplicar margen SOLO si queda muy justo?
+      // Usuario dice: "está en gris 14-14:30 y 14:30-15. No quiero que sea así."
+      // Significa que si acaba a las 14:00, quiere que se corte en 14:00.
+      // Entonces NO sumamos margen por defecto.
+
+      maxHour = maxHour.clamp(0.0, 15.0);
+    } else {
+      // Tarde
+      // Start: >= 15.0
+      if (minHour < 15.0) minHour = 15.0;
+      // Aplicamos margen inicio?
+      // Si entra a las 16:00, minHour base es 16.0.
+      // Queremos ver 15:30? "la primera fila es a las 15" -> No le gustó.
+      // "si el lunes entra a las 9, la primera casilla es a las 8:30" (margen SI).
+      // "por la tarde no... la primera es a las 16".
+      // Parece que quiere margen en la mañana pero por la tarde quiere ser estricto con huecos vacíos?
+      // O quiere que si empieza a las 16, empiece a las 16 (o 15:30).
+      // "Nadie entra a las 15:30 y la primera fila es a las 15... Esa parte no esta bien".
+      // Vale, vamos a aplicar margen de 0.5 por estética (se ve mejor la hora de entrada), pero respetando el limite de 15:00.
+
+      minHour = (minHour - 0.5).clamp(15.0, 24.0);
+
+      // End: Dynamic
+      // "El ultimo turno... quiero que se ponga por los horarios".
+      // Si acaban a las 20:00 -> maxHour base es 20.0.
+      // Mostramos hasta 20:00.
+      maxHour = maxHour.clamp(15.0, 24.0);
+    }
+
+    return {'min': minHour, 'max': maxHour};
+  }
+
   @override
   Widget build(BuildContext context) {
     final agendaProvider = Provider.of<AgendaProvider>(context);
@@ -187,6 +287,15 @@ class _AgendaViewState extends State<AgendaView> {
       horariosProvider.horariosGlobales,
       bloqueosProvider.bloqueos,
     );
+
+    // Calcular límites horarios dinámicos
+    final boundaries = _calculateHourBoundaries(
+      horariosProvider.horariosGlobales,
+      agendaProvider.selectedDate,
+      _esTurnoManana,
+    );
+    final minHour = boundaries['min']!;
+    final maxHour = boundaries['max']!;
 
     return LayoutBuilder(
       builder: (context, constraits) {
@@ -244,7 +353,8 @@ class _AgendaViewState extends State<AgendaView> {
                           icon: Icons.wb_sunny_rounded,
                           isSelected: _esTurnoManana,
                           onTap: () => setState(() => _esTurnoManana = true),
-                          tooltip: "Turno de mañana (08:30 - 14:00)",
+                          tooltip:
+                              "Turno de mañana (${_formatHour(minHour)} - 15:00)",
                         ),
                         const SizedBox(width: 2),
                         _TurnoButton(
@@ -252,7 +362,8 @@ class _AgendaViewState extends State<AgendaView> {
                           icon: Icons.nights_stay_rounded,
                           isSelected: !_esTurnoManana,
                           onTap: () => setState(() => _esTurnoManana = false),
-                          tooltip: "Turno de tarde (15:30 - 21:00)",
+                          tooltip:
+                              "Turno de tarde (15:00 - ${_formatHour(maxHour)})",
                         ),
                       ],
                     ),
@@ -377,8 +488,8 @@ class _AgendaViewState extends State<AgendaView> {
                                   }
                                 },
                                 timeSlotViewSettings: TimeSlotViewSettings(
-                                  startHour: _esTurnoManana ? 8.5 : 15.5,
-                                  endHour: _esTurnoManana ? 14 : 21,
+                                  startHour: minHour,
+                                  endHour: maxHour,
                                   timeInterval: const Duration(minutes: 30),
                                   timeIntervalHeight: 80,
                                   timeFormat: 'HH:mm',
@@ -578,6 +689,12 @@ class _AgendaViewState extends State<AgendaView> {
         );
       },
     );
+  }
+
+  String _formatHour(double hour) {
+    final h = hour.floor();
+    final m = ((hour - h) * 60).round();
+    return "${h.toString().padLeft(2, '0')}:${m.toString().padLeft(2, '0')}";
   }
 }
 
