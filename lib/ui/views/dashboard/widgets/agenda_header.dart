@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:quiropractico_front/config/theme/app_theme.dart';
 import 'package:quiropractico_front/providers/agenda_provider.dart';
+import 'package:quiropractico_front/providers/horarios_provider.dart';
 import 'package:quiropractico_front/ui/modals/cita_modal.dart';
 
 class AgendaHeader extends StatelessWidget {
@@ -11,6 +12,7 @@ class AgendaHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<AgendaProvider>(context);
+    final horariosProvider = Provider.of<HorariosProvider>(context);
     final fechaActual = provider.selectedDate;
 
     final int diaSemana = fechaActual.weekday;
@@ -88,18 +90,21 @@ class AgendaHeader extends StatelessWidget {
               Expanded(
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
-                  children: List.generate(5, (index) {
-                    final date = lunesSemana.add(Duration(days: index));
-                    final isSelected = isSameDay(date, fechaActual);
-                    final esHoy = isSameDay(date, hoy);
+                  children:
+                      horariosProvider.diasActivosSemana.map((diaNum) {
+                        final date = lunesSemana.add(
+                          Duration(days: diaNum - 1),
+                        );
+                        final isSelected = isSameDay(date, fechaActual);
+                        final esHoy = isSameDay(date, hoy);
 
-                    return _DayCircle(
-                      date: date,
-                      isSelected: isSelected,
-                      isToday: esHoy,
-                      onTap: () => provider.updateSelectedDate(date),
-                    );
-                  }),
+                        return _DayCircle(
+                          date: date,
+                          isSelected: isSelected,
+                          isToday: esHoy,
+                          onTap: () => provider.updateSelectedDate(date),
+                        );
+                      }).toList(),
                 ),
               ),
 

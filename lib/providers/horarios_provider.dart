@@ -140,4 +140,24 @@ class HorariosProvider extends ChangeNotifier {
       return ErrorHandler.extractMessage(e);
     }
   }
+
+  // Getter para obtener los días de la semana activos (Lunes=1, Domingo=7)
+  List<int> get diasActivosSemana {
+    if (horariosGlobales.isEmpty) {
+      // Si no hay horarios cargados, devolvemos L-V por defecto
+      return [1, 2, 3, 4, 5];
+    }
+
+    final Set<int> diasUnicos = {};
+    for (var horario in horariosGlobales) {
+      diasUnicos.add(horario.diaSemana);
+    }
+
+    // Si por alguna razón no hay días (ej: lista vacía filtrada), L-V por defecto
+    if (diasUnicos.isEmpty) return [1, 2, 3, 4, 5];
+
+    final listaDias = diasUnicos.toList();
+    listaDias.sort(); // Ordenar: 1, 2, 3...
+    return listaDias;
+  }
 }
