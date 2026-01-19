@@ -14,8 +14,14 @@ import 'package:quiropractico_front/ui/widgets/custom_snackbar.dart';
 class CitaModal extends StatefulWidget {
   final DateTime? selectedDate;
   final Cita? citaExistente;
+  final Usuario? preSelectedDoctor;
 
-  const CitaModal({super.key, this.selectedDate, this.citaExistente});
+  const CitaModal({
+    super.key,
+    this.selectedDate,
+    this.citaExistente,
+    this.preSelectedDoctor,
+  });
 
   @override
   State<CitaModal> createState() => _CitaModalState();
@@ -78,8 +84,11 @@ class _CitaModalState extends State<CitaModal> {
           );
         } catch (_) {}
       } else {
-        if (agendaProv.quiropracticos.isNotEmpty)
+        if (widget.preSelectedDoctor != null) {
+          doctorInicial = widget.preSelectedDoctor;
+        } else if (agendaProv.quiropracticos.isNotEmpty) {
           doctorInicial = agendaProv.quiropracticos.first;
+        }
       }
 
       // Cargar Huecos Disponibles

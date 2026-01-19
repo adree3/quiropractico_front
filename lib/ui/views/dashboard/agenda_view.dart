@@ -59,7 +59,8 @@ class _AgendaViewState extends State<AgendaView> {
   }
 
   // Comprueba si hay un doctor disponible para una hora especifica
-  bool _isSlotEnabled(
+  // Devuelve el primer doctor disponible para una fecha
+  Usuario? _getAvailableDoctor(
     DateTime date,
     List<Usuario> doctores,
     List<Horario> horariosGlobales,
@@ -71,7 +72,7 @@ class _AgendaViewState extends State<AgendaView> {
           !date.isBefore(b.fechaInicio) &&
           !date.isAfter(b.fechaFin),
     );
-    if (hayCierreGlobal) return false;
+    if (hayCierreGlobal) return null;
 
     final doctoresActivos = doctores.where((d) => d.activo).toList();
 
@@ -95,10 +96,21 @@ class _AgendaViewState extends State<AgendaView> {
       );
 
       if (tieneTurno && !estaDeVacaciones) {
-        return true;
+        return doc;
       }
     }
-    return false;
+    return null;
+  }
+
+  // Comprueba si hay un doctor disponible (wrapper para compatibilidad)
+  bool _isSlotEnabled(
+    DateTime date,
+    List<Usuario> doctores,
+    List<Horario> horariosGlobales,
+    List<BloqueoAgenda> bloqueos,
+  ) {
+    return _getAvailableDoctor(date, doctores, horariosGlobales, bloqueos) !=
+        null;
   }
 
   // Generador de regiones grises
@@ -493,17 +505,22 @@ class _AgendaViewState extends State<AgendaView> {
                                     } else {
                                       final fechaSeleccionada = details.date!;
 
-                                      if (_isSlotEnabled(
-                                        fechaSeleccionada,
-                                        agendaProvider.quiropracticos,
-                                        horariosProvider.horariosGlobales,
-                                        bloqueosProvider.bloqueos,
-                                      )) {
+                                      final doctorDisponible =
+                                          _getAvailableDoctor(
+                                            fechaSeleccionada,
+                                            agendaProvider.quiropracticos,
+                                            horariosProvider.horariosGlobales,
+                                            bloqueosProvider.bloqueos,
+                                          );
+
+                                      if (doctorDisponible != null) {
                                         showDialog(
                                           context: context,
                                           builder:
                                               (context) => CitaModal(
                                                 selectedDate: fechaSeleccionada,
+                                                preSelectedDoctor:
+                                                    doctorDisponible,
                                               ),
                                         );
                                       } else {
