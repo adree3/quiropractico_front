@@ -5,6 +5,7 @@ import 'package:quiropractico_front/models/horario.dart';
 import 'package:quiropractico_front/models/usuario.dart';
 
 import 'package:quiropractico_front/utils/error_handler.dart';
+import 'package:dio/dio.dart';
 
 class HorariosProvider extends ChangeNotifier {
   final String _baseUrl = ApiConfig.baseUrl;
@@ -101,12 +102,14 @@ class HorariosProvider extends ChangeNotifier {
   }
 
   // Crear Horario
-  Future<String?> createHorario(
+  Future<Map<String, dynamic>> createHorario(
     int diaSemana,
     TimeOfDay inicio,
     TimeOfDay fin,
   ) async {
-    if (selectedDoctor == null) return "No hay doctor seleccionado";
+    if (selectedDoctor == null) {
+      return {'success': false, 'message': "No hay doctor seleccionado"};
+    }
     try {
       final inicioStr =
           "${inicio.hour.toString().padLeft(2, '0')}:${inicio.minute.toString().padLeft(2, '0')}:00";
@@ -122,9 +125,19 @@ class HorariosProvider extends ChangeNotifier {
 
       await ApiService.dio.post('$_baseUrl/horarios', data: data);
       await loadHorarios(selectedDoctor!.idUsuario);
-      return null;
+      return {'success': true};
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 409) {
+        final data = e.response?.data;
+        return {
+          'success': false,
+          'message': data['message'] ?? 'Conflicto de horario',
+          'code': data['code'], // CONFLICTO_DIA | CONFLICTO_HORA
+        };
+      }
+      return {'success': false, 'message': ErrorHandler.extractMessage(e)};
     } catch (e) {
-      return ErrorHandler.extractMessage(e);
+      return {'success': false, 'message': ErrorHandler.extractMessage(e)};
     }
   }
 
@@ -138,6 +151,47 @@ class HorariosProvider extends ChangeNotifier {
       return null;
     } catch (e) {
       return ErrorHandler.extractMessage(e);
+    }
+  }
+
+  // Actualizar Horario
+  Future<Map<String, dynamic>> updateHorario(
+    int idHorario,
+    int diaSemana,
+    TimeOfDay inicio,
+    TimeOfDay fin,
+  ) async {
+    if (selectedDoctor == null) {
+      return {'success': false, 'message': "No hay doctor seleccionado"};
+    }
+    try {
+      final inicioStr =
+          "${inicio.hour.toString().padLeft(2, '0')}:${inicio.minute.toString().padLeft(2, '0')}:00";
+      final finStr =
+          "${fin.hour.toString().padLeft(2, '0')}:${fin.minute.toString().padLeft(2, '0')}:00";
+
+      final data = {
+        "idQuiropractico": selectedDoctor!.idUsuario,
+        "diaSemana": diaSemana,
+        "horaInicio": inicioStr,
+        "horaFin": finStr,
+      };
+
+      await ApiService.dio.put('$_baseUrl/horarios/$idHorario', data: data);
+      await loadHorarios(selectedDoctor!.idUsuario);
+      return {'success': true};
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 409) {
+        final data = e.response?.data;
+        return {
+          'success': false,
+          'message': data['message'] ?? 'Conflicto de horario',
+          'code': data['code'], // CONFLICTO_DIA | CONFLICTO_HORA
+        };
+      }
+      return {'success': false, 'message': ErrorHandler.extractMessage(e)};
+    } catch (e) {
+      return {'success': false, 'message': ErrorHandler.extractMessage(e)};
     }
   }
 
