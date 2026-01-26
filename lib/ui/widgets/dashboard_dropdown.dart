@@ -26,6 +26,7 @@ class DashboardDropdown<T> extends StatelessWidget {
 
   final String? customLabel;
   final IconData? customIcon;
+  final String? tooltip;
 
   const DashboardDropdown({
     super.key,
@@ -34,6 +35,7 @@ class DashboardDropdown<T> extends StatelessWidget {
     required this.onSelected,
     this.customLabel,
     this.customIcon,
+    this.tooltip,
   });
 
   @override
@@ -59,27 +61,28 @@ class DashboardDropdown<T> extends StatelessWidget {
     }
 
     return PopupMenuButton<DropdownOption<T>>(
+      tooltip: tooltip ?? "Mostrar menú",
       offset: const Offset(0, 45),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       onSelected: (option) => onSelected(option.value),
       itemBuilder:
-        (ctx) =>
-            options
-                .map(
-                  (opt) => PopupMenuItem<DropdownOption<T>>(
-                    value: opt,
-                    child: Row(
-                      children: [
-                        if (opt.iconWidget != null)
-                          opt.iconWidget!
-                        else
-                          Icon(opt.icon, size: 18, color: opt.color),
-                        const SizedBox(width: 10),
-                        Text(opt.label),
-                      ],
+          (ctx) =>
+              options
+                  .map(
+                    (opt) => PopupMenuItem<DropdownOption<T>>(
+                      value: opt,
+                      child: Row(
+                        children: [
+                          if (opt.iconWidget != null)
+                            opt.iconWidget!
+                          else
+                            Icon(opt.icon, size: 18, color: opt.color),
+                          const SizedBox(width: 10),
+                          Text(opt.label),
+                        ],
+                      ),
                     ),
-                  ),
-                )
+                  )
                   .toList(),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
