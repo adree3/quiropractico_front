@@ -5,6 +5,7 @@ import 'package:quiropractico_front/services/api_service.dart';
 import 'package:quiropractico_front/models/bloqueo_agenda.dart';
 
 import 'package:quiropractico_front/utils/error_handler.dart';
+import 'package:quiropractico_front/exceptions/bloqueo_conflict_exception.dart';
 
 class AgendaBloqueoProvider extends ChangeNotifier {
   final String _baseUrl = ApiConfig.baseUrl;
@@ -36,8 +37,9 @@ class AgendaBloqueoProvider extends ChangeNotifier {
     DateTime inicio,
     DateTime fin,
     String motivo,
-    int? idQuiro,
-  ) async {
+    int? idQuiro, {
+    bool force = false,
+  }) async {
     try {
       final data = {
         "fechaInicio": inicio.toIso8601String(),
@@ -46,10 +48,26 @@ class AgendaBloqueoProvider extends ChangeNotifier {
         "idQuiropractico": idQuiro,
       };
 
-      await ApiService.dio.post('$_baseUrl/agenda/bloqueos', data: data);
+      String url = '$_baseUrl/agenda/bloqueos';
+      if (force) {
+        url += '?force=true';
+      }
+
+      await ApiService.dio.post(url, data: data);
       await loadBloqueos();
       return null;
     } catch (e) {
+      if (e is DioException && e.response?.statusCode == 409) {
+        final data = e.response?.data;
+
+        if (data != null && data is Map) {
+          final code = data['errorType'] ?? data['code'];
+          final message = data['message'];
+          if (code != null && message != null) {
+            throw BloqueoConflictException(code.toString(), message.toString());
+          }
+        }
+      }
       return ErrorHandler.extractMessage(e);
     }
   }

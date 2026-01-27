@@ -7,6 +7,7 @@ import 'package:quiropractico_front/config/theme/app_theme.dart';
 import 'package:quiropractico_front/models/bloqueo_agenda.dart';
 import 'package:quiropractico_front/providers/agenda_bloqueo_provider.dart';
 import 'package:quiropractico_front/ui/modals/bloqueo_modal.dart';
+import 'package:quiropractico_front/ui/widgets/hoverable_action_button.dart';
 
 class VacacionesCalendarView extends StatefulWidget {
   const VacacionesCalendarView({super.key});
@@ -70,14 +71,16 @@ class _VacacionesCalendarViewState extends State<VacacionesCalendarView> {
   }
 
   // Metodo para seleccionar mes y año
+  // Metodo para seleccionar mes y año
+  // Metodo para seleccionar mes y año
   Future<void> _seleccionarMesAnio() async {
-    final picked = await showDatePicker(
+    final picked = await showDialog<DateTime>(
       context: context,
-      initialDate: _focusedDay,
-      firstDate: DateTime(1990),
-      lastDate: DateTime(2100),
-      locale: const Locale('es', 'ES'),
-      initialDatePickerMode: DatePickerMode.year,
+      builder:
+          (ctx) => _MonthYearPickerDialog(
+            initialDate: _focusedDay,
+            primaryColor: AppTheme.primaryColor,
+          ),
     );
 
     if (picked != null) {
@@ -408,15 +411,16 @@ class _VacacionesCalendarViewState extends State<VacacionesCalendarView> {
                       ), // Separador
                       const SizedBox(width: 15),
 
-                      _HoverableActionButton(
+                      HoverableActionButton(
                         onTap:
                             () => showDialog(
                               context: context,
                               builder: (_) => const BloqueoModal(),
                             ),
-                        label: "Nuevo Bloqueo",
+                        label: "Bloqueo",
                         icon: Icons.add,
                         isPrimary: true,
+                        tooltip: "Crear vacaciones / cierre",
                       ),
                     ],
                   ],
@@ -462,6 +466,7 @@ class _VacacionesCalendarViewState extends State<VacacionesCalendarView> {
                                         MainAxisAlignment.spaceBetween,
                                     children: [
                                       IconButton(
+                                        tooltip: "Mes anterior",
                                         icon: const Icon(Icons.chevron_left),
                                         onPressed:
                                             () => setState(
@@ -476,35 +481,43 @@ class _VacacionesCalendarViewState extends State<VacacionesCalendarView> {
                                       InkWell(
                                         onTap: _seleccionarMesAnio,
                                         borderRadius: BorderRadius.circular(20),
-                                        child: Padding(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 16,
-                                            vertical: 8,
-                                          ),
-                                          child: Row(
-                                            children: [
-                                              Text(
-                                                DateFormat('MMMM yyyy', 'es_ES')
-                                                    .format(_focusedDay)
-                                                    .toUpperCase(),
-                                                style: const TextStyle(
-                                                  fontSize: 20,
-                                                  fontWeight: FontWeight.bold,
+                                        child: Tooltip(
+                                          message: "Seleccionar mes",
+                                          child: Padding(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 16,
+                                              vertical: 8,
+                                            ),
+                                            child: Row(
+                                              children: [
+                                                Text(
+                                                  DateFormat(
+                                                        'MMMM yyyy',
+                                                        'es_ES',
+                                                      )
+                                                      .format(_focusedDay)
+                                                      .toUpperCase(),
+                                                  style: const TextStyle(
+                                                    fontSize: 20,
+                                                    fontWeight: FontWeight.bold,
+                                                    color:
+                                                        AppTheme.primaryColor,
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 8),
+                                                const Icon(
+                                                  Icons.edit_calendar,
+                                                  size: 18,
                                                   color: AppTheme.primaryColor,
                                                 ),
-                                              ),
-                                              const SizedBox(width: 8),
-                                              const Icon(
-                                                Icons.edit_calendar,
-                                                size: 18,
-                                                color: AppTheme.primaryColor,
-                                              ),
-                                            ],
+                                              ],
+                                            ),
                                           ),
                                         ),
                                       ),
 
                                       IconButton(
+                                        tooltip: "Mes siguiente",
                                         icon: const Icon(Icons.chevron_right),
                                         onPressed:
                                             () => setState(
@@ -616,7 +629,7 @@ class _VacacionesCalendarViewState extends State<VacacionesCalendarView> {
                             border: Border.all(color: Colors.grey.shade300),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.05),
+                                color: Colors.black.withValues(alpha: 0.05),
                                 blurRadius: 10,
                                 offset: const Offset(0, 5),
                               ),
@@ -657,7 +670,7 @@ class _VacacionesCalendarViewState extends State<VacacionesCalendarView> {
           width: double.infinity,
           padding: const EdgeInsets.all(15),
           decoration: BoxDecoration(
-            color: AppTheme.primaryColor.withOpacity(0.05),
+            color: AppTheme.primaryColor.withValues(alpha: 0.05),
             borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
           ),
           child: Row(
@@ -731,7 +744,13 @@ class _VacacionesCalendarViewState extends State<VacacionesCalendarView> {
             ),
           )
         else
-          _buildDetailsList(bloqueos, isScrollable: false, showEdit: true),
+          Expanded(
+            child: _buildDetailsList(
+              bloqueos,
+              isScrollable: false,
+              showEdit: true,
+            ),
+          ),
       ],
     );
   }
@@ -750,6 +769,8 @@ class _VacacionesCalendarViewState extends State<VacacionesCalendarView> {
         final bloqueosDelDia = _getBloqueosDelDia(day, provider.bloqueos);
 
         return Dialog(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(15),
           ),
@@ -771,7 +792,7 @@ class _VacacionesCalendarViewState extends State<VacacionesCalendarView> {
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-      color: Colors.red.shade50.withOpacity(0.3),
+      color: Colors.red.shade50.withValues(alpha: 0.3),
       child: Container(
         constraints: const BoxConstraints(minHeight: 500),
         child: Column(
@@ -781,7 +802,7 @@ class _VacacionesCalendarViewState extends State<VacacionesCalendarView> {
               width: double.infinity,
               padding: const EdgeInsets.all(15),
               decoration: BoxDecoration(
-                color: Colors.red.withOpacity(0.1),
+                color: Colors.red.withValues(alpha: 0.1),
                 borderRadius: const BorderRadius.vertical(
                   top: Radius.circular(15),
                 ),
@@ -811,10 +832,12 @@ class _VacacionesCalendarViewState extends State<VacacionesCalendarView> {
               ),
             ),
             const Divider(height: 1),
-            _buildDetailsList(
-              bloqueosAcumulados,
-              isScrollable: false,
-              showEdit: false,
+            Expanded(
+              child: _buildDetailsList(
+                bloqueosAcumulados,
+                isScrollable: false,
+                showEdit: false,
+              ),
             ),
           ],
         ),
@@ -829,29 +852,27 @@ class _VacacionesCalendarViewState extends State<VacacionesCalendarView> {
     required bool showEdit,
   }) {
     if (bloqueos.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.only(top: 75),
-        child: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.check_circle_outline, size: 60, color: Colors.green),
-              SizedBox(height: 15),
-              Text(
-                "Día Operativo",
-                style: TextStyle(
-                  color: Colors.grey,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                ),
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.check_circle_outline, size: 60, color: Colors.green),
+            SizedBox(height: 15),
+            Text(
+              "Día Operativo",
+              style: TextStyle(
+                color: Colors.grey,
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
               ),
-              SizedBox(height: 5),
-              Text(
-                "No hay bloqueos ni festivos.",
-                style: TextStyle(color: Colors.grey),
-              ),
-            ],
-          ),
+            ),
+            SizedBox(height: 5),
+            Text(
+              "No hay bloqueos ni festivos.",
+              style: TextStyle(color: Colors.grey),
+            ),
+          ],
         ),
       );
     }
@@ -887,7 +908,7 @@ class _VacacionesCalendarViewState extends State<VacacionesCalendarView> {
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.03),
+                color: Colors.black.withValues(alpha: 0.03),
                 blurRadius: 5,
                 offset: const Offset(0, 2),
               ),
@@ -900,7 +921,7 @@ class _VacacionesCalendarViewState extends State<VacacionesCalendarView> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.6),
+                  color: Colors.white.withValues(alpha: 0.6),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
@@ -1040,7 +1061,7 @@ class _VacacionesCalendarViewState extends State<VacacionesCalendarView> {
       } else if (doctoresFuera > 0) {
         bgColor = Colors.blue.shade50;
       } else if (isToday) {
-        bgColor = AppTheme.primaryColor.withOpacity(0.05);
+        bgColor = AppTheme.primaryColor.withValues(alpha: 0.05);
       }
     }
 
@@ -1051,171 +1072,478 @@ class _VacacionesCalendarViewState extends State<VacacionesCalendarView> {
     } else if (isSelected && !_isSelectionMode) {
       borderColor = AppTheme.primaryColor;
       if (!hayCierreGlobal && doctoresFuera == 0)
-        bgColor = AppTheme.primaryColor.withOpacity(0.1);
+        bgColor = AppTheme.primaryColor.withValues(alpha: 0.1);
     }
 
-    return Opacity(
-      opacity: isDimmed ? 0.5 : 1.0,
-      child: Container(
-        margin: const EdgeInsets.only(left: 2, right: 2, bottom: 2, top: 0),
-        decoration: BoxDecoration(
-          color: bgColor,
-          borderRadius: BorderRadius.circular(6),
-          border: Border.all(
-            color: borderColor,
-            width:
-                (isSelected || (_isSelectionMode && borderColor == Colors.red))
-                    ? 2
-                    : 1,
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(left: 8, top: 6, right: 8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    '${day.day}',
-                    style: TextStyle(
-                      fontWeight:
-                          (isToday && !isOutside)
-                              ? FontWeight.bold
-                              : FontWeight.normal,
-                      color:
-                          (isToday && !isOutside && !isDimmed)
-                              ? AppTheme.primaryColor
-                              : textColor,
-                      fontSize: 15,
-                    ),
-                  ),
-                  if (hayCierreGlobal && !isOutside)
-                    const Icon(Icons.lock, size: 14, color: Colors.red),
-                ],
+    // Tooltip logic
+    String? tooltipMsg;
+    if (!isOutside) {
+      if (hayCierreGlobal) {
+        final cierre = eventosDelDia.firstWhere(
+          (e) => e.idQuiropractico == null,
+        );
+        tooltipMsg = "Cierre Global: ${cierre.motivo}";
+      } else if (doctoresFuera > 0) {
+        // "Especifica... y ponlo en plural"
+        final doctores = eventosDelDia
+            .where((e) => e.idQuiropractico != null)
+            .map((e) => "${e.nombreQuiropractico} (${e.motivo})")
+            .join("\n");
+        tooltipMsg = "Quiropracticos ausentes:\n$doctores";
+      } else {
+        tooltipMsg = "Gestionar día";
+      }
+    }
+
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: Tooltip(
+        message: tooltipMsg ?? "",
+        child: Opacity(
+          opacity: isDimmed ? 0.5 : 1.0,
+          child: Container(
+            margin: const EdgeInsets.only(left: 2, right: 2, bottom: 2, top: 0),
+            decoration: BoxDecoration(
+              color: bgColor,
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(
+                color: borderColor,
+                width:
+                    (isSelected ||
+                            (_isSelectionMode && borderColor == Colors.red))
+                        ? 2
+                        : 1,
               ),
             ),
-            const Spacer(),
-            if (eventosDelDia.isNotEmpty && !isOutside)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (hayCierreGlobal)
-                      Container(
-                        margin: const EdgeInsets.only(bottom: 4),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 3,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.red.withOpacity(0.9),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: const Text(
-                          "CERRADO",
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 9,
-                            fontWeight: FontWeight.bold,
-                          ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(left: 8, top: 6, right: 8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        '${day.day}',
+                        style: TextStyle(
+                          fontWeight:
+                              (isToday && !isOutside)
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
+                          color:
+                              (isToday && !isOutside && !isDimmed)
+                                  ? AppTheme.primaryColor
+                                  : textColor,
+                          fontSize: 15,
                         ),
                       ),
-                    if (doctoresFuera > 0) ...[
-                      if (hayCierreGlobal) const SizedBox(height: 2),
-                      Row(
-                        children: List.generate(
-                          doctoresFuera > 5 ? 5 : doctoresFuera,
-                          (index) => Container(
-                            margin: const EdgeInsets.only(right: 3),
-                            width: 8,
-                            height: 8,
+                      if (hayCierreGlobal && !isOutside)
+                        const Icon(Icons.lock, size: 14, color: Colors.red),
+                    ],
+                  ),
+                ),
+                const Spacer(),
+                if (eventosDelDia.isNotEmpty && !isOutside)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (hayCierreGlobal)
+                          Container(
+                            margin: const EdgeInsets.only(bottom: 4),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 3,
+                            ),
                             decoration: BoxDecoration(
-                              color: Colors.blue.shade400,
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white, width: 1),
+                              color: Colors.red.withValues(alpha: 0.9),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: const Text(
+                              "CERRADO",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 9,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-          ],
+                        if (doctoresFuera > 0) ...[
+                          if (hayCierreGlobal) const SizedBox(height: 2),
+                          Row(
+                            children: List.generate(
+                              doctoresFuera > 5 ? 5 : doctoresFuera,
+                              (index) => Container(
+                                margin: const EdgeInsets.only(right: 3),
+                                width: 8,
+                                height: 8,
+                                decoration: BoxDecoration(
+                                  color: Colors.blue.shade400,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: Colors.white,
+                                    width: 1,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
         ),
       ),
     );
   }
 }
 
-class _HoverableActionButton extends StatefulWidget {
-  final VoidCallback onTap;
-  final String label;
-  final IconData icon;
-  final bool isPrimary;
-  const _HoverableActionButton({
-    required this.onTap,
-    required this.label,
-    required this.icon,
-    this.isPrimary = false,
+class _MonthYearPickerDialog extends StatefulWidget {
+  final DateTime initialDate;
+  final Color primaryColor;
+
+  const _MonthYearPickerDialog({
+    required this.initialDate,
+    required this.primaryColor,
   });
+
   @override
-  State<_HoverableActionButton> createState() => _HoverableActionButtonState();
+  State<_MonthYearPickerDialog> createState() => _MonthYearPickerDialogState();
 }
 
-class _HoverableActionButtonState extends State<_HoverableActionButton> {
-  bool _isHovering = false;
+class _MonthYearPickerDialogState extends State<_MonthYearPickerDialog> {
+  late int _displayYear;
+  bool _showingYears = false;
+  late ScrollController _yearScrollController;
+
+  @override
+  void initState() {
+    super.initState();
+    _displayYear = widget.initialDate.year;
+    _yearScrollController = ScrollController();
+
+    // Si iniciamos mostrando años (aunque por defecto es meses)
+    // calculamos el scroll inicial.
+  }
+
+  @override
+  void dispose() {
+    _yearScrollController.dispose();
+    super.dispose();
+  }
+
+  void _scrollToYear(int year) {
+    // Rango 1990 - 2052
+    // Index 0 = 1990
+    final yearIndex = year - 1990;
+    if (yearIndex < 0) return;
+
+    // Grid: 3 columnas
+    final rowIndex = yearIndex ~/ 3;
+
+    // Altura aproximada de fila:
+    // AspectRatio 2.2 con Width ~300 => ItemWidth ~100 => ItemHeight ~45
+    // + Spacing 10 => Fila ~55px
+    // Viewport height ~250
+
+    final double rowHeight = 55.0;
+    final double viewportHeight = 250.0; // Aproximado del contenido
+
+    double offset =
+        (rowIndex * rowHeight) - (viewportHeight / 2) + (rowHeight / 2);
+    if (offset < 0) offset = 0;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_yearScrollController.hasClients) {
+        _yearScrollController.jumpTo(offset);
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) => setState(() => _isHovering = true),
-      onExit: (_) => setState(() => _isHovering = false),
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          decoration: BoxDecoration(
-            color:
-                widget.isPrimary
-                    ? (_isHovering
-                        ? AppTheme.primaryColor.withOpacity(0.9)
-                        : AppTheme.primaryColor)
-                    : (_isHovering ? Colors.grey.shade100 : Colors.transparent),
-            borderRadius: BorderRadius.circular(8),
-            boxShadow:
-                widget.isPrimary
-                    ? [
-                      BoxShadow(
-                        color: AppTheme.primaryColor.withOpacity(0.3),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
+    final now = DateTime.now();
+    final bool isCurrentDateSelected =
+        widget.initialDate.year == now.year &&
+        widget.initialDate.month == now.month;
+
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+      child: SizedBox(
+        width: 320,
+        height: 310, // Altura ajustada
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Header
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 8.0,
+                vertical: 8.0,
+              ),
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  // Botón Hoy (Izquierda)
+                  if (!isCurrentDateSelected)
+                    Positioned(
+                      left: 0,
+                      child: TextButton(
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          minimumSize: const Size(0, 30),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        onPressed: () => Navigator.pop(context, DateTime.now()),
+                        child: Text(
+                          "Hoy",
+                          style: TextStyle(
+                            color: widget.primaryColor,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
                       ),
-                    ]
-                    : null,
-          ),
-          child: Row(
-            children: [
-              Icon(
-                widget.icon,
-                size: 18,
-                color: widget.isPrimary ? Colors.white : Colors.grey,
+                    ),
+
+                  // Título y Navegación
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      if (!_showingYears)
+                        IconButton(
+                          icon: const Icon(Icons.chevron_left),
+                          onPressed: () => setState(() => _displayYear--),
+                          tooltip: "Año anterior",
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                        ),
+
+                      const SizedBox(width: 15),
+
+                      // Selector de Año
+                      InkWell(
+                        onTap: () {
+                          setState(() {
+                            _showingYears = !_showingYears;
+                            if (_showingYears) {
+                              _scrollToYear(_displayYear);
+                            }
+                          });
+                        },
+                        borderRadius: BorderRadius.circular(8),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                "$_displayYear",
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 20,
+                                  color:
+                                      _showingYears
+                                          ? widget.primaryColor
+                                          : Colors.black87,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              Icon(
+                                _showingYears
+                                    ? Icons.arrow_drop_up
+                                    : Icons.arrow_drop_down,
+                                color:
+                                    _showingYears
+                                        ? widget.primaryColor
+                                        : Colors.grey,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(width: 15),
+
+                      if (!_showingYears)
+                        IconButton(
+                          icon: const Icon(Icons.chevron_right),
+                          onPressed: () => setState(() => _displayYear++),
+                          tooltip: "Año siguiente",
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                        ),
+                    ],
+                  ),
+
+                  // Botón Cerrar (X)
+                  Positioned(
+                    right: 0,
+                    child: IconButton(
+                      icon: const Icon(
+                        Icons.close,
+                        size: 20,
+                        color: Colors.grey,
+                      ),
+                      onPressed: () => Navigator.pop(context),
+                      tooltip: "Cerrar",
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 8),
-              Text(
-                widget.label,
-                style: TextStyle(
-                  color: widget.isPrimary ? Colors.white : Colors.grey.shade700,
-                  fontWeight: FontWeight.w600,
-                ),
+            ),
+
+            const Divider(height: 1),
+            const SizedBox(height: 10),
+
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                child: _showingYears ? _buildYearsView() : _buildMonthsView(),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
+    );
+  }
+
+  Widget _buildYearsView() {
+    // 1990 - 2052
+    final years = List.generate(63, (index) => 1990 + index);
+    final now = DateTime.now();
+
+    return GridView.builder(
+      controller: _yearScrollController,
+      padding: EdgeInsets.zero,
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        childAspectRatio: 2.2,
+        crossAxisSpacing: 10,
+        mainAxisSpacing: 10,
+      ),
+      itemCount: years.length,
+      itemBuilder: (context, index) {
+        final year = years[index];
+        final isSelected = year == _displayYear;
+        final isCurrentYear = year == now.year;
+
+        Color bgColor = Colors.grey.shade50;
+        Color textColor = Colors.black87;
+        BoxBorder? border;
+
+        if (isSelected) {
+          bgColor = widget.primaryColor;
+          textColor = Colors.white;
+        } else if (isCurrentYear) {
+          border = Border.all(color: widget.primaryColor, width: 2);
+          bgColor = widget.primaryColor.withValues(alpha: 0.05);
+          textColor = widget.primaryColor;
+        }
+
+        return Material(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(8),
+          child: InkWell(
+            onTap: () {
+              setState(() {
+                _displayYear = year;
+                _showingYears = false;
+              });
+            },
+            borderRadius: BorderRadius.circular(8),
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                border: border,
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                "$year",
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  color: textColor,
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildMonthsView() {
+    final now = DateTime.now();
+
+    return GridView.builder(
+      padding: EdgeInsets.zero,
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        childAspectRatio: 2.2,
+        crossAxisSpacing: 8,
+        mainAxisSpacing: 8,
+      ),
+      itemCount: 12,
+      itemBuilder: (context, index) {
+        final int mes = index + 1;
+        String nombre = DateFormat('MMMM', 'es_ES').format(DateTime(2024, mes));
+        if (nombre.isNotEmpty) {
+          nombre = "${nombre[0].toUpperCase()}${nombre.substring(1)}";
+        }
+
+        final isSelected =
+            widget.initialDate.month == mes &&
+            widget.initialDate.year == _displayYear;
+
+        final isCurrentMonth = now.month == mes && now.year == _displayYear;
+
+        Color bgColor = Colors.grey.shade100;
+        Color textColor = Colors.grey.shade800;
+        BoxBorder? border;
+
+        if (isSelected) {
+          bgColor = widget.primaryColor;
+          textColor = Colors.white;
+        } else if (isCurrentMonth) {
+          border = Border.all(color: widget.primaryColor, width: 2);
+          bgColor = widget.primaryColor.withValues(alpha: 0.05);
+          textColor = widget.primaryColor;
+        }
+
+        return Material(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(8),
+          child: InkWell(
+            onTap: () => Navigator.pop(context, DateTime(_displayYear, mes, 1)),
+            borderRadius: BorderRadius.circular(8),
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                border: border,
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                nombre,
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                  color: textColor,
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

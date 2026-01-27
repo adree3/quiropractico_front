@@ -9,6 +9,7 @@ import 'package:quiropractico_front/providers/agenda_bloqueo_provider.dart';
 import 'package:quiropractico_front/providers/horarios_provider.dart';
 import 'package:quiropractico_front/ui/modals/horario_modal.dart';
 import 'package:quiropractico_front/ui/modals/bloqueo_modal.dart';
+import 'package:quiropractico_front/ui/widgets/hoverable_action_button.dart';
 import 'package:quiropractico_front/ui/widgets/dashboard_dropdown.dart';
 
 class ScheduleView extends StatefulWidget {
@@ -156,7 +157,7 @@ class _ScheduleViewState extends State<ScheduleView> {
                 const Spacer(),
                 const SizedBox(width: 20),
 
-                _HoverableActionButton(
+                HoverableActionButton(
                   label: "Turno",
                   icon: Icons.add_alarm,
                   isPrimary: true,
@@ -1032,81 +1033,5 @@ class _ScheduleViewState extends State<ScheduleView> {
     }
 
     return cellContent;
-  }
-}
-
-class _HoverableActionButton extends StatefulWidget {
-  final VoidCallback onTap;
-  final String label;
-  final IconData icon;
-  final bool isPrimary;
-  final String? tooltip;
-  const _HoverableActionButton({
-    required this.onTap,
-    required this.label,
-    required this.icon,
-    this.isPrimary = false,
-    this.tooltip,
-  });
-  @override
-  State<_HoverableActionButton> createState() => _HoverableActionButtonState();
-}
-
-class _HoverableActionButtonState extends State<_HoverableActionButton> {
-  bool _isHovering = false;
-  @override
-  Widget build(BuildContext context) {
-    Widget content = MouseRegion(
-      onEnter: (_) => setState(() => _isHovering = true),
-      onExit: (_) => setState(() => _isHovering = false),
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          decoration: BoxDecoration(
-            color:
-                widget.isPrimary
-                    ? (_isHovering
-                        ? AppTheme.primaryColor.withOpacity(0.9)
-                        : AppTheme.primaryColor)
-                    : (_isHovering ? Colors.grey.shade100 : Colors.transparent),
-            borderRadius: BorderRadius.circular(8),
-            boxShadow:
-                widget.isPrimary
-                    ? [
-                      BoxShadow(
-                        color: AppTheme.primaryColor.withOpacity(0.3),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ]
-                    : null,
-          ),
-          child: Row(
-            children: [
-              Icon(
-                widget.icon,
-                size: 18,
-                color: widget.isPrimary ? Colors.white : Colors.grey,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                widget.label,
-                style: TextStyle(
-                  color: widget.isPrimary ? Colors.white : Colors.grey.shade700,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-
-    if (widget.tooltip != null) {
-      return Tooltip(message: widget.tooltip!, child: content);
-    }
-    return content;
   }
 }
