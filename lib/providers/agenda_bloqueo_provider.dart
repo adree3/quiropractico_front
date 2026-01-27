@@ -25,7 +25,7 @@ class AgendaBloqueoProvider extends ChangeNotifier {
       final List<dynamic> data = response.data;
       bloqueos = data.map((e) => BloqueoAgenda.fromJson(e)).toList();
     } catch (e) {
-      print('Error cargando bloqueos: ${ErrorHandler.extractMessage(e)}');
+      debugPrint('Error cargando bloqueos: ${ErrorHandler.extractMessage(e)}');
     } finally {
       isLoading = false;
       notifyListeners();
@@ -33,7 +33,7 @@ class AgendaBloqueoProvider extends ChangeNotifier {
   }
 
   // CREAR
-  Future<String?> crearBloqueo(
+  Future<dynamic> crearBloqueo(
     DateTime inicio,
     DateTime fin,
     String motivo,
@@ -53,9 +53,15 @@ class AgendaBloqueoProvider extends ChangeNotifier {
         url += '?force=true';
       }
 
-      await ApiService.dio.post(url, data: data);
+      final response = await ApiService.dio.post(url, data: data);
       await loadBloqueos();
-      return null;
+
+      // Intentar devolver el objeto creado o su ID si el backend lo retorna
+      // Asumimos que el backend devuelve el objeto creado en response.data
+      if (response.data != null && response.data is Map) {
+        return BloqueoAgenda.fromJson(response.data);
+      }
+      return true;
     } catch (e) {
       if (e is DioException && e.response?.statusCode == 409) {
         final data = e.response?.data;

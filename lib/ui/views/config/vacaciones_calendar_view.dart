@@ -449,7 +449,7 @@ class _VacacionesCalendarViewState extends State<VacacionesCalendarView> {
                             borderRadius: BorderRadius.circular(10),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.05),
+                                color: Colors.black.withValues(alpha: 0.1),
                                 blurRadius: 10,
                                 offset: const Offset(0, 5),
                               ),
@@ -1012,7 +1012,53 @@ class _VacacionesCalendarViewState extends State<VacacionesCalendarView> {
                           context,
                           listen: false,
                         );
+
+                        final messenger = ScaffoldMessenger.of(context);
+                        // Guardar datos para deshacer
+                        final backup = bloqueo;
                         await provider.borrarBloqueo(bloqueo.idBloqueo);
+
+                        if (context.mounted) {
+                          final mensaje =
+                              bloqueo.idQuiropractico == null
+                                  ? "Bloqueo global eliminado"
+                                  : "Bloqueo de ${bloqueo.nombreQuiropractico} eliminado";
+
+                          CustomSnackBar.show(
+                            context,
+                            message: mensaje,
+                            type: SnackBarType.success,
+                            actionLabel: "DESHACER",
+                            onAction: () async {
+                              try {
+                                await provider.crearBloqueo(
+                                  backup.fechaInicio,
+                                  backup.fechaFin,
+                                  backup.motivo,
+                                  backup.idQuiropractico,
+                                  force: true,
+                                );
+
+                                messenger.hideCurrentSnackBar();
+                                CustomSnackBar.show(
+                                  context,
+                                  messenger: messenger,
+                                  message: "Cambios cancelados",
+                                  type: SnackBarType.info,
+                                );
+                              } catch (e) {
+                                messenger.hideCurrentSnackBar();
+                                CustomSnackBar.show(
+                                  context,
+                                  messenger: messenger,
+                                  message:
+                                      "Error al restaurar: ${e.toString()}",
+                                  type: SnackBarType.error,
+                                );
+                              }
+                            },
+                          );
+                        }
                       },
                     ),
                   ],
@@ -1071,8 +1117,9 @@ class _VacacionesCalendarViewState extends State<VacacionesCalendarView> {
       bgColor = Colors.red.shade100;
     } else if (isSelected && !_isSelectionMode) {
       borderColor = AppTheme.primaryColor;
-      if (!hayCierreGlobal && doctoresFuera == 0)
+      if (!hayCierreGlobal && doctoresFuera == 0) {
         bgColor = AppTheme.primaryColor.withValues(alpha: 0.1);
+      }
     }
 
     // Tooltip logic
@@ -1084,7 +1131,6 @@ class _VacacionesCalendarViewState extends State<VacacionesCalendarView> {
         );
         tooltipMsg = "Cierre Global: ${cierre.motivo}";
       } else if (doctoresFuera > 0) {
-        // "Especifica... y ponlo en plural"
         final doctores = eventosDelDia
             .where((e) => e.idQuiropractico != null)
             .map((e) => "${e.nombreQuiropractico} (${e.motivo})")
@@ -1225,9 +1271,6 @@ class _MonthYearPickerDialogState extends State<_MonthYearPickerDialog> {
     super.initState();
     _displayYear = widget.initialDate.year;
     _yearScrollController = ScrollController();
-
-    // Si iniciamos mostrando años (aunque por defecto es meses)
-    // calculamos el scroll inicial.
   }
 
   @override
@@ -1237,21 +1280,13 @@ class _MonthYearPickerDialogState extends State<_MonthYearPickerDialog> {
   }
 
   void _scrollToYear(int year) {
-    // Rango 1990 - 2052
-    // Index 0 = 1990
     final yearIndex = year - 1990;
     if (yearIndex < 0) return;
 
-    // Grid: 3 columnas
     final rowIndex = yearIndex ~/ 3;
 
-    // Altura aproximada de fila:
-    // AspectRatio 2.2 con Width ~300 => ItemWidth ~100 => ItemHeight ~45
-    // + Spacing 10 => Fila ~55px
-    // Viewport height ~250
-
     final double rowHeight = 55.0;
-    final double viewportHeight = 250.0; // Aproximado del contenido
+    final double viewportHeight = 250.0;
 
     double offset =
         (rowIndex * rowHeight) - (viewportHeight / 2) + (rowHeight / 2);
@@ -1275,7 +1310,7 @@ class _MonthYearPickerDialogState extends State<_MonthYearPickerDialog> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
       child: SizedBox(
         width: 320,
-        height: 310, // Altura ajustada
+        height: 290,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [

@@ -4,11 +4,15 @@ import 'package:google_fonts/google_fonts.dart';
 enum SnackBarType { success, error, info }
 
 class CustomSnackBar {
-  static void show(BuildContext context, {
+  static void show(
+    BuildContext context, {
     required String message,
     String? title,
     SnackBarType type = SnackBarType.info,
     Duration duration = const Duration(seconds: 4),
+    String? actionLabel,
+    VoidCallback? onAction,
+    ScaffoldMessengerState? messenger,
   }) {
     Color typeColor;
     IconData icon;
@@ -32,14 +36,15 @@ class CustomSnackBar {
         break;
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
+    final effectiveMessenger = messenger ?? ScaffoldMessenger.of(context);
+    effectiveMessenger.showSnackBar(
       SnackBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         behavior: SnackBarBehavior.floating,
         duration: duration,
         margin: const EdgeInsets.only(bottom: 30),
-        padding: EdgeInsets.zero, 
+        padding: EdgeInsets.zero,
         content: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 400),
@@ -49,6 +54,8 @@ class CustomSnackBar {
               color: typeColor,
               icon: icon,
               duration: duration,
+              actionLabel: actionLabel,
+              onAction: onAction,
             ),
           ),
         ),
@@ -64,6 +71,8 @@ class _SnackBarContent extends StatefulWidget {
   final Color color;
   final IconData icon;
   final Duration duration;
+  final String? actionLabel;
+  final VoidCallback? onAction;
 
   const _SnackBarContent({
     required this.title,
@@ -71,22 +80,23 @@ class _SnackBarContent extends StatefulWidget {
     required this.color,
     required this.icon,
     required this.duration,
+    this.actionLabel,
+    this.onAction,
   });
 
   @override
   State<_SnackBarContent> createState() => _SnackBarContentState();
 }
 
-class _SnackBarContentState extends State<_SnackBarContent> with SingleTickerProviderStateMixin {
+class _SnackBarContentState extends State<_SnackBarContent>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: widget.duration,
-    )..forward(); 
+    _controller = AnimationController(vsync: this, duration: widget.duration)
+      ..forward();
   }
 
   @override
@@ -105,10 +115,10 @@ class _SnackBarContentState extends State<_SnackBarContent> with SingleTickerPro
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 10,
             offset: const Offset(0, 5),
-          )
+          ),
         ],
         border: Border.all(color: Colors.grey.shade200),
       ),
@@ -125,18 +135,18 @@ class _SnackBarContentState extends State<_SnackBarContent> with SingleTickerPro
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 14, 16, 14),
             child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start, 
+              crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: widget.color.withOpacity(0.15),
+                    color: widget.color.withValues(alpha: 0.15),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(widget.icon, color: widget.color, size: 24),
                 ),
-                
+
                 const SizedBox(width: 15),
 
                 // Textos
@@ -167,21 +177,49 @@ class _SnackBarContentState extends State<_SnackBarContent> with SingleTickerPro
                   ),
                 ),
 
+                // Botón Acción (DESHACER)
+                if (widget.onAction != null) ...[
+                  const SizedBox(width: 10),
+                  TextButton(
+                    onPressed: () {
+                      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                      widget.onAction!();
+                    },
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    child: Text(
+                      widget.actionLabel ?? "DESHACER",
+                      style: GoogleFonts.poppins(
+                        color: widget.color,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ],
+
                 const SizedBox(width: 10),
 
                 // Botón Cerrar
                 InkWell(
-                  onTap: () => ScaffoldMessenger.of(context).hideCurrentSnackBar(),
+                  onTap:
+                      () => ScaffoldMessenger.of(context).hideCurrentSnackBar(),
                   child: const Padding(
                     padding: EdgeInsets.all(4.0),
                     child: Icon(Icons.close, color: Colors.grey, size: 18),
                   ),
-                )
+                ),
               ],
             ),
           ),
 
-          // BARRA DE PROGRESO 
+          // BARRA DE PROGRESO
           Positioned(
             bottom: 0,
             left: 4,
@@ -190,10 +228,10 @@ class _SnackBarContentState extends State<_SnackBarContent> with SingleTickerPro
               animation: _controller,
               builder: (context, child) {
                 return LinearProgressIndicator(
-                  value: 1.0 - _controller.value, 
+                  value: 1.0 - _controller.value,
                   backgroundColor: Colors.transparent,
-                  color: widget.color.withOpacity(0.3),
-                  minHeight: 3, 
+                  color: widget.color.withValues(alpha: 0.3),
+                  minHeight: 3,
                 );
               },
             ),

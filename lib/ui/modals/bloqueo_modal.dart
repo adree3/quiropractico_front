@@ -254,6 +254,8 @@ class _BloqueoModalState extends State<BloqueoModal> {
 
               try {
                 String? apiError;
+                BloqueoAgenda? nuevoBloqueo;
+
                 if (esEdicion) {
                   final err = await bloqueoProvider.editarBloqueo(
                     widget.bloqueoEditar!.idBloqueo,
@@ -262,15 +264,24 @@ class _BloqueoModalState extends State<BloqueoModal> {
                     motivoCtrl.text,
                     selectedQuiro?.idUsuario,
                   );
-                  apiError = err;
+                  // Editar devuelve String? (error) o null (éxito)
+                  if (err is String) apiError = err;
+
+                  // Si no hay error, preparamos para el snackbar (el flujo unificado abajo lo maneja)
+                  // Solo necesitamos asegurarnos de que la lógica de deshacer tenga acceso a los datos originales
                 } else {
-                  final err = await bloqueoProvider.crearBloqueo(
+                  final result = await bloqueoProvider.crearBloqueo(
                     fechaInicioReal,
                     fechaFinReal,
                     motivoCtrl.text,
                     selectedQuiro?.idUsuario,
                   );
-                  apiError = err;
+
+                  if (result is BloqueoAgenda) {
+                    nuevoBloqueo = result;
+                  } else if (result is String) {
+                    apiError = result;
+                  }
                 }
 
                 if (apiError != null) {
@@ -281,19 +292,84 @@ class _BloqueoModalState extends State<BloqueoModal> {
                 }
 
                 if (context.mounted) {
+                  final messenger = ScaffoldMessenger.of(context);
                   Navigator.pop(context);
+
+                  final isGlobal = selectedQuiro == null;
+                  String mensaje;
+
+                  // Formateo de fechas
+                  String fechasStr;
+                  if (fechaInicioReal.year == fechaFinReal.year &&
+                      fechaInicioReal.month == fechaFinReal.month &&
+                      fechaInicioReal.day == fechaFinReal.day) {
+                    fechasStr =
+                        "${fechaInicioReal.day}/${fechaInicioReal.month}";
+                  } else {
+                    fechasStr =
+                        "${fechaInicioReal.day}/${fechaInicioReal.month} - ${fechaFinReal.day}/${fechaFinReal.month}";
+                  }
+
+                  if (isGlobal) {
+                    mensaje =
+                        esEdicion
+                            ? "Bloqueo global actualizado ($fechasStr)"
+                            : "Bloqueo global creado ($fechasStr)";
+                  } else {
+                    final nombre = selectedQuiro!.nombreCompleto;
+                    final accion = esEdicion ? "actualizado" : "creado";
+                    mensaje = "Bloqueo $accion para $nombre ($fechasStr)";
+                  }
+
+                  // Mostrar SnackBar con opción de Deshacer
                   CustomSnackBar.show(
                     context,
-                    message:
-                        esEdicion ? "Bloqueo actualizado" : "Bloqueo creado",
+                    message: mensaje,
                     type: SnackBarType.success,
+                    actionLabel: "DESHACER",
+                    onAction: () async {
+                      try {
+                        if (esEdicion) {
+                          // DESHACER EDICIÓN: Restaurar valores originales
+                          final original = widget.bloqueoEditar!;
+                          await bloqueoProvider.editarBloqueo(
+                            original.idBloqueo,
+                            original.fechaInicio,
+                            original.fechaFin,
+                            original.motivo,
+                            original.idQuiropractico,
+                          );
+                        } else {
+                          // DESHACER CREACIÓN: Borrar el nuevo
+                          if (nuevoBloqueo != null) {
+                            await bloqueoProvider.borrarBloqueo(
+                              nuevoBloqueo.idBloqueo,
+                            );
+                          }
+                        }
+
+                        messenger.hideCurrentSnackBar();
+                        CustomSnackBar.show(
+                          context,
+                          messenger: messenger,
+                          message: "Cambios cancelados",
+                          type: SnackBarType.info,
+                        );
+                      } catch (e) {
+                        messenger.hideCurrentSnackBar();
+                        CustomSnackBar.show(
+                          context,
+                          messenger: messenger,
+                          message: "Error al cancelar: ${e.toString()}",
+                          type: SnackBarType.error,
+                        );
+                      }
+                    },
                   );
                 }
               } on BloqueoConflictException catch (e) {
                 if (e.code == 'CONFLICTO_BLOQUEO_INDIVIDUAL' &&
                     context.mounted) {
-                  // Mostrar advertencia y confirmar
-                  // Calcular conflictos locales
                   final conflicting =
                       bloqueoProvider.bloqueos.where((b) {
                         final overlap =
@@ -426,7 +502,7 @@ class _BloqueoModalState extends State<BloqueoModal> {
                                       ),
                                     ),
                                   ),
-                                ] else
+                                ] else ...[
                                   const Text(
                                     "Conflicto con bloqueo existente reconocido por el servidor.",
                                     style: TextStyle(
@@ -434,6 +510,7 @@ class _BloqueoModalState extends State<BloqueoModal> {
                                       fontSize: 13,
                                     ),
                                   ),
+                                ],
 
                                 const SizedBox(height: 20),
                                 Text(
@@ -510,7 +587,7 @@ class _BloqueoModalState extends State<BloqueoModal> {
                   if (confirm == true && context.mounted) {
                     try {
                       // Reintentar con force=true
-                      await bloqueoProvider.crearBloqueo(
+                      final result = await bloqueoProvider.crearBloqueo(
                         fechaInicioReal,
                         fechaFinReal,
                         motivoCtrl.text,
@@ -519,11 +596,48 @@ class _BloqueoModalState extends State<BloqueoModal> {
                       );
 
                       if (context.mounted) {
+                        final messenger = ScaffoldMessenger.of(context);
                         Navigator.pop(context);
+
+                        BloqueoAgenda? nuevoGlobal;
+                        if (result is BloqueoAgenda) {
+                          nuevoGlobal = result;
+                        }
+
                         CustomSnackBar.show(
                           context,
                           message: "Conflictos resueltos y bloqueo creado",
                           type: SnackBarType.success,
+                          actionLabel: "DESHACER",
+                          onAction: () async {
+                            // 1. Borrar el global creado
+                            if (nuevoGlobal != null) {
+                              await bloqueoProvider.borrarBloqueo(
+                                nuevoGlobal.idBloqueo,
+                              );
+                            }
+
+                            // 2. Restaurar los conflictos previos
+                            for (final b in conflicting) {
+                              await bloqueoProvider.crearBloqueo(
+                                b.fechaInicio,
+                                b.fechaFin,
+                                b.motivo,
+                                b.idQuiropractico,
+                                force:
+                                    true, // Force por seguridad, aunque no deberia haber conflicto ya
+                              );
+                            }
+
+                            messenger.hideCurrentSnackBar();
+                            CustomSnackBar.show(
+                              context,
+                              messenger: messenger,
+                              message:
+                                  "Cambios cancelados y bloqueos restaurados",
+                              type: SnackBarType.info,
+                            );
+                          },
                         );
                       }
                     } catch (forceEx) {
