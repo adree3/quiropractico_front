@@ -68,7 +68,6 @@ class _HorarioModalState extends State<HorarioModal> {
             // DÍA SEMANA
             DropdownButtonFormField<int>(
               value: selectedDia,
-
               items:
                   diasSemana
                       .map(
@@ -107,6 +106,14 @@ class _HorarioModalState extends State<HorarioModal> {
                         context: context,
                         initialTime: horaInicio,
                         initialEntryMode: TimePickerEntryMode.input,
+                        builder: (BuildContext context, Widget? child) {
+                          return MediaQuery(
+                            data: MediaQuery.of(
+                              context,
+                            ).copyWith(alwaysUse24HourFormat: true),
+                            child: child!,
+                          );
+                        },
                       );
                       if (picked != null) setState(() => horaInicio = picked);
                     },
@@ -122,6 +129,14 @@ class _HorarioModalState extends State<HorarioModal> {
                         context: context,
                         initialTime: horaFin,
                         initialEntryMode: TimePickerEntryMode.input,
+                        builder: (BuildContext context, Widget? child) {
+                          return MediaQuery(
+                            data: MediaQuery.of(
+                              context,
+                            ).copyWith(alwaysUse24HourFormat: true),
+                            child: child!,
+                          );
+                        },
                       );
                       if (picked != null) setState(() => horaFin = picked);
                     },
@@ -130,18 +145,36 @@ class _HorarioModalState extends State<HorarioModal> {
               ],
             ),
 
-            if (horaError != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 8, left: 4),
-                child: Text(
-                  horaError!,
-                  style: const TextStyle(
-                    color: Colors.red,
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                  ),
+            if (horaError != null) ...[
+              const SizedBox(height: 15),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.red.shade200),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.error_outline,
+                      color: Colors.red,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        horaError!,
+                        style: TextStyle(color: Colors.red[700], fontSize: 13),
+                      ),
+                    ),
+                  ],
                 ),
               ),
+            ],
           ],
         ),
       ),
@@ -167,49 +200,115 @@ class _HorarioModalState extends State<HorarioModal> {
               return;
             }
 
+            final messenger = ScaffoldMessenger.of(context);
             Map<String, dynamic> result;
+
             if (widget.horarioToEdit != null) {
-              // Actualizar
+              // --- EDICIÓN ---
+              // Guardamos estado anterior para Deshacer
+              final backupDia = widget.horarioToEdit!.diaSemana;
+              final backupInicio = widget.horarioToEdit!.horaInicio;
+              final backupFin = widget.horarioToEdit!.horaFin;
+              final backupId = widget.horarioToEdit!.idHorario;
+
               result = await provider.updateHorario(
-                widget.horarioToEdit!.idHorario,
+                backupId,
                 selectedDia,
                 horaInicio,
                 horaFin,
               );
+
+              if (context.mounted) {
+                if (result['success'] == true) {
+                  Navigator.pop(context);
+                  CustomSnackBar.show(
+                    context,
+                    message:
+                        'Turno del ${diasSemana.firstWhere((d) => d['id'] == selectedDia)['label']} editado',
+                    type: SnackBarType.success,
+                    actionLabel: "DESHACER",
+                    onAction: () async {
+                      messenger.hideCurrentSnackBar();
+                      try {
+                        await provider.updateHorario(
+                          backupId,
+                          backupDia,
+                          backupInicio,
+                          backupFin,
+                        );
+                        if (context.mounted) {
+                          CustomSnackBar.show(
+                            context,
+                            messenger: messenger,
+                            message: "Edición deshecha",
+                            type: SnackBarType.info,
+                          );
+                        }
+                      } catch (e) {
+                        // Manejo de error silencioso o log
+                      }
+                    },
+                  );
+                } else {
+                  _handleError(result);
+                }
+              }
             } else {
-              // Crear
+              // --- CREACIÓN ---
               result = await provider.createHorario(
                 selectedDia,
                 horaInicio,
                 horaFin,
               );
-            }
 
-            if (context.mounted) {
-              if (result['success'] == true) {
-                Navigator.pop(context);
-                CustomSnackBar.show(
-                  context,
-                  message:
-                      widget.horarioToEdit != null
-                          ? 'Turno actualizado'
-                          : 'Turno añadido',
-                  type: SnackBarType.success,
-                );
-              } else {
-                final code = result['code'];
-                final msg = result['message'];
+              if (context.mounted) {
+                if (result['success'] == true) {
+                  Navigator.pop(context);
 
-                setState(() {
-                  if (code == 'CONFLICTO_DIA') {
-                    diaError = msg;
-                  } else if (code == 'CONFLICTO_HORA') {
-                    horaError = msg;
-                  } else {
-                    // Fallback: mostrar error debajo de las horas
-                    horaError = msg ?? 'Error desconocido';
-                  }
-                });
+                  // Intentamos obtener ID para deshacer (borrar)
+                  final createdData = result['data'];
+                  final int? createdId =
+                      createdData != null && createdData is Map
+                          ? createdData['idHorario']
+                          : null;
+
+                  final diaLabel =
+                      diasSemana.firstWhere(
+                        (d) => d['id'] == selectedDia,
+                        orElse: () => {'label': 'Día'},
+                      )['label'];
+                  final timeRange =
+                      "${horaInicio.hour.toString().padLeft(2, '0')}:${horaInicio.minute.toString().padLeft(2, '0')} - ${horaFin.hour.toString().padLeft(2, '0')}:${horaFin.minute.toString().padLeft(2, '0')}";
+
+                  CustomSnackBar.show(
+                    context,
+                    message: 'Turno creado: $diaLabel $timeRange',
+                    type: SnackBarType.success,
+                    actionLabel: createdId != null ? "DESHACER" : null,
+                    onAction:
+                        createdId == null
+                            ? null
+                            : () async {
+                              messenger.hideCurrentSnackBar();
+                              try {
+                                await provider.deleteHorario(createdId);
+                                if (context.mounted) {
+                                  CustomSnackBar.show(
+                                    context,
+                                    messenger: messenger,
+                                    message:
+                                        "Creación deshecha (turno eliminado)",
+                                    type: SnackBarType.info,
+                                  );
+                                }
+                              } catch (e) {
+                                // Log
+                              }
+                            },
+                  );
+                } else {
+                  _handleError(result);
+                }
               }
             }
           },
@@ -217,6 +316,21 @@ class _HorarioModalState extends State<HorarioModal> {
         ),
       ],
     );
+  }
+
+  void _handleError(Map<String, dynamic> result) {
+    final code = result['code'];
+    final msg = result['message'];
+
+    setState(() {
+      if (code == 'CONFLICTO_DIA') {
+        diaError = msg;
+      } else if (code == 'CONFLICTO_HORA') {
+        horaError = msg;
+      } else {
+        horaError = msg ?? 'Error desconocido';
+      }
+    });
   }
 }
 

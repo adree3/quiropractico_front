@@ -84,9 +84,11 @@ class HorariosProvider extends ChangeNotifier {
     loadHorarios(doctor.idUsuario);
   }
 
-  Future<void> loadHorarios(int idQuiro) async {
-    isLoading = true;
-    notifyListeners();
+  Future<void> loadHorarios(int idQuiro, {bool notifyLoading = true}) async {
+    if (notifyLoading) {
+      isLoading = true;
+      notifyListeners();
+    }
     try {
       final response = await ApiService.dio.get(
         '$_baseUrl/horarios/quiro/$idQuiro',
@@ -96,7 +98,9 @@ class HorariosProvider extends ChangeNotifier {
     } catch (e) {
       print('Error cargando horarios: ${ErrorHandler.extractMessage(e)}');
     } finally {
-      isLoading = false;
+      if (notifyLoading) {
+        isLoading = false;
+      }
       notifyListeners();
     }
   }
@@ -110,6 +114,20 @@ class HorariosProvider extends ChangeNotifier {
     if (selectedDoctor == null) {
       return {'success': false, 'message': "No hay doctor seleccionado"};
     }
+
+    // 1. Optimistic Update
+    final tempId = -1 * DateTime.now().millisecondsSinceEpoch;
+    final nuevoHorario = Horario(
+      idHorario: tempId,
+      idQuiropractico: selectedDoctor!.idUsuario,
+      diaSemana: diaSemana,
+      horaInicio: inicio,
+      horaFin: fin,
+    );
+
+    horarios.add(nuevoHorario);
+    notifyListeners();
+
     try {
       final inicioStr =
           "${inicio.hour.toString().padLeft(2, '0')}:${inicio.minute.toString().padLeft(2, '0')}:00";
@@ -123,33 +141,61 @@ class HorariosProvider extends ChangeNotifier {
         "horaFin": finStr,
       };
 
-      await ApiService.dio.post('$_baseUrl/horarios', data: data);
-      await loadHorarios(selectedDoctor!.idUsuario);
-      return {'success': true};
+      final response = await ApiService.dio.post(
+        '$_baseUrl/horarios',
+        data: data,
+      );
+
+      // Silent Refresh
+      await loadHorarios(selectedDoctor!.idUsuario, notifyLoading: false);
+
+      // Obtener el ID real para el retorno (por si se necesita para deshacer)
+      final createdData = response.data;
+      return {'success': true, 'data': createdData};
     } on DioException catch (e) {
+      // Revertir
+      horarios.removeWhere((h) => h.idHorario == tempId);
+      notifyListeners();
+
       if (e.response?.statusCode == 409) {
         final data = e.response?.data;
         return {
           'success': false,
           'message': data['message'] ?? 'Conflicto de horario',
-          'code': data['code'], // CONFLICTO_DIA | CONFLICTO_HORA
+          'code': data['code'],
         };
       }
       return {'success': false, 'message': ErrorHandler.extractMessage(e)};
     } catch (e) {
+      // Revertir
+      horarios.removeWhere((h) => h.idHorario == tempId);
+      notifyListeners();
       return {'success': false, 'message': ErrorHandler.extractMessage(e)};
     }
   }
 
   // Borrar Horario
   Future<String?> deleteHorario(int idHorario) async {
+    // Backup local & Optimistic Remove
+    final index = horarios.indexWhere((h) => h.idHorario == idHorario);
+    Horario? backup;
+    if (index != -1) {
+      backup = horarios[index];
+      horarios.removeAt(index);
+      notifyListeners();
+    }
+
     try {
       await ApiService.dio.delete('$_baseUrl/horarios/$idHorario');
-
-      horarios.removeWhere((h) => h.idHorario == idHorario);
-      notifyListeners();
+      // No necesitamos reload aqui si confiamos en el delete, pero por consistencia:
+      // await loadHorarios(selectedDoctor!.idUsuario, notifyLoading: false);
       return null;
     } catch (e) {
+      // Revertir
+      if (backup != null) {
+        horarios.insert(index, backup);
+        notifyListeners();
+      }
       return ErrorHandler.extractMessage(e);
     }
   }
@@ -164,6 +210,24 @@ class HorariosProvider extends ChangeNotifier {
     if (selectedDoctor == null) {
       return {'success': false, 'message': "No hay doctor seleccionado"};
     }
+
+    // Backup & Optimistic Update
+    final index = horarios.indexWhere((h) => h.idHorario == idHorario);
+    Horario? backup;
+
+    if (index != -1) {
+      backup = horarios[index];
+      final updatedHorario = Horario(
+        idHorario: idHorario,
+        idQuiropractico: selectedDoctor!.idUsuario,
+        diaSemana: diaSemana,
+        horaInicio: inicio,
+        horaFin: fin,
+      );
+      horarios[index] = updatedHorario;
+      notifyListeners();
+    }
+
     try {
       final inicioStr =
           "${inicio.hour.toString().padLeft(2, '0')}:${inicio.minute.toString().padLeft(2, '0')}:00";
@@ -178,19 +242,30 @@ class HorariosProvider extends ChangeNotifier {
       };
 
       await ApiService.dio.put('$_baseUrl/horarios/$idHorario', data: data);
-      await loadHorarios(selectedDoctor!.idUsuario);
+      await loadHorarios(selectedDoctor!.idUsuario, notifyLoading: false);
       return {'success': true};
     } on DioException catch (e) {
+      // Revertir
+      if (backup != null && index != -1) {
+        horarios[index] = backup;
+        notifyListeners();
+      }
+
       if (e.response?.statusCode == 409) {
         final data = e.response?.data;
         return {
           'success': false,
           'message': data['message'] ?? 'Conflicto de horario',
-          'code': data['code'], // CONFLICTO_DIA | CONFLICTO_HORA
+          'code': data['code'],
         };
       }
       return {'success': false, 'message': ErrorHandler.extractMessage(e)};
     } catch (e) {
+      // Revertir
+      if (backup != null && index != -1) {
+        horarios[index] = backup;
+        notifyListeners();
+      }
       return {'success': false, 'message': ErrorHandler.extractMessage(e)};
     }
   }
@@ -207,11 +282,10 @@ class HorariosProvider extends ChangeNotifier {
       diasUnicos.add(horario.diaSemana);
     }
 
-    // Si por alguna razón no hay días (ej: lista vacía filtrada), L-V por defecto
     if (diasUnicos.isEmpty) return [1, 2, 3, 4, 5];
 
     final listaDias = diasUnicos.toList();
-    listaDias.sort(); // Ordenar: 1, 2, 3...
+    listaDias.sort();
     return listaDias;
   }
 }

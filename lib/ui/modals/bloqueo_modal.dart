@@ -5,7 +5,6 @@ import 'package:quiropractico_front/models/bloqueo_agenda.dart';
 import 'package:quiropractico_front/models/usuario.dart';
 import 'package:quiropractico_front/providers/agenda_bloqueo_provider.dart';
 import 'package:quiropractico_front/providers/agenda_provider.dart';
-import 'package:quiropractico_front/ui/widgets/custom_snackbar.dart';
 import 'package:quiropractico_front/exceptions/bloqueo_conflict_exception.dart';
 
 class BloqueoModal extends StatefulWidget {
@@ -132,7 +131,7 @@ class _BloqueoModalState extends State<BloqueoModal> {
                 onChanged:
                     (val) => setState(() {
                       selectedQuiro = val;
-                      _errorMessage = null; // Limpiar error al cambiar usuario
+                      _errorMessage = null;
                     }),
               ),
 
@@ -264,11 +263,7 @@ class _BloqueoModalState extends State<BloqueoModal> {
                     motivoCtrl.text,
                     selectedQuiro?.idUsuario,
                   );
-                  // Editar devuelve String? (error) o null (éxito)
                   if (err is String) apiError = err;
-
-                  // Si no hay error, preparamos para el snackbar (el flujo unificado abajo lo maneja)
-                  // Solo necesitamos asegurarnos de que la lógica de deshacer tenga acceso a los datos originales
                 } else {
                   final result = await bloqueoProvider.crearBloqueo(
                     fechaInicioReal,
@@ -292,13 +287,7 @@ class _BloqueoModalState extends State<BloqueoModal> {
                 }
 
                 if (context.mounted) {
-                  final messenger = ScaffoldMessenger.of(context);
-                  Navigator.pop(context);
-
                   final isGlobal = selectedQuiro == null;
-                  String mensaje;
-
-                  // Formateo de fechas
                   String fechasStr;
                   if (fechaInicioReal.year == fechaFinReal.year &&
                       fechaInicioReal.month == fechaFinReal.month &&
@@ -310,62 +299,15 @@ class _BloqueoModalState extends State<BloqueoModal> {
                         "${fechaInicioReal.day}/${fechaInicioReal.month} - ${fechaFinReal.day}/${fechaFinReal.month}";
                   }
 
-                  if (isGlobal) {
-                    mensaje =
-                        esEdicion
-                            ? "Bloqueo global actualizado ($fechasStr)"
-                            : "Bloqueo global creado ($fechasStr)";
-                  } else {
-                    final nombre = selectedQuiro!.nombreCompleto;
-                    final accion = esEdicion ? "actualizado" : "creado";
-                    mensaje = "Bloqueo $accion para $nombre ($fechasStr)";
-                  }
-
-                  // Mostrar SnackBar con opción de Deshacer
-                  CustomSnackBar.show(
-                    context,
-                    message: mensaje,
-                    type: SnackBarType.success,
-                    actionLabel: "DESHACER",
-                    onAction: () async {
-                      try {
-                        if (esEdicion) {
-                          // DESHACER EDICIÓN: Restaurar valores originales
-                          final original = widget.bloqueoEditar!;
-                          await bloqueoProvider.editarBloqueo(
-                            original.idBloqueo,
-                            original.fechaInicio,
-                            original.fechaFin,
-                            original.motivo,
-                            original.idQuiropractico,
-                          );
-                        } else {
-                          // DESHACER CREACIÓN: Borrar el nuevo
-                          if (nuevoBloqueo != null) {
-                            await bloqueoProvider.borrarBloqueo(
-                              nuevoBloqueo.idBloqueo,
-                            );
-                          }
-                        }
-
-                        messenger.hideCurrentSnackBar();
-                        CustomSnackBar.show(
-                          context,
-                          messenger: messenger,
-                          message: "Cambios cancelados",
-                          type: SnackBarType.info,
-                        );
-                      } catch (e) {
-                        messenger.hideCurrentSnackBar();
-                        CustomSnackBar.show(
-                          context,
-                          messenger: messenger,
-                          message: "Error al cancelar: ${e.toString()}",
-                          type: SnackBarType.error,
-                        );
-                      }
-                    },
-                  );
+                  Navigator.pop(context, {
+                    'action': esEdicion ? 'update' : 'create',
+                    'success': true,
+                    'bloqueo': esEdicion ? widget.bloqueoEditar : nuevoBloqueo,
+                    'isGlobal': isGlobal,
+                    'nombreQuiro':
+                        isGlobal ? null : selectedQuiro!.nombreCompleto,
+                    'fechasStr': fechasStr,
+                  });
                 }
               } on BloqueoConflictException catch (e) {
                 if (e.code == 'CONFLICTO_BLOQUEO_INDIVIDUAL' &&
@@ -596,49 +538,28 @@ class _BloqueoModalState extends State<BloqueoModal> {
                       );
 
                       if (context.mounted) {
-                        final messenger = ScaffoldMessenger.of(context);
-                        Navigator.pop(context);
-
                         BloqueoAgenda? nuevoGlobal;
                         if (result is BloqueoAgenda) {
                           nuevoGlobal = result;
                         }
 
-                        CustomSnackBar.show(
-                          context,
-                          message: "Conflictos resueltos y bloqueo creado",
-                          type: SnackBarType.success,
-                          actionLabel: "DESHACER",
-                          onAction: () async {
-                            // 1. Borrar el global creado
-                            if (nuevoGlobal != null) {
-                              await bloqueoProvider.borrarBloqueo(
-                                nuevoGlobal.idBloqueo,
-                              );
-                            }
-
-                            // 2. Restaurar los conflictos previos
-                            for (final b in conflicting) {
-                              await bloqueoProvider.crearBloqueo(
-                                b.fechaInicio,
-                                b.fechaFin,
-                                b.motivo,
-                                b.idQuiropractico,
-                                force:
-                                    true, // Force por seguridad, aunque no deberia haber conflicto ya
-                              );
-                            }
-
-                            messenger.hideCurrentSnackBar();
-                            CustomSnackBar.show(
-                              context,
-                              messenger: messenger,
-                              message:
-                                  "Cambios cancelados y bloqueos restaurados",
-                              type: SnackBarType.info,
-                            );
-                          },
-                        );
+                        Navigator.pop(context, {
+                          'action': 'create_forced',
+                          'success': true,
+                          'bloqueo': nuevoGlobal,
+                          'conflicting':
+                              conflicting, // Para restaurar si deshacen
+                          'isGlobal': selectedQuiro == null,
+                          'nombreQuiro': selectedQuiro?.nombreCompleto,
+                          // Fechas para mensaje
+                          'fechasStr':
+                              (fechaInicioReal.year == fechaFinReal.year &&
+                                      fechaInicioReal.month ==
+                                          fechaFinReal.month &&
+                                      fechaInicioReal.day == fechaFinReal.day)
+                                  ? "${fechaInicioReal.day}/${fechaInicioReal.month}"
+                                  : "${fechaInicioReal.day}/${fechaInicioReal.month} - ${fechaFinReal.day}/${fechaFinReal.month}",
+                        });
                       }
                     } catch (forceEx) {
                       if (context.mounted) {

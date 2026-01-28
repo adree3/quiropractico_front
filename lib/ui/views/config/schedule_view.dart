@@ -11,6 +11,7 @@ import 'package:quiropractico_front/ui/modals/horario_modal.dart';
 import 'package:quiropractico_front/ui/modals/bloqueo_modal.dart';
 import 'package:quiropractico_front/ui/widgets/hoverable_action_button.dart';
 import 'package:quiropractico_front/ui/widgets/dashboard_dropdown.dart';
+import 'package:quiropractico_front/ui/widgets/custom_snackbar.dart';
 
 class ScheduleView extends StatefulWidget {
   const ScheduleView({super.key});
@@ -392,11 +393,60 @@ class _ScheduleViewState extends State<ScheduleView> {
                                                         size: 14,
                                                         color: Colors.red,
                                                       ),
-                                                      onDeleted:
-                                                          () async => await provider
-                                                              .deleteHorario(
-                                                                turno.idHorario,
-                                                              ),
+                                                      onDeleted: () async {
+                                                        final backup = turno;
+                                                        final messenger =
+                                                            ScaffoldMessenger.of(
+                                                              context,
+                                                            );
+                                                        // 1. Borrado optimista (ya lo hace el provider, pero el snackbar da feedback)
+                                                        final err =
+                                                            await provider
+                                                                .deleteHorario(
+                                                                  turno
+                                                                      .idHorario,
+                                                                );
+
+                                                        if (err == null) {
+                                                          if (context.mounted) {
+                                                            CustomSnackBar.show(
+                                                              context,
+                                                              messenger:
+                                                                  messenger,
+                                                              message:
+                                                                  "Turno borrado: $nombreDia ${turno.formattedRange}",
+                                                              type:
+                                                                  SnackBarType
+                                                                      .success,
+                                                              actionLabel:
+                                                                  "DESHACER",
+                                                              onAction: () async {
+                                                                messenger
+                                                                    .hideCurrentSnackBar();
+                                                                // Re-crear horario (Deshacer)
+                                                                await provider.createHorario(
+                                                                  backup
+                                                                      .diaSemana,
+                                                                  backup
+                                                                      .horaInicio,
+                                                                  backup
+                                                                      .horaFin,
+                                                                );
+                                                              },
+                                                            );
+                                                          }
+                                                        } else {
+                                                          if (context.mounted) {
+                                                            CustomSnackBar.show(
+                                                              context,
+                                                              message: err,
+                                                              type:
+                                                                  SnackBarType
+                                                                      .error,
+                                                            );
+                                                          }
+                                                        }
+                                                      },
                                                     ),
                                                   );
                                                 }).toList(),
@@ -496,10 +546,26 @@ class _ScheduleViewState extends State<ScheduleView> {
                             Expanded(
                               child:
                                   mesesAfectados.isEmpty
-                                      ? const Center(
-                                        child: Text(
-                                          "Sin bloqueos este año",
-                                          style: TextStyle(color: Colors.grey),
+                                      ? Center(
+                                        child: Column(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            Icon(
+                                              Icons.event_available_rounded,
+                                              size: 64,
+                                              color: Colors.grey.shade300,
+                                            ),
+                                            const SizedBox(height: 16),
+                                            Text(
+                                              "Sin bloqueos este año",
+                                              style: TextStyle(
+                                                color: Colors.grey.shade500,
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       )
                                       : LayoutBuilder(
@@ -723,7 +789,7 @@ class _ScheduleViewState extends State<ScheduleView> {
           isScrollable
               ? const AlwaysScrollableScrollPhysics()
               : const NeverScrollableScrollPhysics(),
-      itemBuilder: (context, index) {
+      itemBuilder: (itemCtx, index) {
         final bloqueo = bloqueos[index];
         final isGlobal = bloqueo.idQuiropractico == null;
 
@@ -813,13 +879,17 @@ class _ScheduleViewState extends State<ScheduleView> {
                         size: 22,
                         color: Colors.grey,
                       ),
-                      onPressed: () {
+                      onPressed: () async {
                         // Cerrar dialogo actual antes de abrir edicion
-                        Navigator.pop(context);
-                        showDialog(
+                        Navigator.pop(itemCtx);
+                        final result = await showDialog(
                           context: context,
                           builder: (_) => BloqueoModal(bloqueoEditar: bloqueo),
                         );
+
+                        if (result != null && result is Map) {
+                          _handleBloqueoResult(result);
+                        }
                       },
                       tooltip: "Editar",
                       padding: EdgeInsets.zero,
@@ -840,10 +910,50 @@ class _ScheduleViewState extends State<ScheduleView> {
                           context,
                           listen: false,
                         );
-                        await provider.borrarBloqueo(bloqueo.idBloqueo);
-                        // Refrescar lista visual (el provider notifica)
-                        if (context.mounted)
-                          Navigator.pop(context); // Cerrar tras borrar
+                        final messenger = ScaffoldMessenger.of(context);
+                        Navigator.pop(itemCtx); // Cerrar dialogo tras clic
+
+                        // Datos para Undo
+                        final backup = bloqueo;
+
+                        try {
+                          await provider.borrarBloqueo(bloqueo.idBloqueo);
+
+                          if (mounted) {
+                            CustomSnackBar.show(
+                              context,
+                              messenger: messenger,
+                              message: "Bloqueo eliminado",
+                              type: SnackBarType.success,
+                              actionLabel: "DESHACER",
+                              onAction: () async {
+                                // Restaurar bloqueo
+                                await provider.crearBloqueo(
+                                  backup.fechaInicio,
+                                  backup.fechaFin,
+                                  backup.motivo,
+                                  backup.idQuiropractico,
+                                  force: true, // Forzar por si acaso
+                                );
+                                messenger.hideCurrentSnackBar();
+                                CustomSnackBar.show(
+                                  context,
+                                  messenger: messenger,
+                                  message: "Bloqueo restaurado",
+                                  type: SnackBarType.info,
+                                );
+                              },
+                            );
+                          }
+                        } catch (e) {
+                          if (mounted) {
+                            CustomSnackBar.show(
+                              context,
+                              message: "Error al eliminar: $e",
+                              type: SnackBarType.error,
+                            );
+                          }
+                        }
                       },
                     ),
                   ],
@@ -897,15 +1007,11 @@ class _ScheduleViewState extends State<ScheduleView> {
               focusedDay: firstDay,
               startingDayOfWeek: StartingDayOfWeek.monday,
               headerVisible: false,
-              shouldFillViewport:
-                  true, // Importante para que ocupe el espacio disponible
-              daysOfWeekHeight: 18, // Altura cabecera dias (L, M, X...)
-              rowHeight: 28, // Altura filas de dias
-              // Desactivar interacciones
+              shouldFillViewport: true,
+              daysOfWeekHeight: 18,
+              rowHeight: 28,
               pageJumpingEnabled: false,
               availableGestures: AvailableGestures.none,
-
-              // Estilo de dias de la semana
               daysOfWeekStyle: const DaysOfWeekStyle(
                 weekdayStyle: TextStyle(
                   fontSize: 10,
@@ -936,11 +1042,8 @@ class _ScheduleViewState extends State<ScheduleView> {
                       isToday: true,
                     ),
                 outsideBuilder:
-                    (context, day, focusedDay) =>
-                        const SizedBox.shrink(), // No mostrar dias fuera del mes
-                markerBuilder:
-                    (context, day, events) =>
-                        const SizedBox(), // Sin marcadores por defecto
+                    (context, day, focusedDay) => const SizedBox.shrink(),
+                markerBuilder: (context, day, events) => const SizedBox(),
               ),
             ),
           ),
@@ -1033,5 +1136,91 @@ class _ScheduleViewState extends State<ScheduleView> {
     }
 
     return cellContent;
+  }
+
+  void _handleBloqueoResult(Map result) {
+    if (!mounted) return;
+
+    final provider = Provider.of<AgendaBloqueoProvider>(context, listen: false);
+    final messenger = ScaffoldMessenger.of(context);
+
+    final action = result['action'];
+    final BloqueoAgenda? bloqueoObj = result['bloqueo'];
+    final bool isGlobal = result['isGlobal'] ?? false;
+    final String? nombreQuiro = result['nombreQuiro'];
+    final String? fechasStr = result['fechasStr'];
+    final List<BloqueoAgenda>? conflicting = result['conflicting'];
+
+    String mensaje = "";
+    if (action == 'create_forced') {
+      mensaje = "Conflictos resueltos y bloqueo creado";
+    } else {
+      if (isGlobal) {
+        mensaje =
+            action == 'update'
+                ? "Bloqueo global actualizado ($fechasStr)"
+                : "Bloqueo global creado ($fechasStr)";
+      } else {
+        final accion = action == 'update' ? "actualizado" : "creado";
+        mensaje = "Bloqueo $accion para $nombreQuiro ($fechasStr)";
+      }
+    }
+
+    CustomSnackBar.show(
+      context,
+      message: mensaje,
+      type: SnackBarType.success,
+      actionLabel: "DESHACER",
+      onAction: () async {
+        try {
+          if (action == 'update') {
+            if (bloqueoObj != null) {
+              await provider.editarBloqueo(
+                bloqueoObj.idBloqueo,
+                bloqueoObj.fechaInicio,
+                bloqueoObj.fechaFin,
+                bloqueoObj.motivo,
+                bloqueoObj.idQuiropractico,
+              );
+            }
+          } else if (action == 'create') {
+            if (bloqueoObj != null) {
+              await provider.borrarBloqueo(bloqueoObj.idBloqueo);
+            }
+          } else if (action == 'create_forced') {
+            if (bloqueoObj != null) {
+              await provider.borrarBloqueo(bloqueoObj.idBloqueo);
+            }
+            if (conflicting != null) {
+              for (final b in conflicting) {
+                await provider.crearBloqueo(
+                  b.fechaInicio,
+                  b.fechaFin,
+                  b.motivo,
+                  b.idQuiropractico,
+                  force: true,
+                );
+              }
+            }
+          }
+
+          messenger.hideCurrentSnackBar();
+          CustomSnackBar.show(
+            context,
+            messenger: messenger,
+            message: "Cambios cancelados",
+            type: SnackBarType.info,
+          );
+        } catch (e) {
+          messenger.hideCurrentSnackBar();
+          CustomSnackBar.show(
+            context,
+            messenger: messenger,
+            message: "Error restaurando: $e",
+            type: SnackBarType.error,
+          );
+        }
+      },
+    );
   }
 }
