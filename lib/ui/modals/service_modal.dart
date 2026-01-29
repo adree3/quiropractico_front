@@ -16,11 +16,11 @@ class ServiceModal extends StatefulWidget {
 
 class _ServiceModalState extends State<ServiceModal> {
   final _formKey = GlobalKey<FormState>();
-  
+
   final nombreCtrl = TextEditingController();
   final precioCtrl = TextEditingController();
   final sesionesCtrl = TextEditingController();
-  
+
   String tipoSeleccionado = 'bono';
 
   bool get isEditing => widget.servicioExistente != null;
@@ -39,7 +39,7 @@ class _ServiceModalState extends State<ServiceModal> {
         }
       } else {
         tipoSeleccionado = 'sesion_unica';
-        sesionesCtrl.text = ''; 
+        sesionesCtrl.text = '';
       }
     }
   }
@@ -50,7 +50,10 @@ class _ServiceModalState extends State<ServiceModal> {
 
     return AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-      title: Text(isEditing ? 'Editar Tarifa' : 'Nueva Tarifa', style: const TextStyle(fontWeight: FontWeight.bold)),
+      title: Text(
+        isEditing ? 'Editar Tarifa' : 'Nueva Tarifa',
+        style: const TextStyle(fontWeight: FontWeight.bold),
+      ),
       content: SizedBox(
         width: 400,
         child: Form(
@@ -61,7 +64,10 @@ class _ServiceModalState extends State<ServiceModal> {
               // NOMBRE
               TextFormField(
                 controller: nombreCtrl,
-                decoration: const InputDecoration(labelText: 'Nombre del Servicio', prefixIcon: Icon(Icons.label_outline)),
+                decoration: const InputDecoration(
+                  labelText: 'Nombre del Servicio',
+                  prefixIcon: Icon(Icons.label_outline),
+                ),
                 validator: (v) => v!.isEmpty ? 'Requerido' : null,
               ),
               const SizedBox(height: 15),
@@ -69,9 +75,16 @@ class _ServiceModalState extends State<ServiceModal> {
               // PRECIO
               TextFormField(
                 controller: precioCtrl,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}'))], // Solo números y punto
-                decoration: const InputDecoration(labelText: 'Precio (€)', prefixIcon: Icon(Icons.euro)),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
+                ], // Solo números y punto
+                decoration: const InputDecoration(
+                  labelText: 'Precio (€)',
+                  prefixIcon: Icon(Icons.euro),
+                ),
                 validator: (v) => v!.isEmpty ? 'Requerido' : null,
               ),
               const SizedBox(height: 15),
@@ -79,10 +92,19 @@ class _ServiceModalState extends State<ServiceModal> {
               // TIPO
               DropdownButtonFormField<String>(
                 value: tipoSeleccionado,
-                decoration: const InputDecoration(labelText: 'Tipo de Servicio', prefixIcon: Icon(Icons.category_outlined)),
+                decoration: const InputDecoration(
+                  labelText: 'Tipo de Servicio',
+                  prefixIcon: Icon(Icons.category_outlined),
+                ),
                 items: const [
-                  DropdownMenuItem(value: 'sesion_unica', child: Text("Sesión Suelta / Visita")),
-                  DropdownMenuItem(value: 'bono', child: Text("Bono de Sesiones")),
+                  DropdownMenuItem(
+                    value: 'sesion_unica',
+                    child: Text("Sesión Suelta / Visita"),
+                  ),
+                  DropdownMenuItem(
+                    value: 'bono',
+                    child: Text("Bono de Sesiones"),
+                  ),
                 ],
                 onChanged: (val) {
                   setState(() {
@@ -90,7 +112,7 @@ class _ServiceModalState extends State<ServiceModal> {
                   });
                 },
               ),
-              
+
               // SESIONES (Solo si es bono)
               if (tipoSeleccionado == 'bono') ...[
                 const SizedBox(height: 15),
@@ -99,13 +121,17 @@ class _ServiceModalState extends State<ServiceModal> {
                   keyboardType: TextInputType.number,
                   inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                   decoration: const InputDecoration(
-                    labelText: 'Número de Sesiones', 
+                    labelText: 'Número de Sesiones',
                     prefixIcon: Icon(Icons.repeat),
-                    hintText: 'Ej: 10'
+                    hintText: 'Ej: 10',
                   ),
                   validator: (v) {
-                    if (tipoSeleccionado == 'bono' && (v == null || v.isEmpty)) return 'Requerido para bonos';
-                    if (int.tryParse(v!) == null || int.parse(v) < 1) return 'Mínimo 1 sesión';
+                    if (tipoSeleccionado == 'bono' && (v == null || v.isEmpty)) {
+                      return 'Requerido para bonos';
+                    }
+                    if (int.tryParse(v!) == null || int.parse(v) < 1) {
+                      return 'Mínimo 1 sesión';
+                    }
                     return null;
                   },
                 ),
@@ -115,32 +141,51 @@ class _ServiceModalState extends State<ServiceModal> {
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancelar'),
+        ),
         ElevatedButton(
           onPressed: () async {
             if (_formKey.currentState!.validate()) {
               final nombre = nombreCtrl.text.trim();
               final precio = double.parse(precioCtrl.text.trim());
-              final sesiones = tipoSeleccionado == 'bono' ? int.parse(sesionesCtrl.text.trim()) : null;
+              final sesiones =
+                  tipoSeleccionado == 'bono'
+                      ? int.parse(sesionesCtrl.text.trim())
+                      : null;
 
               String? error;
               if (isEditing) {
-                error = await provider.updateService(widget.servicioExistente!.idServicio, nombre, precio, tipoSeleccionado, sesiones);
+                error = await provider.updateService(
+                  widget.servicioExistente!.idServicio,
+                  nombre,
+                  precio,
+                  tipoSeleccionado,
+                  sesiones,
+                );
               } else {
-                error = await provider.createService(nombre, precio, tipoSeleccionado, sesiones);
+                error = await provider.createService(
+                  nombre,
+                  precio,
+                  tipoSeleccionado,
+                  sesiones,
+                );
               }
 
               if (context.mounted) {
                 if (error == null) {
-                  Navigator.pop(context);
-                  CustomSnackBar.show(context, 
-                    message: 'Guardado correctamente', 
-                    type: SnackBarType.success
-                  );
+                  final result = {
+                    'action': isEditing ? 'update' : 'create',
+                    'nombre': nombre,
+                    'oldData': isEditing ? widget.servicioExistente : null,
+                  };
+                  Navigator.pop(context, result);
                 } else {
-                  CustomSnackBar.show(context, 
-                    message: error, 
-                    type: SnackBarType.error
+                  CustomSnackBar.show(
+                    context,
+                    message: error,
+                    type: SnackBarType.error,
                   );
                 }
               }

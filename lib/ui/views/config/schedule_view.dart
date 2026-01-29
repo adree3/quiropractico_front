@@ -166,10 +166,15 @@ class _ScheduleViewState extends State<ScheduleView> {
                   onTap:
                       currentDoctor == null
                           ? () {}
-                          : () => showDialog(
-                            context: context,
-                            builder: (_) => const HorarioModal(),
-                          ),
+                          : () async {
+                            final result = await showDialog(
+                              context: context,
+                              builder: (_) => const HorarioModal(),
+                            );
+                            if (context.mounted) {
+                              _handleScheduleResult(result);
+                            }
+                          },
                 ),
               ],
             ),
@@ -251,15 +256,23 @@ class _ScheduleViewState extends State<ScheduleView> {
                                                 child: SizedBox(
                                                   height: 28,
                                                   child: ElevatedButton.icon(
-                                                    onPressed: () {
-                                                      showDialog(
-                                                        context: context,
-                                                        builder:
-                                                            (_) => HorarioModal(
-                                                              initialDay:
-                                                                  diaNum,
-                                                            ),
-                                                      );
+                                                    onPressed: () async {
+                                                      final result =
+                                                          await showDialog(
+                                                            context: context,
+                                                            builder:
+                                                                (
+                                                                  _,
+                                                                ) => HorarioModal(
+                                                                  initialDay:
+                                                                      diaNum,
+                                                                ),
+                                                          );
+                                                      if (context.mounted) {
+                                                        _handleScheduleResult(
+                                                          result,
+                                                        );
+                                                      }
                                                     },
                                                     style: ButtonStyle(
                                                       elevation:
@@ -376,17 +389,23 @@ class _ScheduleViewState extends State<ScheduleView> {
                                                       backgroundColor:
                                                           Colors.blue.shade50,
                                                       side: BorderSide.none,
-                                                      onPressed: () {
-                                                        showDialog(
-                                                          context: context,
-                                                          builder:
-                                                              (
-                                                                _,
-                                                              ) => HorarioModal(
-                                                                horarioToEdit:
-                                                                    turno,
-                                                              ),
-                                                        );
+                                                      onPressed: () async {
+                                                        final result =
+                                                            await showDialog(
+                                                              context: context,
+                                                              builder:
+                                                                  (
+                                                                    context,
+                                                                  ) => HorarioModal(
+                                                                    horarioToEdit:
+                                                                        turno,
+                                                                  ),
+                                                            );
+                                                        if (context.mounted) {
+                                                          _handleScheduleResult(
+                                                            result,
+                                                          );
+                                                        }
                                                       },
                                                       deleteIcon: const Icon(
                                                         Icons.close,
@@ -399,7 +418,6 @@ class _ScheduleViewState extends State<ScheduleView> {
                                                             ScaffoldMessenger.of(
                                                               context,
                                                             );
-                                                        // 1. Borrado optimista (ya lo hace el provider, pero el snackbar da feedback)
                                                         final err =
                                                             await provider
                                                                 .deleteHorario(
@@ -432,6 +450,17 @@ class _ScheduleViewState extends State<ScheduleView> {
                                                                   backup
                                                                       .horaFin,
                                                                 );
+                                                                if (context
+                                                                    .mounted) {
+                                                                  CustomSnackBar.show(
+                                                                    context,
+                                                                    message:
+                                                                        "Eliminación deshecha",
+                                                                    type:
+                                                                        SnackBarType
+                                                                            .info,
+                                                                  );
+                                                                }
                                                               },
                                                             );
                                                           }
@@ -459,7 +488,6 @@ class _ScheduleViewState extends State<ScheduleView> {
                             ),
                   ),
                 ),
-
                 const SizedBox(width: 20),
 
                 // Calendario
@@ -655,7 +683,7 @@ class _ScheduleViewState extends State<ScheduleView> {
     );
   }
 
-  // Mostrar dialogo de detalles (View & Edit Only)
+  // Mostrar dialogo de detalles
   void _showDetailsDialog(DateTime day, List<BloqueoAgenda> bloqueosDelDia) {
     showDialog(
       context: context,
@@ -911,19 +939,20 @@ class _ScheduleViewState extends State<ScheduleView> {
                           listen: false,
                         );
                         final messenger = ScaffoldMessenger.of(context);
-                        Navigator.pop(itemCtx); // Cerrar dialogo tras clic
-
-                        // Datos para Undo
+                        Navigator.pop(itemCtx);
                         final backup = bloqueo;
 
                         try {
                           await provider.borrarBloqueo(bloqueo.idBloqueo);
 
                           if (mounted) {
+                            final dateStr = DateFormat(
+                              'dd/MM',
+                            ).format(bloqueo.fechaInicio);
                             CustomSnackBar.show(
                               context,
                               messenger: messenger,
-                              message: "Bloqueo eliminado",
+                              message: "Bloqueo del $dateStr eliminado",
                               type: SnackBarType.success,
                               actionLabel: "DESHACER",
                               onAction: () async {
@@ -933,13 +962,13 @@ class _ScheduleViewState extends State<ScheduleView> {
                                   backup.fechaFin,
                                   backup.motivo,
                                   backup.idQuiropractico,
-                                  force: true, // Forzar por si acaso
+                                  force: true,
                                 );
                                 messenger.hideCurrentSnackBar();
                                 CustomSnackBar.show(
                                   context,
                                   messenger: messenger,
-                                  message: "Bloqueo restaurado",
+                                  message: "Eliminación deshecha",
                                   type: SnackBarType.info,
                                 );
                               },
@@ -1222,5 +1251,75 @@ class _ScheduleViewState extends State<ScheduleView> {
         }
       },
     );
+  }
+
+  void _handleScheduleResult(dynamic result) {
+    if (result == null || result is! Map || result['success'] != true) return;
+
+    final action = result['action'];
+    final messenger = ScaffoldMessenger.of(context);
+    final provider = Provider.of<HorariosProvider>(context, listen: false);
+
+    if (action == 'create') {
+      final displayData = result['displayData'];
+      final createdId = result['createdId'];
+      final message =
+          'Turno creado: ${displayData['diaLabel']} ${displayData['timeRange']}';
+
+      CustomSnackBar.show(
+        context,
+        message: message,
+        type: SnackBarType.success,
+        actionLabel: "DESHACER",
+        onAction: () async {
+          messenger.hideCurrentSnackBar();
+          if (createdId != null) {
+            final deleteErr = await provider.deleteHorario(createdId);
+            if (deleteErr == null && context.mounted) {
+              CustomSnackBar.show(
+                context,
+                messenger: messenger,
+                message: "Creación deshecha",
+                type: SnackBarType.info,
+              );
+            }
+          }
+        },
+      );
+    } else if (action == 'update') {
+      final displayData = result['displayData'];
+      final backup = result['backup'];
+      final message = 'Turno editado: ${displayData?['timeRange'] ?? ''}';
+
+      CustomSnackBar.show(
+        context,
+        message: message,
+        type: SnackBarType.success,
+        actionLabel: "DESHACER",
+        onAction: () async {
+          messenger.hideCurrentSnackBar();
+          if (backup != null) {
+            try {
+              await provider.updateHorario(
+                backup['idHorario'],
+                backup['diaSemana'],
+                backup['horaInicio'],
+                backup['horaFin'],
+              );
+              if (context.mounted) {
+                CustomSnackBar.show(
+                  context,
+                  messenger: messenger,
+                  message: "Edición deshecha",
+                  type: SnackBarType.info,
+                );
+              }
+            } catch (e) {
+              // Log error
+            }
+          }
+        },
+      );
+    }
   }
 }

@@ -85,8 +85,8 @@ class _ServicesViewState extends State<ServicesView> {
 
                 const Spacer(),
 
-                // Filtro Dropdown
                 DashboardDropdown<bool?>(
+                  tooltip: "Estado",
                   selectedValue: provider.filterActive,
                   onSelected: (val) => provider.setFilter(val),
                   options: const [
@@ -119,12 +119,16 @@ class _ServicesViewState extends State<ServicesView> {
                 HoverableActionButton(
                   icon: Icons.playlist_add,
                   label: "Servicio",
+                  tooltip: "Crear servicio",
                   isPrimary: true,
-                  onTap: () {
-                    showDialog(
+                  onTap: () async {
+                    final result = await showDialog(
                       context: context,
                       builder: (_) => const ServiceModal(),
                     );
+                    if (result != null && result is Map) {
+                      _handleServiceFeedback(result);
+                    }
                   },
                 ),
               ],
@@ -230,7 +234,7 @@ class _ServicesViewState extends State<ServicesView> {
       final Color textColor = servicio.activo ? Colors.black87 : Colors.grey;
 
       return DataRow(
-        color: MaterialStateProperty.all(rowColor),
+        color: WidgetStateProperty.all(rowColor),
         cells: [
           // Indice
           DataCell(
@@ -251,6 +255,7 @@ class _ServicesViewState extends State<ServicesView> {
                 color: textColor,
                 fontWeight: FontWeight.w600,
                 fontSize: 14,
+                decoration: servicio.activo ? null : TextDecoration.lineThrough,
               ),
               overflow: TextOverflow.ellipsis,
             ),
@@ -322,12 +327,15 @@ class _ServicesViewState extends State<ServicesView> {
                     size: 20,
                     color: AppTheme.primaryColor,
                   ),
-                  onPressed:
-                      () => showDialog(
-                        context: context,
-                        builder:
-                            (_) => ServiceModal(servicioExistente: servicio),
-                      ),
+                  onPressed: () async {
+                    final result = await showDialog(
+                      context: context,
+                      builder: (_) => ServiceModal(servicioExistente: servicio),
+                    );
+                    if (result != null && result is Map) {
+                      _handleServiceFeedback(result);
+                    }
+                  },
                   tooltip: "Editar",
                   splashRadius: 20,
                   padding: EdgeInsets.zero,
@@ -349,23 +357,53 @@ class _ServicesViewState extends State<ServicesView> {
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
                   onPressed: () async {
+                    final bool estabaActivo = servicio.activo;
+                    final String nombreServicio = servicio.nombreServicio;
+                    final messenger = ScaffoldMessenger.of(context);
+
                     String? error;
-                    if (servicio.activo) {
+                    if (estabaActivo) {
                       error = await provider.deleteService(servicio.idServicio);
                     } else {
                       error = await provider.recoverService(
                         servicio.idServicio,
                       );
                     }
+
                     if (context.mounted) {
                       if (error == null) {
                         CustomSnackBar.show(
                           context,
+                          messenger: messenger,
                           message:
-                              servicio.activo
-                                  ? 'Servicio eliminado'
-                                  : 'Servicio reactivado',
+                              estabaActivo
+                                  ? "Servicio $nombreServicio eliminado"
+                                  : "Servicio $nombreServicio reactivado",
                           type: SnackBarType.success,
+                          actionLabel: "DESHACER",
+                          onAction: () async {
+                            messenger.hideCurrentSnackBar();
+                            if (estabaActivo) {
+                              // Estaba activo, se eliminó -> Recuperar
+                              await provider.recoverService(
+                                servicio.idServicio,
+                              );
+                            } else {
+                              // Estaba inactivo, se recuperó -> Eliminar
+                              await provider.deleteService(servicio.idServicio);
+                            }
+
+                            if (context.mounted) {
+                              CustomSnackBar.show(
+                                context,
+                                message:
+                                    estabaActivo
+                                        ? "Eliminación deshecha"
+                                        : "Reactivación deshecha",
+                                type: SnackBarType.info,
+                              );
+                            }
+                          },
                         );
                       } else {
                         CustomSnackBar.show(
@@ -383,5 +421,74 @@ class _ServicesViewState extends State<ServicesView> {
         ],
       );
     }).toList();
+  }
+
+  void _handleServiceFeedback(Map result) {
+    final action = result['action'];
+    final nombre = result['nombre'];
+    final Servicio? oldData = result['oldData'];
+
+    final provider = Provider.of<ServicesProvider>(context, listen: false);
+    final messenger = ScaffoldMessenger.of(context);
+
+    // Mensaje inicial
+    final String msg =
+        action == 'create'
+            ? "Servicio $nombre creado"
+            : "Servicio $nombre actualizado";
+
+    CustomSnackBar.show(
+      context,
+      messenger: messenger,
+      message: msg,
+      type: SnackBarType.success,
+      actionLabel: "DESHACER",
+      onAction: () async {
+        messenger.hideCurrentSnackBar();
+
+        String? errorUndo;
+        if (action == 'create') {
+          // Deshacer creación = Borrar
+          try {
+            // Fallback: buscar por nombre si no tenemos ID (aunque idealmente deberiamos tenerlo)
+            final servicioCreado = provider.servicios.firstWhere(
+              (s) => s.nombreServicio == nombre && s.activo,
+              orElse: () => provider.servicios.first,
+            );
+            errorUndo = await provider.deleteService(servicioCreado.idServicio);
+          } catch (e) {
+            errorUndo = "No se pudo localizar el servicio para deshacer";
+          }
+        } else {
+          // Deshacer edición = Restaurar oldData
+          if (oldData != null) {
+            errorUndo = await provider.updateService(
+              oldData.idServicio,
+              oldData.nombreServicio,
+              oldData.precio,
+              oldData.tipo,
+              oldData.sesiones,
+            );
+          }
+        }
+
+        if (context.mounted) {
+          if (errorUndo == null) {
+            CustomSnackBar.show(
+              context,
+              message:
+                  action == 'create' ? "Creación deshecha" : "Edición deshecha",
+              type: SnackBarType.info,
+            );
+          } else {
+            CustomSnackBar.show(
+              context,
+              message: "Error al deshacer: $errorUndo",
+              type: SnackBarType.error,
+            );
+          }
+        }
+      },
+    );
   }
 }

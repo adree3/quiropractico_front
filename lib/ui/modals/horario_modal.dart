@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:quiropractico_front/providers/horarios_provider.dart';
 import 'package:quiropractico_front/models/horario.dart';
-import 'package:quiropractico_front/ui/widgets/custom_snackbar.dart';
 
 class HorarioModal extends StatefulWidget {
   final int? initialDay;
@@ -199,20 +198,13 @@ class _HorarioModalState extends State<HorarioModal> {
               });
               return;
             }
-
-            final messenger = ScaffoldMessenger.of(context);
             Map<String, dynamic> result;
-
             if (widget.horarioToEdit != null) {
-              // --- EDICIÓN ---
-              // Guardamos estado anterior para Deshacer
               final backupDia = widget.horarioToEdit!.diaSemana;
               final backupInicio = widget.horarioToEdit!.horaInicio;
               final backupFin = widget.horarioToEdit!.horaFin;
-              final backupId = widget.horarioToEdit!.idHorario;
-
               result = await provider.updateHorario(
-                backupId,
+                widget.horarioToEdit!.idHorario,
                 selectedDia,
                 horaInicio,
                 horaFin,
@@ -220,35 +212,22 @@ class _HorarioModalState extends State<HorarioModal> {
 
               if (context.mounted) {
                 if (result['success'] == true) {
-                  Navigator.pop(context);
-                  CustomSnackBar.show(
-                    context,
-                    message:
-                        'Turno del ${diasSemana.firstWhere((d) => d['id'] == selectedDia)['label']} editado',
-                    type: SnackBarType.success,
-                    actionLabel: "DESHACER",
-                    onAction: () async {
-                      messenger.hideCurrentSnackBar();
-                      try {
-                        await provider.updateHorario(
-                          backupId,
-                          backupDia,
-                          backupInicio,
-                          backupFin,
-                        );
-                        if (context.mounted) {
-                          CustomSnackBar.show(
-                            context,
-                            messenger: messenger,
-                            message: "Edición deshecha",
-                            type: SnackBarType.info,
-                          );
-                        }
-                      } catch (e) {
-                        // Manejo de error silencioso o log
-                      }
+                  // Devolvemos datos para que la vista padre maneje el Snackbar y Undo
+                  final timeRange =
+                      "${horaInicio.hour.toString().padLeft(2, '0')}:${horaInicio.minute.toString().padLeft(2, '0')} - ${horaFin.hour.toString().padLeft(2, '0')}:${horaFin.minute.toString().padLeft(2, '0')}";
+
+                  Navigator.pop(context, {
+                    'success': true,
+                    'action': 'update',
+                    'data': result['data'],
+                    'displayData': {'timeRange': timeRange},
+                    'backup': {
+                      'idHorario': widget.horarioToEdit!.idHorario,
+                      'diaSemana': backupDia,
+                      'horaInicio': backupInicio,
+                      'horaFin': backupFin,
                     },
-                  );
+                  });
                 } else {
                   _handleError(result);
                 }
@@ -263,49 +242,27 @@ class _HorarioModalState extends State<HorarioModal> {
 
               if (context.mounted) {
                 if (result['success'] == true) {
-                  Navigator.pop(context);
-
-                  // Intentamos obtener ID para deshacer (borrar)
                   final createdData = result['data'];
-                  final int? createdId =
+                  final createdId =
                       createdData != null && createdData is Map
                           ? createdData['idHorario']
                           : null;
 
-                  final diaLabel =
-                      diasSemana.firstWhere(
-                        (d) => d['id'] == selectedDia,
-                        orElse: () => {'label': 'Día'},
-                      )['label'];
-                  final timeRange =
-                      "${horaInicio.hour.toString().padLeft(2, '0')}:${horaInicio.minute.toString().padLeft(2, '0')} - ${horaFin.hour.toString().padLeft(2, '0')}:${horaFin.minute.toString().padLeft(2, '0')}";
-
-                  CustomSnackBar.show(
-                    context,
-                    message: 'Turno creado: $diaLabel $timeRange',
-                    type: SnackBarType.success,
-                    actionLabel: createdId != null ? "DESHACER" : null,
-                    onAction:
-                        createdId == null
-                            ? null
-                            : () async {
-                              messenger.hideCurrentSnackBar();
-                              try {
-                                await provider.deleteHorario(createdId);
-                                if (context.mounted) {
-                                  CustomSnackBar.show(
-                                    context,
-                                    messenger: messenger,
-                                    message:
-                                        "Creación deshecha (turno eliminado)",
-                                    type: SnackBarType.info,
-                                  );
-                                }
-                              } catch (e) {
-                                // Log
-                              }
-                            },
-                  );
+                  Navigator.pop(context, {
+                    'success': true,
+                    'action': 'create',
+                    'data': result['data'],
+                    'createdId': createdId,
+                    'displayData': {
+                      'diaLabel':
+                          diasSemana.firstWhere(
+                            (d) => d['id'] == selectedDia,
+                            orElse: () => {'label': 'Día'},
+                          )['label'],
+                      'timeRange':
+                          "${horaInicio.hour.toString().padLeft(2, '0')}:${horaInicio.minute.toString().padLeft(2, '0')} - ${horaFin.hour.toString().padLeft(2, '0')}:${horaFin.minute.toString().padLeft(2, '0')}",
+                    },
+                  });
                 } else {
                   _handleError(result);
                 }

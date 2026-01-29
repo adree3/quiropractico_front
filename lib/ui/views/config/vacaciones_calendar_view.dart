@@ -71,8 +71,6 @@ class _VacacionesCalendarViewState extends State<VacacionesCalendarView> {
   }
 
   // Metodo para seleccionar mes y año
-  // Metodo para seleccionar mes y año
-  // Metodo para seleccionar mes y año
   Future<void> _seleccionarMesAnio() async {
     final picked = await showDialog<DateTime>(
       context: context,
@@ -146,8 +144,7 @@ class _VacacionesCalendarViewState extends State<VacacionesCalendarView> {
     if (diasOrdenados.length == 1) {
       textoDias = DateFormat('dd/MM').format(diasOrdenados.first);
     } else {
-      textoDias =
-          "${DateFormat('dd/MM').format(diasOrdenados.first)} - ${DateFormat('dd/MM').format(diasOrdenados.last)}";
+      textoDias = "${DateFormat('dd/MM').format(diasOrdenados.first)} - ${DateFormat('dd/MM').format(diasOrdenados.last)}";
     }
 
     final confirm = await showDialog<bool>(
@@ -408,15 +405,19 @@ class _VacacionesCalendarViewState extends State<VacacionesCalendarView> {
                         width: 1,
                         height: 30,
                         color: Colors.grey.shade300,
-                      ), // Separador
+                      ),
                       const SizedBox(width: 15),
 
                       HoverableActionButton(
-                        onTap:
-                            () => showDialog(
-                              context: context,
-                              builder: (_) => const BloqueoModal(),
-                            ),
+                        onTap: () async {
+                          final result = await showDialog(
+                            context: context,
+                            builder: (_) => const BloqueoModal(),
+                          );
+                          if (result != null && result is Map) {
+                            _handleBloqueoResult(result);
+                          }
+                        },
                         label: "Bloqueo",
                         icon: Icons.add,
                         isPrimary: true,
@@ -547,15 +548,10 @@ class _VacacionesCalendarViewState extends State<VacacionesCalendarView> {
                                     selectedDayPredicate:
                                         (day) =>
                                             _isSelectionMode
-                                                ? _diasSeleccionados.any(
-                                                  (d) => isSameDay(d, day),
-                                                )
+                                                ? _diasSeleccionados.any((d) => isSameDay(d, day))
                                                 : isSameDay(_selectedDay, day),
                                     eventLoader:
-                                        (day) => _getBloqueosDelDia(
-                                          day,
-                                          provider.bloqueos,
-                                        ),
+                                        (day) => _getBloqueosDelDia(day, provider.bloqueos),
                                     onDaySelected:
                                         (selected, focused) =>
                                             _handleDaySelected(
@@ -564,8 +560,7 @@ class _VacacionesCalendarViewState extends State<VacacionesCalendarView> {
                                               provider.bloqueos,
                                               isLargeScreen,
                                             ),
-                                    onPageChanged:
-                                        (focused) => _focusedDay = focused,
+                                    onPageChanged:(focused) => _focusedDay = focused,
 
                                     calendarBuilders: CalendarBuilders(
                                       defaultBuilder:
@@ -582,10 +577,7 @@ class _VacacionesCalendarViewState extends State<VacacionesCalendarView> {
                                                 day,
                                                 provider.bloqueos,
                                                 isSelected: true,
-                                                isToday: isSameDay(
-                                                  day,
-                                                  DateTime.now(),
-                                                ),
+                                                isToday: isSameDay(day, DateTime.now()),
                                               ),
                                       todayBuilder:
                                           (context, day, focusedDay) =>
@@ -639,9 +631,7 @@ class _VacacionesCalendarViewState extends State<VacacionesCalendarView> {
                             borderRadius: BorderRadius.circular(10),
                             child:
                                 _isSelectionMode
-                                    ? _buildSelectionSummaryPanel(
-                                      bloqueosAcumulados,
-                                    )
+                                    ? _buildSelectionSummaryPanel(bloqueosAcumulados)
                                     : _buildSidePanel(bloqueosDelDia),
                           ),
                         ),
@@ -715,11 +705,14 @@ class _VacacionesCalendarViewState extends State<VacacionesCalendarView> {
                   ),
                   child: const Icon(Icons.add, color: Colors.white, size: 20),
                 ),
-                onPressed: () {
-                  showDialog(
+                onPressed: () async {
+                  final result = await showDialog(
                     context: context,
                     builder: (_) => BloqueoModal(preselectedDate: _selectedDay),
                   );
+                  if (result != null && result is Map) {
+                    _handleBloqueoResult(result);
+                  }
                 },
               ),
               if (onClose != null) ...[
@@ -987,12 +980,15 @@ class _VacacionesCalendarViewState extends State<VacacionesCalendarView> {
                         size: 22,
                         color: Colors.grey,
                       ),
-                      onPressed:
-                          () => showDialog(
-                            context: context,
-                            builder:
-                                (_) => BloqueoModal(bloqueoEditar: bloqueo),
-                          ),
+                      onPressed: () async {
+                        final result = await showDialog(
+                          context: context,
+                          builder: (_) => BloqueoModal(bloqueoEditar: bloqueo),
+                        );
+                        if (result != null && result is Map) {
+                          _handleBloqueoResult(result);
+                        }
+                      },
                       tooltip: "Editar",
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(),
@@ -1043,7 +1039,7 @@ class _VacacionesCalendarViewState extends State<VacacionesCalendarView> {
                                 CustomSnackBar.show(
                                   context,
                                   messenger: messenger,
-                                  message: "Cambios cancelados",
+                                  message: "Eliminación deshecha",
                                   type: SnackBarType.info,
                                 );
                               } catch (e) {
@@ -1051,8 +1047,7 @@ class _VacacionesCalendarViewState extends State<VacacionesCalendarView> {
                                 CustomSnackBar.show(
                                   context,
                                   messenger: messenger,
-                                  message:
-                                      "Error al restaurar: ${e.toString()}",
+                                  message:"Error al restaurar: ${e.toString()}",
                                   type: SnackBarType.error,
                                 );
                               }
@@ -1244,6 +1239,113 @@ class _VacacionesCalendarViewState extends State<VacacionesCalendarView> {
           ),
         ),
       ),
+    );
+  }
+
+  void _handleBloqueoResult(Map result) {
+    // Recargar bloqueos para reflejar cambios
+    Provider.of<AgendaBloqueoProvider>(context, listen: false).loadBloqueos();
+
+    final action = result['action'];
+    final success = result['success'] == true;
+    final BloqueoAgenda? bloqueo = result['bloqueo'];
+    final BloqueoAgenda? backup = result['backup'];
+    final conflicting = result['conflicting'] as List<BloqueoAgenda>?;
+    final String? nombreQuiro = result['nombreQuiro'];
+    final String? fechasStr = result['fechasStr'];
+    final bool isGlobal = result['isGlobal'] ?? false;
+
+    if (!success) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    String msg = "";
+
+    if (action == 'create_forced') {
+      msg = "Conflictos resueltos y bloqueo creado";
+    } else {
+      if (isGlobal) {
+        msg =
+            action == 'update'
+                ? "Bloqueo global actualizado ($fechasStr)"
+                : "Bloqueo global creado ($fechasStr)";
+      } else {
+        final accion = action == 'update' ? "actualizado" : "creado";
+        msg = "Bloqueo $accion para $nombreQuiro ($fechasStr)";
+      }
+    }
+
+    // Permitir Undo si se creó o si se editó (teniendo backup)
+    final canUndo =
+        ((action == 'create' || action == 'create_forced') &&
+            bloqueo != null) ||
+        (action == 'update' && backup != null);
+
+    CustomSnackBar.show(
+      context,
+      messenger: messenger,
+      message: msg,
+      type: SnackBarType.success,
+      actionLabel: canUndo ? "DESHACER" : null,
+      onAction:
+          canUndo
+              ? () async {
+                messenger.hideCurrentSnackBar();
+                final provider = Provider.of<AgendaBloqueoProvider>(
+                  context,
+                  listen: false,
+                );
+
+                if (action == 'update') {
+                  // Restaurar backup
+                  try {
+                    await provider.editarBloqueo(
+                      backup!.idBloqueo,
+                      backup.fechaInicio,
+                      backup.fechaFin,
+                      backup.motivo,
+                      backup.idQuiropractico,
+                    );
+                    if (context.mounted) {
+                      CustomSnackBar.show(
+                        context,
+                        message: "Edición deshecha",
+                        type: SnackBarType.info,
+                      );
+                    }
+                  } catch (e) {
+                    CustomSnackBar.show(
+                      context,
+                      message: "Error al deshacer: $e",
+                      type: SnackBarType.error,
+                    );
+                  }
+                } else {
+                  // 1. Deshacer creación = Borrar
+                  await provider.borrarBloqueo(bloqueo!.idBloqueo);
+
+                  // 2. Si fue forzado, restaurar los conflictos
+                  if (action == 'create_forced' && conflicting != null) {
+                    for (var c in conflicting) {
+                      await provider.crearBloqueo(
+                        c.fechaInicio,
+                        c.fechaFin,
+                        c.motivo,
+                        c.idQuiropractico,
+                        force: true,
+                      );
+                    }
+                  }
+
+                  if (context.mounted) {
+                    CustomSnackBar.show(
+                      context,
+                      message: "Creación deshecha",
+                      type: SnackBarType.info,
+                    );
+                  }
+                }
+              }
+              : null,
     );
   }
 }

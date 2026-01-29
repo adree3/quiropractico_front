@@ -292,20 +292,18 @@ class _BloqueoModalState extends State<BloqueoModal> {
                   if (fechaInicioReal.year == fechaFinReal.year &&
                       fechaInicioReal.month == fechaFinReal.month &&
                       fechaInicioReal.day == fechaFinReal.day) {
-                    fechasStr =
-                        "${fechaInicioReal.day}/${fechaInicioReal.month}";
+                    fechasStr = "${fechaInicioReal.day}/${fechaInicioReal.month}";
                   } else {
-                    fechasStr =
-                        "${fechaInicioReal.day}/${fechaInicioReal.month} - ${fechaFinReal.day}/${fechaFinReal.month}";
+                    fechasStr = "${fechaInicioReal.day}/${fechaInicioReal.month} - ${fechaFinReal.day}/${fechaFinReal.month}";
                   }
 
                   Navigator.pop(context, {
                     'action': esEdicion ? 'update' : 'create',
                     'success': true,
                     'bloqueo': esEdicion ? widget.bloqueoEditar : nuevoBloqueo,
+                    'backup': esEdicion ? widget.bloqueoEditar : null,
                     'isGlobal': isGlobal,
-                    'nombreQuiro':
-                        isGlobal ? null : selectedQuiro!.nombreCompleto,
+                    'nombreQuiro': isGlobal ? null : selectedQuiro!.nombreCompleto,
                     'fechasStr': fechasStr,
                   });
                 }
@@ -404,34 +402,26 @@ class _BloqueoModalState extends State<BloqueoModal> {
                                                     const SizedBox(width: 8),
                                                     Expanded(
                                                       child: Column(
-                                                        crossAxisAlignment:
-                                                            CrossAxisAlignment
-                                                                .start,
+                                                        crossAxisAlignment: CrossAxisAlignment.start,
                                                         children: [
                                                           Text(
                                                             nombre,
-                                                            style:
-                                                                const TextStyle(
-                                                                  fontWeight:
-                                                                      FontWeight
-                                                                          .bold,
-                                                                  fontSize: 13,
-                                                                ),
+                                                            style: const TextStyle(
+                                                              fontWeight: FontWeight.bold,
+                                                              fontSize: 13,
+                                                            ),
                                                           ),
                                                           Text(
                                                             "Motivo: ${b.motivo}",
-                                                            style:
-                                                                const TextStyle(
-                                                                  fontSize: 12,
-                                                                ),
+                                                            style: const TextStyle(
+                                                              fontSize: 12,
+                                                            ),
                                                           ),
                                                           Text(
                                                             "${b.fechaInicio.day}/${b.fechaInicio.month} - ${b.fechaFin.day}/${b.fechaFin.month}",
                                                             style: TextStyle(
                                                               fontSize: 11,
-                                                              color:
-                                                                  Colors
-                                                                      .grey[600],
+                                                              color: Colors.grey[600],
                                                             ),
                                                           ),
                                                         ],
@@ -474,9 +464,7 @@ class _BloqueoModalState extends State<BloqueoModal> {
                                             vertical: 15,
                                           ),
                                           shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(
-                                              10,
-                                            ),
+                                            borderRadius: BorderRadius.circular(10),
                                           ),
                                           side: BorderSide(
                                             color: Colors.grey.shade300,
@@ -501,14 +489,11 @@ class _BloqueoModalState extends State<BloqueoModal> {
                                             vertical: 15,
                                           ),
                                           shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(
-                                              10,
-                                            ),
+                                            borderRadius: BorderRadius.circular(10),
                                           ),
                                           elevation: 0,
                                         ),
-                                        onPressed:
-                                            () => Navigator.pop(ctx, true),
+                                        onPressed: () => Navigator.pop(ctx, true),
                                         child: const Text(
                                           "Sobrescribir",
                                           style: TextStyle(
