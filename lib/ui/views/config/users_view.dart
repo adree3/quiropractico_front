@@ -96,6 +96,7 @@ class _UsersViewState extends State<UsersView> {
 
                 // FILTRO ESTADO
                 DashboardDropdown<bool?>(
+                  tooltip: "Estado",
                   selectedValue: provider.filterActive,
                   onSelected: (val) => provider.setFilter(val),
                   options: const [
@@ -128,12 +129,16 @@ class _UsersViewState extends State<UsersView> {
                 HoverableActionButton(
                   label: "Empleado",
                   icon: Icons.person_add,
+                  tooltip: "Crear empleado",
                   isPrimary: true,
-                  onTap: () {
-                    showDialog(
+                  onTap: () async {
+                    final result = await showDialog(
                       context: context,
                       builder: (_) => const UserModal(),
                     );
+                    if (result != null && result is Map) {
+                      _handleUserFeedback(result);
+                    }
                   },
                 ),
               ],
@@ -214,7 +219,7 @@ class _UsersViewState extends State<UsersView> {
     final int start = provider.currentPage * provider.pageSize;
 
     return usuarios.asMap().entries.map((entry) {
-      final int index = start + entry.key + 1; // Indice global
+      final int index = start + entry.key + 1;
       final Usuario usuario = entry.value;
       final colorTexto = usuario.activo ? Colors.black87 : Colors.grey;
 
@@ -234,7 +239,7 @@ class _UsersViewState extends State<UsersView> {
           !usuario.activo ? Colors.grey.shade50 : baseColor.withOpacity(0.04);
 
       return DataRow(
-        color: MaterialStateProperty.all(rowColor),
+        color: WidgetStateProperty.all(rowColor),
         cells: [
           DataCell(
             Text(
@@ -308,11 +313,15 @@ class _UsersViewState extends State<UsersView> {
                       size: 20,
                     ),
                   ),
-                  onPressed:
-                      () => showDialog(
-                        context: context,
-                        builder: (_) => UserModal(usuarioExistente: usuario),
-                      ),
+                  onPressed: () async {
+                    final result = await showDialog(
+                      context: context,
+                      builder: (_) => UserModal(usuarioExistente: usuario),
+                    );
+                    if (result != null && result is Map) {
+                      _handleUserFeedback(result);
+                    }
+                  },
                 ),
                 const SizedBox(width: 10),
                 IconButton(
@@ -326,7 +335,30 @@ class _UsersViewState extends State<UsersView> {
                   ),
                   tooltip: usuario.activo ? 'Eliminar' : 'Reactivar',
                   onPressed: () async {
-                    _confirmarAccion(context, provider, usuario);
+                    final isDeleting = usuario.activo;
+                    String? error;
+                    if (isDeleting) {
+                      error = await provider.deleteUser(usuario.idUsuario);
+                    } else {
+                      error = await provider.recoverUser(usuario.idUsuario);
+                    }
+
+                    if (context.mounted) {
+                      if (error == null) {
+                        _handleUserFeedback({
+                          'action': isDeleting ? 'delete' : 'recover',
+                          'nombre': usuario.nombreCompleto,
+                          'username': usuario.username,
+                          'oldData': usuario,
+                        });
+                      } else {
+                        CustomSnackBar.show(
+                          context,
+                          message: error,
+                          type: SnackBarType.error,
+                        );
+                      }
+                    }
                   },
                 ),
               ],
@@ -337,55 +369,101 @@ class _UsersViewState extends State<UsersView> {
     }).toList();
   }
 
-  // Lógica de confirmación
-  Future<void> _confirmarAccion(
-    BuildContext context,
-    UsersProvider provider,
-    Usuario usuario,
-  ) async {
-    final isDeleting = usuario.activo;
-    final confirm = await showDialog(
-      context: context,
-      builder:
-          (ctx) => AlertDialog(
-            title: Text(
-              isDeleting ? "¿Eliminar usuario?" : "¿Reactivar usuario?",
-            ),
-            content: Text(
-              "Vas a ${isDeleting ? 'eliminar' : 'reactivar'} a ${usuario.username}.",
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: const Text("Cancelar"),
-              ),
-              ElevatedButton(
-                onPressed: () => Navigator.pop(ctx, true),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: isDeleting ? Colors.red : Colors.green,
-                  foregroundColor: Colors.white,
-                ),
-                child: Text(isDeleting ? "Eliminar" : "Reactivar"),
-              ),
-            ],
-          ),
-    );
+  void _handleUserFeedback(Map result) {
+    final action = result['action'];
+    final nombre = result['nombre'];
+    final username = result['username'];
+    final Usuario? oldData = result['oldData'];
 
-    if (confirm == true) {
-      String? error;
-      if (isDeleting) {
-        error = await provider.deleteUser(usuario.idUsuario);
-      } else {
-        error = await provider.recoverUser(usuario.idUsuario);
-      }
+    final provider = Provider.of<UsersProvider>(context, listen: false);
+    final messenger = ScaffoldMessenger.of(context);
 
-      if (context.mounted) {
-        CustomSnackBar.show(
-          context,
-          message: error ?? (isDeleting ? 'Eliminado' : 'Reactivado'),
-          type: error == null ? SnackBarType.success : SnackBarType.error,
-        );
-      }
+    String msg = "";
+    String undoMsg = "";
+
+    switch (action) {
+      case 'create':
+        msg = "Usuario $nombre creado";
+        undoMsg = "Creación deshecha";
+        break;
+      case 'update':
+        msg = "Usuario $nombre actualizado";
+        undoMsg = "Edición deshecha";
+        break;
+      case 'delete':
+        msg = "Usuario $nombre eliminado";
+        undoMsg = "Eliminación deshecha";
+        break;
+      case 'recover':
+        msg = "Usuario $nombre reactivado";
+        undoMsg = "Reactivación deshecha";
+        break;
+      case 'unlock':
+        msg = "Usuario $nombre desbloqueado";
+        undoMsg = "Desbloqueo deshecho";
+        break;
     }
+
+    CustomSnackBar.show(
+      context,
+      messenger: messenger,
+      message: msg,
+      type: SnackBarType.success,
+      actionLabel: undoMsg.isNotEmpty ? "DESHACER" : null,
+      onAction:
+          undoMsg.isNotEmpty
+              ? () async {
+                messenger.hideCurrentSnackBar();
+                String? errorUndo;
+
+                try {
+                  if (action == 'create') {
+                    // Deshacer creación = Eliminar
+                    // Necesitamos buscar el usuario por username ya que no tenemos el ID del modal
+                    final userToDelete = provider.usuarios.firstWhere(
+                      (u) => u.username == username,
+                      orElse: () => throw "Usuario no encontrado",
+                    );
+                    errorUndo = await provider.deleteUser(
+                      userToDelete.idUsuario,
+                    );
+                  } else if (action == 'update' && oldData != null) {
+                    // Deshacer edición = Restaurar
+                    errorUndo = await provider.updateUser(
+                      oldData.idUsuario,
+                      oldData.nombreCompleto,
+                      null, // No restauramos pass
+                      oldData.rol,
+                    );
+                  } else if (action == 'delete' && oldData != null) {
+                    errorUndo = await provider.recoverUser(oldData.idUsuario);
+                  } else if (action == 'recover' && oldData != null) {
+                    errorUndo = await provider.deleteUser(oldData.idUsuario);
+                  } else if (action == 'unlock' && oldData != null) {
+                    // Deshacer desbloqueo = Bloquear
+                    errorUndo = await provider.blockUser(oldData.idUsuario);
+                  }
+                } catch (e) {
+                  errorUndo = "No se pudo deshacer: $e";
+                }
+
+                if (context.mounted) {
+                  if (errorUndo == null) {
+                    CustomSnackBar.show(
+                      context,
+                      message: undoMsg,
+                      type: SnackBarType.info,
+                    );
+                  } else {
+                    CustomSnackBar.show(
+                      context,
+                      message: errorUndo,
+                      type: SnackBarType.error,
+                    );
+                  }
+                }
+              }
+              : null,
+    );
   }
 }

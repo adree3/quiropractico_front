@@ -227,4 +227,24 @@ class UsersProvider extends ChangeNotifier {
       return ErrorHandler.extractMessage(e);
     }
   }
+
+  // BLOQUEAR (Para deshacer desbloqueo)
+  Future<String?> blockUser(int id) async {
+    try {
+      // Optimistic Update
+      final index = usuarios.indexWhere((u) => u.idUsuario == id);
+      if (index != -1) {
+        usuarios[index] = usuarios[index].copyWith(cuentaBloqueada: true);
+        notifyListeners();
+      }
+
+      await ApiService.dio.put('$_baseUrl/usuarios/$id/bloquear');
+
+      // Silent Refresh
+      getUsers(page: currentPage, silent: true);
+      return null;
+    } catch (e) {
+      return ErrorHandler.extractMessage(e);
+    }
+  }
 }

@@ -18,7 +18,7 @@ class _UserModalState extends State<UserModal> {
   final usernameCtrl = TextEditingController();
   final passCtrl = TextEditingController();
   String? _usernameError;
-  
+
   String rolSeleccionado = 'recepción';
   bool get isEditing => widget.usuarioExistente != null;
 
@@ -29,7 +29,7 @@ class _UserModalState extends State<UserModal> {
       final u = widget.usuarioExistente!;
       nombreCtrl.text = u.nombreCompleto;
       usernameCtrl.text = u.username;
-      rolSeleccionado = u.rol.toLowerCase(); 
+      rolSeleccionado = u.rol.toLowerCase();
     }
   }
 
@@ -39,7 +39,10 @@ class _UserModalState extends State<UserModal> {
 
     return AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-      title: Text(isEditing ? 'Editar Usuario' : 'Nuevo Empleado', style: const TextStyle(fontWeight: FontWeight.bold)),
+      title: Text(
+        isEditing ? 'Editar Usuario' : 'Nuevo Empleado',
+        style: const TextStyle(fontWeight: FontWeight.bold),
+      ),
       content: SizedBox(
         width: 400,
         child: Form(
@@ -54,7 +57,7 @@ class _UserModalState extends State<UserModal> {
                   decoration: BoxDecoration(
                     color: Colors.orange.shade50,
                     border: Border.all(color: Colors.orange),
-                    borderRadius: BorderRadius.circular(10)
+                    borderRadius: BorderRadius.circular(10),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -63,78 +66,106 @@ class _UserModalState extends State<UserModal> {
                         children: [
                           Icon(Icons.lock_clock, color: Colors.orange),
                           SizedBox(width: 10),
-                          Text("CUENTA BLOQUEADA", style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold, fontSize: 12)),
+                          Text(
+                            "CUENTA BLOQUEADA",
+                            style: TextStyle(
+                              color: Colors.orange,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          ),
                         ],
                       ),
                       const Padding(
                         padding: EdgeInsets.only(left: 34, top: 5, bottom: 10),
-                        child: Text("Este usuario ha excedido los intentos de acceso.", style: TextStyle(fontSize: 12)),
+                        child: Text(
+                          "Este usuario ha excedido los intentos de acceso.",
+                          style: TextStyle(fontSize: 12),
+                        ),
                       ),
-                      
+
                       // BOTONES DE ACCIÓN
                       Row(
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
                           // IGNORAR
                           TextButton.icon(
-                            onPressed: () async{
-                              final error = await provider.deleteUser(widget.usuarioExistente!.idUsuario);
+                            onPressed: () async {
+                              final error = await provider.deleteUser(
+                                widget.usuarioExistente!.idUsuario,
+                              );
                               if (context.mounted) {
                                 if (error == null) {
-                                  Navigator.pop(context);
-                                  CustomSnackBar.show(context, 
-                                    message: 'Usuario eliminado', 
-                                    type: SnackBarType.success
-                                  );
-                                } 
+                                  if (error == null) {
+                                    Navigator.pop(context, {
+                                      'action': 'delete',
+                                      'nombre':
+                                          widget.usuarioExistente!.username,
+                                      'oldData': widget.usuarioExistente,
+                                    });
+                                  }
+                                }
                               }
                             },
-                            icon: const Icon(Icons.person_off, size: 16, color: Colors.red),
+                            icon: const Icon(
+                              Icons.person_off,
+                              size: 16,
+                              color: Colors.red,
+                            ),
                             label: const Text("Eliminar usuario"),
                           ),
-                          
+
                           const SizedBox(width: 10),
 
-                          // DESBLOQUEAR 
+                          // DESBLOQUEAR
                           ElevatedButton(
                             onPressed: () async {
-                              final error = await provider.unlockUser(widget.usuarioExistente!.idUsuario);
+                              final error = await provider.unlockUser(
+                                widget.usuarioExistente!.idUsuario,
+                              );
                               if (context.mounted) {
                                 if (error == null) {
-                                  Navigator.pop(context);
-                                  CustomSnackBar.show(context, 
-                                    message: 'Usuario desbloqueado', 
-                                    type: SnackBarType.success
-                                  );
+                                  Navigator.pop(context, {
+                                    'action': 'unlock',
+                                    'nombre': widget.usuarioExistente!.username,
+                                    'oldData': widget.usuarioExistente,
+                                  });
                                 } else {
-                                  CustomSnackBar.show(context, 
-                                    message: error, 
-                                    type: SnackBarType.error
+                                  CustomSnackBar.show(
+                                    context,
+                                    message: error,
+                                    type: SnackBarType.error,
                                   );
                                 }
                               }
-                            }, 
-                            style: ElevatedButton.styleFrom(backgroundColor: Colors.orange, foregroundColor: Colors.white),
-                            child: const Text("DESBLOQUEAR")
-                          )
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.orange,
+                              foregroundColor: Colors.white,
+                            ),
+                            child: const Text("DESBLOQUEAR"),
+                          ),
                         ],
-                      )
+                      ),
                     ],
                   ),
                 ),
               ],
               TextFormField(
                 controller: nombreCtrl,
-                decoration: const InputDecoration(labelText: 'Nombre Completo', prefixIcon: Icon(Icons.badge_outlined)),
+                decoration: const InputDecoration(
+                  labelText: 'Nombre Completo',
+                  prefixIcon: Icon(Icons.badge_outlined),
+                ),
                 validator: (v) => v!.isEmpty ? 'Requerido' : null,
               ),
               const SizedBox(height: 15),
-              
+
               TextFormField(
                 controller: usernameCtrl,
-                readOnly: isEditing, 
+                readOnly: isEditing,
                 decoration: InputDecoration(
-                  labelText: 'Usuario (Login)', 
+                  labelText: 'Usuario (Login)',
                   prefixIcon: const Icon(Icons.person),
                   errorText: _usernameError,
                   filled: !isEditing,
@@ -147,23 +178,31 @@ class _UserModalState extends State<UserModal> {
                   }
                 },
                 validator: (value) {
-                  if (value == null || value.isEmpty) return "Campo obligatorio";
+                  if (value == null || value.isEmpty) {
+                    return "Campo obligatorio";
+                  }
                   return null;
                 },
               ),
               const SizedBox(height: 15),
-              
+
               TextFormField(
                 controller: passCtrl,
                 obscureText: true,
                 decoration: InputDecoration(
-                  labelText: isEditing ? 'Nueva Contraseña (Opcional)' : 'Contraseña', 
+                  labelText:
+                      isEditing ? 'Nueva Contraseña (Opcional)' : 'Contraseña',
                   prefixIcon: const Icon(Icons.lock_outline),
-                  helperText: isEditing ? 'Déjalo vacío para no cambiarla' : null
+                  helperText:
+                      isEditing ? 'Déjalo vacío para no cambiarla' : null,
                 ),
                 validator: (v) {
-                  if (!isEditing && (v == null || v.isEmpty)) return 'La contraseña es obligatoria';
-                  if (v != null && v.isNotEmpty && v.length < 3) return 'Mínimo 3 caracteres';
+                  if (!isEditing && (v == null || v.isEmpty)) {
+                    return 'La contraseña es obligatoria';
+                  }
+                  if (v != null && v.isNotEmpty && v.length < 3) {
+                    return 'Mínimo 3 caracteres';
+                  }
                   return null;
                 },
               ),
@@ -171,11 +210,23 @@ class _UserModalState extends State<UserModal> {
 
               DropdownButtonFormField<String>(
                 value: rolSeleccionado,
-                decoration: const InputDecoration(labelText: 'Rol / Permisos', prefixIcon: Icon(Icons.security)),
+                decoration: const InputDecoration(
+                  labelText: 'Rol / Permisos',
+                  prefixIcon: Icon(Icons.security),
+                ),
                 items: const [
-                  DropdownMenuItem(value: 'recepción', child: Text("Recepción (Básico)")),
-                  DropdownMenuItem(value: 'quiropráctico', child: Text("Quiropráctico (Médico)")),
-                  DropdownMenuItem(value: 'admin', child: Text("Administrador (Total)")),
+                  DropdownMenuItem(
+                    value: 'recepción',
+                    child: Text("Recepción (Básico)"),
+                  ),
+                  DropdownMenuItem(
+                    value: 'quiropráctico',
+                    child: Text("Quiropráctico (Médico)"),
+                  ),
+                  DropdownMenuItem(
+                    value: 'admin',
+                    child: Text("Administrador (Total)"),
+                  ),
                 ],
                 onChanged: (val) => setState(() => rolSeleccionado = val!),
               ),
@@ -184,7 +235,10 @@ class _UserModalState extends State<UserModal> {
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancelar'),
+        ),
         ElevatedButton(
           onPressed: () async {
             if (_formKey.currentState!.validate()) {
@@ -194,33 +248,35 @@ class _UserModalState extends State<UserModal> {
                   widget.usuarioExistente!.idUsuario,
                   nombreCtrl.text.trim(),
                   passCtrl.text.isEmpty ? null : passCtrl.text.trim(),
-                  rolSeleccionado
+                  rolSeleccionado,
                 );
               } else {
                 error = await provider.createUser(
                   nombreCtrl.text.trim(),
                   usernameCtrl.text.trim(),
                   passCtrl.text.trim(),
-                  rolSeleccionado
+                  rolSeleccionado,
                 );
               }
 
               if (context.mounted) {
                 if (error == null) {
-                  Navigator.pop(context);
-                  CustomSnackBar.show(context, 
-                    message: 'Guardado correctamente', 
-                    type: SnackBarType.success
-                  );
+                  Navigator.pop(context, {
+                    'action': isEditing ? 'update' : 'create',
+                    'nombre': nombreCtrl.text.trim(),
+                    'username': usernameCtrl.text.trim(),
+                    'oldData': isEditing ? widget.usuarioExistente : null,
+                  });
                 } else {
                   if (error.contains("USERNAME_TAKEN")) {
                     setState(() {
                       _usernameError = "Este nombre de usuario ya existe";
                     });
                   } else {
-                    CustomSnackBar.show(context, 
-                      message: error, 
-                      type: SnackBarType.error
+                    CustomSnackBar.show(
+                      context,
+                      message: error,
+                      type: SnackBarType.error,
                     );
                   }
                 }
