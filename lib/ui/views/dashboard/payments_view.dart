@@ -46,8 +46,8 @@ class _PaymentsViewState extends State<PaymentsView> {
     if (tipo == 'CUSTOM') {
       final picked = await CustomDateRangePicker.show(
         context,
-        initialStartDate: inicio,
-        initialEndDate: fin,
+        initialStartDate: null,
+        initialEndDate: null,
         firstDate: DateTime(2000),
         lastDate: DateTime.now().add(const Duration(days: 365)),
       );
@@ -208,6 +208,7 @@ class _PaymentsViewState extends State<PaymentsView> {
 
                   // Filtro de Fecha (Dropdown)
                   DashboardDropdown<String>(
+                    tooltip: "Filtrar Fecha",
                     selectedValue: 'CUSTOM',
                     customLabel: _filtroLabel,
                     customIcon: Icons.calendar_today,
