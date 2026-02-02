@@ -7,6 +7,7 @@ import 'package:quiropractico_front/models/auditoria_log.dart';
 import 'package:quiropractico_front/providers/auditoria_provider.dart';
 import 'package:quiropractico_front/ui/widgets/custom_snackbar.dart';
 import 'package:quiropractico_front/ui/widgets/dashboard_dropdown.dart';
+import 'package:quiropractico_front/ui/widgets/custom_date_range_picker.dart';
 import 'package:quiropractico_front/ui/widgets/paginated_table.dart';
 
 class AuditoriaView extends StatefulWidget {
@@ -121,31 +122,43 @@ class _AuditoriaViewState extends State<AuditoriaView> {
                 Container(width: 1, height: 30, color: Colors.grey.shade300),
                 const SizedBox(width: 20),
 
-                // Filtro fecha
-                _HoverableFilterButton(
-                  isActive: provider.fechaSeleccionada != null,
-                  onTap: () async {
-                    final picked = await showDatePicker(
-                      context: context,
-                      initialDate: provider.fechaSeleccionada ?? DateTime.now(),
-                      firstDate: DateTime(2023),
-                      lastDate: DateTime.now(),
-                      locale: const Locale('es', 'ES'),
-                    );
-                    if (picked != null) provider.setFecha(picked);
-                  },
-                  onClear: () => provider.setFecha(null),
-                  label:
-                      provider.fechaSeleccionada != null
-                          ? DateFormat(
-                            'dd/MM/yyyy',
-                          ).format(provider.fechaSeleccionada!)
-                          : "Fecha",
-                  icon: Icons.calendar_today,
+                Tooltip(
+                  message: "Filtrar fecha",
+                  child: _HoverableFilterButton(
+                    isActive:
+                        provider.fechaInicio != null ||
+                        provider.fechaFin != null,
+                    onTap: () async {
+                      final pickedRange = await CustomDateRangePicker.show(
+                        context,
+                        initialStartDate: provider.fechaInicio,
+                        initialEndDate: provider.fechaFin,
+                        firstDate: DateTime(2023),
+                        lastDate: DateTime.now(),
+                      );
+
+                      if (pickedRange != null) {
+                        provider.setRangoFechas(
+                          pickedRange.start,
+                          pickedRange.end,
+                        );
+                      }
+                    },
+                    onClear: () => provider.setRangoFechas(null, null),
+                    label:
+                      (provider.fechaInicio != null && provider.fechaFin != null)
+                        ? "${DateFormat('dd/MM', 'es_ES').format(provider.fechaInicio!)} - ${DateFormat('dd/MM', 'es_ES').format(provider.fechaFin!)}"
+                        : "Fecha",
+                    icon: Icons.calendar_today,
+                  ),
                 ),
 
                 const SizedBox(width: 15),
                 Container(width: 1, height: 30, color: Colors.grey.shade300),
+                const SizedBox(width: 10),
+
+                // Filtro acción
+                _buildActionDropdown(provider),
                 const SizedBox(width: 10),
 
                 // Filtro entidad
@@ -239,6 +252,7 @@ class _AuditoriaViewState extends State<AuditoriaView> {
       "HISTORIAL_CLINICO",
       "SERVICIO",
       "GRUPO_FAMILIAR",
+      "DESHACER",
     ];
 
     final options = <DropdownOption<String?>>[
@@ -263,6 +277,113 @@ class _AuditoriaViewState extends State<AuditoriaView> {
       customLabel: provider.filtroEntidad == null ? "Todos" : null,
       onSelected: (val) => provider.setFiltroEntidad(val),
       options: options,
+      tooltip: "Filtrar entidad",
+    );
+  }
+
+  // Iconos para acciones
+  IconData _getIconForAction(String accion) {
+    switch (accion) {
+      case 'CREAR':
+        return Icons.add_circle_outline;
+      case 'EDITAR':
+        return Icons.edit;
+      case 'ELIMINAR':
+        return Icons.delete_outline;
+      case 'LOGIN':
+        return Icons.login;
+      case 'UNLOCK':
+        return Icons.lock_open;
+      case 'BLOQUEADO':
+        return Icons.lock_outline;
+      case 'REACTIVAR':
+        return Icons.restore_from_trash;
+      case 'VENTA':
+        return Icons.sell_outlined;
+      case 'CONSUMO':
+        return Icons.shopping_bag_outlined;
+      case 'NOTIFICACION':
+        return Icons.notifications_none;
+      case 'ERROR':
+        return Icons.error_outline;
+      case 'DESHACER':
+        return Icons.undo;
+      default:
+        return Icons.help_outline;
+    }
+  }
+
+  // Colores para acciones
+  Color _getColorForAction(String accion) {
+    switch (accion) {
+      case 'CREAR':
+      case 'UNLOCK':
+      case 'REACTIVAR':
+      case 'VENTA':
+        return Colors.green;
+      case 'EDITAR':
+      case 'LOGIN':
+      case 'CONSUMO':
+        return Colors.blue;
+      case 'ELIMINAR':
+      case 'BLOQUEADO':
+      case 'ERROR':
+        return Colors.red;
+      case 'NOTIFICACION':
+        return Colors.orange;
+      case 'DESHACER':
+        return Colors.blueGrey;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  // Texto bonito para acciones
+  String _formatActionName(String accion) {
+    if (accion.isEmpty) return accion;
+    if (accion == 'BLOQUEADO') return 'Lock';
+    return accion[0] + accion.substring(1).toLowerCase();
+  }
+
+  Widget _buildActionDropdown(AuditoriaProvider provider) {
+    final acciones = [
+      "CREAR",
+      "EDITAR",
+      "ELIMINAR",
+      "LOGIN",
+      "UNLOCK",
+      "BLOQUEADO",
+      "REACTIVAR",
+      "VENTA",
+      "CONSUMO",
+      "NOTIFICACION",
+      "ERROR",
+      "DESHACER",
+    ];
+
+    final options = <DropdownOption<String?>>[
+      const DropdownOption(
+        value: null,
+        label: "Acciones",
+        icon: Icons.filter_alt_off,
+        color: Colors.grey,
+      ),
+      ...acciones.map(
+        (accion) => DropdownOption(
+          value: accion,
+          label: _formatActionName(accion),
+          icon: _getIconForAction(accion),
+          color: _getColorForAction(accion),
+        ),
+      ),
+    ];
+
+    return DashboardDropdown<String?>(
+      selectedValue: provider.filtroAccion,
+      customLabel: provider.filtroAccion == null ? "Acciones" : null,
+      onSelected: (val) => provider.setFiltroAccion(val),
+      options: options,
+      tooltip: "Filtrar acción",
     );
   }
 
@@ -392,18 +513,20 @@ class _AuditoriaViewState extends State<AuditoriaView> {
         return 'Familiares';
       case 'WHATSAPP':
         return 'WhatsApp';
+      case 'DESHACER':
+        return 'Deshacer';
       default:
         return entidad
-            .replaceAll("_", " ")
-            .toLowerCase()
-            .split(' ')
-            .map(
-              (word) =>
-                  word.isNotEmpty
-                      ? '${word[0].toUpperCase()}${word.substring(1)}'
-                      : '',
-            )
-            .join(' ');
+          .replaceAll("_", " ")
+          .toLowerCase()
+          .split(' ')
+          .map(
+            (word) =>
+                word.isNotEmpty
+                    ? '${word[0].toUpperCase()}${word.substring(1)}'
+                    : '',
+          )
+          .join(' ');
     }
   }
 
@@ -433,7 +556,8 @@ class _AuditoriaViewState extends State<AuditoriaView> {
         return Icons.price_change_outlined;
       case 'GRUPO_FAMILIAR':
         return Icons.diversity_3;
-
+      case 'DESHACER':
+        return Icons.undo;
       default:
         return Icons.extension_outlined;
     }
@@ -465,7 +589,8 @@ class _AuditoriaViewState extends State<AuditoriaView> {
         return Colors.deepOrange;
       case 'GRUPO_FAMILIAR':
         return Colors.pinkAccent;
-
+      case 'DESHACER':
+        return Colors.blueGrey;
       default:
         return Colors.grey;
     }
@@ -505,7 +630,9 @@ class _AuditoriaViewState extends State<AuditoriaView> {
         border: Border.all(color: color.withOpacity(0.3)),
       ),
       child: Text(
-        accion == 'ELIMINAR_LOGICO' ? 'ELIMINAR' : accion,
+        (accion == 'ELIMINAR_LOGICO' || accion == 'ELIMINAR_FISICO')
+            ? 'ELIMINAR'
+            : (accion == 'BLOQUEADO' ? 'LOCK' : accion),
         style: TextStyle(
           color: color,
           fontSize: 10,

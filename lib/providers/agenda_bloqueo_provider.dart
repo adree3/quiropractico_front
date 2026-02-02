@@ -39,6 +39,7 @@ class AgendaBloqueoProvider extends ChangeNotifier {
     String motivo,
     int? idQuiro, {
     bool force = false,
+    bool isUndo = false,
   }) async {
     try {
       final data = {
@@ -50,14 +51,15 @@ class AgendaBloqueoProvider extends ChangeNotifier {
 
       String url = '$_baseUrl/agenda/bloqueos';
       if (force) {
-        url += '?force=true';
+        url += url.contains('?') ? '&force=true' : '?force=true';
+      }
+      if (isUndo) {
+        url += url.contains('?') ? '&undo=true' : '?undo=true';
       }
 
       final response = await ApiService.dio.post(url, data: data);
       await loadBloqueos();
 
-      // Intentar devolver el objeto creado o su ID si el backend lo retorna
-      // Asumimos que el backend devuelve el objeto creado en response.data
       if (response.data != null && response.data is Map) {
         return BloqueoAgenda.fromJson(response.data);
       }
@@ -79,9 +81,13 @@ class AgendaBloqueoProvider extends ChangeNotifier {
   }
 
   // BORRAR
-  Future<String?> borrarBloqueo(int id) async {
+  Future<String?> borrarBloqueo(int id, {bool isUndo = false}) async {
     try {
-      await ApiService.dio.delete('$_baseUrl/agenda/bloqueos/$id');
+      String url = '$_baseUrl/agenda/bloqueos/$id';
+      if (isUndo) {
+        url += '?undo=true';
+      }
+      await ApiService.dio.delete(url);
       await loadBloqueos();
       return null;
     } catch (e) {
@@ -94,8 +100,9 @@ class AgendaBloqueoProvider extends ChangeNotifier {
     DateTime inicio,
     DateTime fin,
     String motivo,
-    int? idUsuario,
-  ) async {
+    int? idUsuario, {
+    bool isUndo = false,
+  }) async {
     try {
       final data = {
         "fechaInicio": inicio.toIso8601String(),
@@ -104,10 +111,12 @@ class AgendaBloqueoProvider extends ChangeNotifier {
         "idQuiropractico": idUsuario,
       };
 
-      await ApiService.dio.put(
-        '$_baseUrl/agenda/bloqueos/$idBloqueo',
-        data: data,
-      );
+      String url = '$_baseUrl/agenda/bloqueos/$idBloqueo';
+      if (isUndo) {
+        url += '?undo=true';
+      }
+
+      await ApiService.dio.put(url, data: data);
 
       await loadBloqueos();
       return null;

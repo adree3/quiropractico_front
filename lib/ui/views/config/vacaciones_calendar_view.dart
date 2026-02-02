@@ -395,10 +395,10 @@ class _VacacionesCalendarViewState extends State<VacacionesCalendarView> {
                         ),
                         color: Colors.red,
                         onPressed:
-                            () => setState(() {
-                              _isSelectionMode = true;
-                              _diasSeleccionados.clear();
-                            }),
+                          () => setState(() {
+                            _isSelectionMode = true;
+                            _diasSeleccionados.clear();
+                          }),
                       ),
                       const SizedBox(width: 15),
                       Container(
@@ -470,13 +470,13 @@ class _VacacionesCalendarViewState extends State<VacacionesCalendarView> {
                                         tooltip: "Mes anterior",
                                         icon: const Icon(Icons.chevron_left),
                                         onPressed:
-                                            () => setState(
-                                              () =>
-                                                  _focusedDay = DateTime(
-                                                    _focusedDay.year,
-                                                    _focusedDay.month - 1,
-                                                  ),
-                                            ),
+                                          () => setState(
+                                            () =>
+                                                _focusedDay = DateTime(
+                                                  _focusedDay.year,
+                                                  _focusedDay.month - 1,
+                                                ),
+                                          ),
                                       ),
 
                                       InkWell(
@@ -521,12 +521,12 @@ class _VacacionesCalendarViewState extends State<VacacionesCalendarView> {
                                         tooltip: "Mes siguiente",
                                         icon: const Icon(Icons.chevron_right),
                                         onPressed:
-                                            () => setState(
-                                              () =>
-                                                  _focusedDay = DateTime(
-                                                    _focusedDay.year,
-                                                    _focusedDay.month + 1,
-                                                  ),
+                                          () => setState(
+                                            () =>
+                                                _focusedDay = DateTime(
+                                                  _focusedDay.year,
+                                                  _focusedDay.month + 1,
+                                                ),
                                             ),
                                       ),
                                     ],
@@ -546,22 +546,22 @@ class _VacacionesCalendarViewState extends State<VacacionesCalendarView> {
                                     shouldFillViewport: true,
                                     daysOfWeekHeight: 40,
                                     selectedDayPredicate:
-                                        (day) =>
-                                            _isSelectionMode
-                                                ? _diasSeleccionados.any((d) => isSameDay(d, day))
-                                                : isSameDay(_selectedDay, day),
-                                    eventLoader:
-                                        (day) => _getBloqueosDelDia(day, provider.bloqueos),
+                                      (day) =>
+                                        _isSelectionMode
+                                          ? _diasSeleccionados.any(
+                                            (d) => isSameDay(d, day),
+                                          )
+                                          : isSameDay(_selectedDay, day),
+                                    eventLoader: (day) => _getBloqueosDelDia(day, provider.bloqueos),
                                     onDaySelected:
-                                        (selected, focused) =>
-                                            _handleDaySelected(
-                                              selected,
-                                              focused,
+                                      (selected, focused) =>
+                                        _handleDaySelected(
+                                          selected,
+                                          focused,
                                               provider.bloqueos,
                                               isLargeScreen,
                                             ),
-                                    onPageChanged:(focused) => _focusedDay = focused,
-
+                                    onPageChanged: (focused) => _focusedDay = focused,
                                     calendarBuilders: CalendarBuilders(
                                       defaultBuilder:
                                           (context, day, focusedDay) =>
@@ -577,7 +577,10 @@ class _VacacionesCalendarViewState extends State<VacacionesCalendarView> {
                                                 day,
                                                 provider.bloqueos,
                                                 isSelected: true,
-                                                isToday: isSameDay(day, DateTime.now()),
+                                                isToday: isSameDay(
+                                                  day,
+                                                  DateTime.now(),
+                                                ),
                                               ),
                                       todayBuilder:
                                           (context, day, focusedDay) =>
@@ -630,9 +633,11 @@ class _VacacionesCalendarViewState extends State<VacacionesCalendarView> {
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(10),
                             child:
-                                _isSelectionMode
-                                    ? _buildSelectionSummaryPanel(bloqueosAcumulados)
-                                    : _buildSidePanel(bloqueosDelDia),
+                              _isSelectionMode
+                                  ? _buildSelectionSummaryPanel(
+                                    bloqueosAcumulados,
+                                  )
+                                  : _buildSidePanel(bloqueosDelDia),
                           ),
                         ),
                       ),
@@ -1033,6 +1038,7 @@ class _VacacionesCalendarViewState extends State<VacacionesCalendarView> {
                                   backup.motivo,
                                   backup.idQuiropractico,
                                   force: true,
+                                  isUndo: true,
                                 );
 
                                 messenger.hideCurrentSnackBar();
@@ -1047,7 +1053,7 @@ class _VacacionesCalendarViewState extends State<VacacionesCalendarView> {
                                 CustomSnackBar.show(
                                   context,
                                   messenger: messenger,
-                                  message:"Error al restaurar: ${e.toString()}",
+                                  message: "Error al restaurar: ${e.toString()}",
                                   type: SnackBarType.error,
                                 );
                               }
@@ -1149,11 +1155,9 @@ class _VacacionesCalendarViewState extends State<VacacionesCalendarView> {
               borderRadius: BorderRadius.circular(6),
               border: Border.all(
                 color: borderColor,
-                width:
-                    (isSelected ||
-                            (_isSelectionMode && borderColor == Colors.red))
-                        ? 2
-                        : 1,
+                width: (isSelected || (_isSelectionMode && borderColor == Colors.red))
+                  ? 2
+                  : 1,
               ),
             ),
             child: Column(
@@ -1167,14 +1171,12 @@ class _VacacionesCalendarViewState extends State<VacacionesCalendarView> {
                       Text(
                         '${day.day}',
                         style: TextStyle(
-                          fontWeight:
-                              (isToday && !isOutside)
-                                  ? FontWeight.bold
-                                  : FontWeight.normal,
-                          color:
-                              (isToday && !isOutside && !isDimmed)
-                                  ? AppTheme.primaryColor
-                                  : textColor,
+                          fontWeight: (isToday && !isOutside)
+                            ? FontWeight.bold
+                            : FontWeight.normal,
+                          color: (isToday && !isOutside && !isDimmed)
+                            ? AppTheme.primaryColor
+                            : textColor,
                           fontSize: 15,
                         ),
                       ),
@@ -1304,6 +1306,7 @@ class _VacacionesCalendarViewState extends State<VacacionesCalendarView> {
                       backup.fechaFin,
                       backup.motivo,
                       backup.idQuiropractico,
+                      isUndo: true,
                     );
                     if (context.mounted) {
                       CustomSnackBar.show(
@@ -1320,10 +1323,13 @@ class _VacacionesCalendarViewState extends State<VacacionesCalendarView> {
                     );
                   }
                 } else {
-                  // 1. Deshacer creación = Borrar
-                  await provider.borrarBloqueo(bloqueo!.idBloqueo);
+                  // Deshacer creación = Borrar
+                  await provider.borrarBloqueo(
+                    bloqueo!.idBloqueo,
+                    isUndo: true,
+                  );
 
-                  // 2. Si fue forzado, restaurar los conflictos
+                  // Si fue forzado, restaurar los conflictos
                   if (action == 'create_forced' && conflicting != null) {
                     for (var c in conflicting) {
                       await provider.crearBloqueo(
@@ -1332,6 +1338,7 @@ class _VacacionesCalendarViewState extends State<VacacionesCalendarView> {
                         c.motivo,
                         c.idQuiropractico,
                         force: true,
+                        isUndo: true,
                       );
                     }
                   }
@@ -1555,7 +1562,6 @@ class _MonthYearPickerDialogState extends State<_MonthYearPickerDialog> {
   }
 
   Widget _buildYearsView() {
-    // 1990 - 2052
     final years = List.generate(63, (index) => 1990 + index);
     final now = DateTime.now();
 

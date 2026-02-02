@@ -8,6 +8,7 @@ import 'package:quiropractico_front/providers/auth_provider.dart';
 import 'package:quiropractico_front/providers/payments_provider.dart';
 import 'package:quiropractico_front/ui/widgets/custom_snackbar.dart';
 import 'package:quiropractico_front/ui/widgets/dashboard_dropdown.dart';
+import 'package:quiropractico_front/ui/widgets/custom_date_range_picker.dart';
 
 class PaymentsView extends StatefulWidget {
   const PaymentsView({super.key});
@@ -43,21 +44,12 @@ class _PaymentsViewState extends State<PaymentsView> {
     String contexto = "(Total)";
 
     if (tipo == 'CUSTOM') {
-      final picked = await showDateRangePicker(
-        context: context,
+      final picked = await CustomDateRangePicker.show(
+        context,
+        initialStartDate: inicio,
+        initialEndDate: fin,
         firstDate: DateTime(2000),
         lastDate: DateTime.now().add(const Duration(days: 365)),
-        locale: const Locale('es', 'ES'),
-        builder: (context, child) {
-          return Theme(
-            data: ThemeData.light().copyWith(
-              colorScheme: const ColorScheme.light(
-                primary: AppTheme.primaryColor,
-              ),
-            ),
-            child: child!,
-          );
-        },
       );
 
       if (picked == null) return;

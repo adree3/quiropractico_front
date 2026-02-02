@@ -12,12 +12,14 @@ class AuditoriaProvider extends ChangeNotifier {
   bool isLoading = true;
 
   int currentPage = 0;
-  int pageSize = 10;
+  int pageSize = 20;
   int totalElements = 0;
 
   String? filtroEntidad;
+  String? filtroAccion;
   String search = '';
-  DateTime? fechaSeleccionada;
+  DateTime? fechaInicio;
+  DateTime? fechaFin;
 
   AuditoriaProvider() {
     getLogs();
@@ -37,11 +39,17 @@ class AuditoriaProvider extends ChangeNotifier {
       if (filtroEntidad != null && filtroEntidad != "TODAS") {
         query['entidad'] = filtroEntidad;
       }
+      if (filtroAccion != null && filtroAccion != "TODAS") {
+        query['accion'] = filtroAccion;
+      }
       if (search.isNotEmpty) {
         query['search'] = search;
       }
-      if (fechaSeleccionada != null) {
-        query['fecha'] = DateFormat('yyyy-MM-dd').format(fechaSeleccionada!);
+      if (fechaInicio != null) {
+        query['fechaDesde'] = DateFormat('yyyy-MM-dd').format(fechaInicio!);
+      }
+      if (fechaFin != null) {
+        query['fechaHasta'] = DateFormat('yyyy-MM-dd').format(fechaFin!);
       }
 
       final response = await ApiService.dio.get(
@@ -69,20 +77,28 @@ class AuditoriaProvider extends ChangeNotifier {
     getLogs(page: 0);
   }
 
-  void setFecha(DateTime? fecha) {
-    fechaSeleccionada = fecha;
+  void setRangoFechas(DateTime? inicio, DateTime? fin) {
+    fechaInicio = inicio;
+    fechaFin = fin;
     getLogs(page: 0);
   }
 
   void limpiarFiltros() {
     filtroEntidad = null;
+    filtroAccion = null;
     search = '';
-    fechaSeleccionada = null;
+    fechaInicio = null;
+    fechaFin = null;
     getLogs(page: 0);
   }
 
   void setFiltroEntidad(String? entidad) {
     filtroEntidad = entidad;
+    getLogs(page: 0);
+  }
+
+  void setFiltroAccion(String? accion) {
+    filtroAccion = accion;
     getLogs(page: 0);
   }
 }
