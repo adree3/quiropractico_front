@@ -463,18 +463,25 @@ class _PaymentsViewState extends State<PaymentsView> {
                                           alignment: Alignment.centerRight,
                                           child: ElevatedButton.icon(
                                             onPressed: () async {
-                                              final error = await Provider.of<
-                                                PaymentsProvider
-                                              >(
-                                                context,
-                                                listen: false,
-                                              ).confirmarPago(pago.idPago);
+                                              final error = await Provider.of<PaymentsProvider>(context, listen: false).confirmarPago(pago.idPago);
                                               if (context.mounted) {
                                                 if (error == null) {
+                                                  final fechaFormat = DateFormat('dd/MM/yyyy').format(pago.fechaPago);
                                                   CustomSnackBar.show(
                                                     context,
-                                                    message: "Pago confirmado",
+                                                    message: "Pago de ${pago.nombreCliente} del $fechaFormat cobrado",
                                                     type: SnackBarType.success,
+                                                    actionLabel: "DESHACER",
+                                                    onAction: () async {
+                                                      await Provider.of<PaymentsProvider>(context, listen: false).deshacerPago(pago.idPago);
+                                                      if (context.mounted) {
+                                                        CustomSnackBar.show(
+                                                          context,
+                                                          message: "Cobro deshecho",
+                                                          type: SnackBarType.info,
+                                                        );
+                                                      }
+                                                    },
                                                   );
                                                 } else {
                                                   CustomSnackBar.show(
@@ -494,10 +501,10 @@ class _PaymentsViewState extends State<PaymentsView> {
                                               backgroundColor: Colors.green,
                                               foregroundColor: Colors.white,
                                               padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 16,
-                                                    vertical: 10,
-                                                  ),
+                                                const EdgeInsets.symmetric(
+                                                  horizontal: 16,
+                                                  vertical: 10,
+                                                ),
                                             ),
                                           ),
                                         ),
@@ -515,9 +522,7 @@ class _PaymentsViewState extends State<PaymentsView> {
                             totalElements: provider.totalHistorialCount,
                             pageSize: provider.pageSize,
                             currentPage: provider.pageHistorial,
-                            onPageChanged:
-                                (p) => provider.getPagosHistorial(page: p),
-
+                            onPageChanged: (p) => provider.getPagosHistorial(page: p),
                             columns: const [
                               DataColumn(
                                 label: Text(

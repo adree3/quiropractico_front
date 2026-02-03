@@ -204,21 +204,40 @@ class PaymentsProvider extends ChangeNotifier {
         notifyListeners();
         checkPendingCount();
 
-        notifyListeners();
-        checkPendingCount();
-
-        // Silent refresh to fill the gap (or handle empty page)
         if (listaPendientes.isEmpty && pagePendientes > 0) {
-          // Si se vació la página, volvemos atrás (con loading normal o silent?)
-          // Mejor normal para que se vea el cambio de página claro, o silent.
           getPagosPendientes(page: pagePendientes - 1);
         } else {
-          // Rellenar hueco silenciosamente
           getPagosPendientes(page: pagePendientes, notifyLoading: false);
         }
       }
 
       getPagosHistorial(page: 0);
+
+      return null;
+    } catch (e) {
+      return ErrorHandler.extractMessage(e);
+    }
+  }
+
+  Future<String?> deshacerPago(int idPago) async {
+    try {
+      await ApiService.dio.put('$_baseUrl/pagos/$idPago/pendiente');
+
+      final index = listaHistorial.indexWhere((p) => p.idPago == idPago);
+      if (index != -1) {
+        final pago = listaHistorial[index];
+
+        totalCobrado -= pago.monto;
+        totalPendiente += pago.monto;
+
+        listaHistorial.removeAt(index);
+        totalHistorialCount--;
+      }
+
+      getPagosPendientes(page: 0);
+      getPagosHistorial(page: 0);
+      checkPendingCount();
+      _fetchKpis();
 
       return null;
     } catch (e) {
