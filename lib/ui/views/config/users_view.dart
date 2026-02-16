@@ -222,6 +222,7 @@ class _UsersViewState extends State<UsersView> {
       final int index = start + entry.key + 1;
       final Usuario usuario = entry.value;
       final colorTexto = usuario.activo ? Colors.black87 : Colors.grey;
+      final textDecoration = usuario.activo ? null : TextDecoration.lineThrough;
 
       Color baseColor;
       switch (usuario.rol.toLowerCase()) {
@@ -247,6 +248,7 @@ class _UsersViewState extends State<UsersView> {
               style: TextStyle(
                 color: Colors.grey[400],
                 fontWeight: FontWeight.bold,
+                decoration: textDecoration,
               ),
             ),
           ),
@@ -273,12 +275,18 @@ class _UsersViewState extends State<UsersView> {
                   style: TextStyle(
                     color: colorTexto,
                     fontWeight: FontWeight.w600,
+                    decoration: textDecoration,
                   ),
                 ),
               ],
             ),
           ),
-          DataCell(Text(usuario.username, style: TextStyle(color: colorTexto))),
+          DataCell(
+            Text(
+              usuario.username,
+              style: TextStyle(color: colorTexto, decoration: textDecoration),
+            ),
+          ),
           DataCell(
             Chip(
               backgroundColor: baseColor.withOpacity(0.1),
@@ -418,8 +426,6 @@ class _UsersViewState extends State<UsersView> {
 
                 try {
                   if (action == 'create') {
-                    // Deshacer creación = Eliminar
-                    // Necesitamos buscar el usuario por username ya que no tenemos el ID del modal
                     final userToDelete = provider.usuarios.firstWhere(
                       (u) => u.username == username,
                       orElse: () => throw "Usuario no encontrado",
@@ -428,11 +434,10 @@ class _UsersViewState extends State<UsersView> {
                       userToDelete.idUsuario,
                     );
                   } else if (action == 'update' && oldData != null) {
-                    // Deshacer edición = Restaurar
                     errorUndo = await provider.updateUser(
                       oldData.idUsuario,
                       oldData.nombreCompleto,
-                      null, // No restauramos pass
+                      null,
                       oldData.rol,
                     );
                   } else if (action == 'delete' && oldData != null) {
@@ -440,7 +445,6 @@ class _UsersViewState extends State<UsersView> {
                   } else if (action == 'recover' && oldData != null) {
                     errorUndo = await provider.deleteUser(oldData.idUsuario);
                   } else if (action == 'unlock' && oldData != null) {
-                    // Deshacer desbloqueo = Bloquear
                     errorUndo = await provider.blockUser(oldData.idUsuario);
                   }
                 } catch (e) {

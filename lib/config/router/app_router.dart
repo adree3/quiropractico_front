@@ -75,7 +75,19 @@ class AppRouter {
             path: '/pacientes/:uid',
             builder: (context, state) {
               final String id = state.pathParameters['uid'] ?? '0';
-              return ClienteDetalleView(idCliente: int.parse(id));
+
+              // Leer query parameters opcionales
+              final tabParam = state.uri.queryParameters['tab'];
+              final filtroParam = state.uri.queryParameters['filtro'];
+
+              final initialTab =
+                  tabParam != null ? int.tryParse(tabParam) : null;
+
+              return ClienteDetalleView(
+                idCliente: int.parse(id),
+                initialTab: initialTab,
+                initialFilter: filtroParam,
+              );
             },
           ),
           GoRoute(

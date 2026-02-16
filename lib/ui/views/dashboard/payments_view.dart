@@ -590,25 +590,16 @@ class _PaymentsViewState extends State<PaymentsView> {
                               ),
                             ],
 
-                            rows:
-                                provider.listaHistorial.asMap().entries.map((
-                                  entry,
-                                ) {
+                            rows: provider.listaHistorial.asMap().entries.map((entry) {
                                   final index = entry.key;
                                   final pago = entry.value;
-                                  final globalIndex =
-                                      (provider.pageHistorial *
-                                          provider.pageSize) +
-                                      index +
-                                      1;
+                                  final globalIndex = (provider.pageHistorial * provider.pageSize) + index + 1;
                                   final isPaid = pago.pagado;
                                   return DataRow(
                                     color: WidgetStateProperty.all(
                                       isPaid
-                                          ? Colors.white
-                                          : Colors.orange.shade50.withOpacity(
-                                            0.3,
-                                          ),
+                                        ? Colors.white
+                                        : Colors.orange.shade50.withOpacity(0.3),
                                     ),
                                     cells: [
                                       DataCell(
@@ -662,27 +653,17 @@ class _PaymentsViewState extends State<PaymentsView> {
                                             vertical: 2,
                                           ),
                                           decoration: BoxDecoration(
-                                            color:
-                                                isPaid
-                                                    ? Colors.green.withOpacity(
-                                                      0.1,
-                                                    )
-                                                    : Colors.orange.withOpacity(
-                                                      0.1,
-                                                    ),
-                                            borderRadius: BorderRadius.circular(
-                                              4,
-                                            ),
+                                            color: isPaid
+                                              ? Colors.green.withOpacity(0.1)
+                                              : Colors.orange.withOpacity(0.1),
+                                            borderRadius: BorderRadius.circular(4),
                                           ),
                                           child: Text(
                                             isPaid ? "PAGADO" : "PENDIENTE",
                                             style: TextStyle(
                                               fontSize: 10,
                                               fontWeight: FontWeight.bold,
-                                              color:
-                                                  isPaid
-                                                      ? Colors.green
-                                                      : Colors.orange,
+                                              color: isPaid ? Colors.green : Colors.orange,
                                             ),
                                           ),
                                         ),
@@ -692,10 +673,7 @@ class _PaymentsViewState extends State<PaymentsView> {
                                           "${pago.monto} €",
                                           style: TextStyle(
                                             fontWeight: FontWeight.bold,
-                                            color:
-                                                isPaid
-                                                    ? Colors.black87
-                                                    : Colors.orange,
+                                            color: isPaid ? Colors.black87 : Colors.orange,
                                           ),
                                         ),
                                       ),

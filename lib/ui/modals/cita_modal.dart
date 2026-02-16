@@ -10,17 +10,20 @@ import 'package:quiropractico_front/providers/clients_provider.dart';
 import 'package:quiropractico_front/ui/modals/payment_selection_modal.dart';
 import 'package:quiropractico_front/ui/modals/venta_bono_modal.dart';
 import 'package:quiropractico_front/ui/widgets/custom_snackbar.dart';
+import 'package:quiropractico_front/ui/widgets/avatar_widget.dart';
 
 class CitaModal extends StatefulWidget {
   final DateTime? selectedDate;
   final Cita? citaExistente;
   final Usuario? preSelectedDoctor;
+  final Cliente? preSelectedClient;
 
   const CitaModal({
     super.key,
     this.selectedDate,
     this.citaExistente,
     this.preSelectedDoctor,
+    this.preSelectedClient,
   });
 
   @override
@@ -58,7 +61,15 @@ class _CitaModalState extends State<CitaModal> {
       notasCtrl.text = c.notas ?? '';
       fechaSeleccionada = c.fechaHoraInicio;
     } else {
-      final baseDate = widget.selectedDate ?? DateTime.now();
+      var baseDate = widget.selectedDate ?? DateTime.now();
+
+      // Ajustar si la fecha base cae en fin de semana (Sábado/Domingo)
+      // para evitar error de aserción en showDatePicker (selectableDayPredicate)
+      while (baseDate.weekday == DateTime.saturday ||
+          baseDate.weekday == DateTime.sunday) {
+        baseDate = baseDate.add(const Duration(days: 1));
+      }
+
       fechaSeleccionada = baseDate;
     }
 
@@ -88,6 +99,17 @@ class _CitaModalState extends State<CitaModal> {
           doctorInicial = widget.preSelectedDoctor;
         } else if (agendaProv.quiropracticos.isNotEmpty) {
           doctorInicial = agendaProv.quiropracticos.first;
+        }
+      }
+
+      // Pre-seleccionar Cliente
+      if (widget.preSelectedClient != null && !isEditing) {
+        // Si no estamos editando (cita nueva) y viene un cliente preseleccionado
+        if (mounted) {
+          setState(() {
+            selectedCliente = widget.preSelectedClient;
+            _clientSearchController.text = "${selectedCliente!.nombre} ${selectedCliente!.apellidos} (${selectedCliente!.telefono})";
+          });
         }
       }
 
@@ -121,7 +143,7 @@ class _CitaModalState extends State<CitaModal> {
             final targetTime =
                 isEditing
                     ? widget.citaExistente!.fechaHoraInicio
-                    : widget.selectedDate!;
+                    : fechaSeleccionada;
             final targetTimeStr =
                 "${targetTime.hour.toString().padLeft(2, '0')}:${targetTime.minute.toString().padLeft(2, '0')}";
 
@@ -266,6 +288,7 @@ class _CitaModalState extends State<CitaModal> {
 
                 // DROPDOWN DE Horarios
                 DropdownButtonFormField<Map<String, String>>(
+                  autovalidateMode: AutovalidateMode.onUserInteraction,
                   decoration: const InputDecoration(
                     labelText: 'Horario Disponible',
                     prefixIcon: Icon(Icons.watch_later_outlined),
@@ -299,6 +322,7 @@ class _CitaModalState extends State<CitaModal> {
 
                 // DOCTOR
                 DropdownButtonFormField<Usuario>(
+                  autovalidateMode: AutovalidateMode.onUserInteraction,
                   decoration: const InputDecoration(
                     labelText: 'Doctor',
                     prefixIcon: Icon(Icons.medical_services_outlined),
@@ -367,6 +391,7 @@ class _CitaModalState extends State<CitaModal> {
                     return TextFormField(
                       controller: controller,
                       focusNode: focusNode,
+                      autovalidateMode: AutovalidateMode.onUserInteraction,
                       decoration: InputDecoration(
                         labelText: 'Paciente (Nombre o Teléfono)',
                         prefixIcon: const Icon(Icons.person_search),
@@ -420,14 +445,11 @@ class _CitaModalState extends State<CitaModal> {
                             itemBuilder: (BuildContext context, int index) {
                               final Cliente option = options.elementAt(index);
                               return ListTile(
-                                leading: const CircleAvatar(
+                                leading: AvatarWidget(
+                                  nombreCompleto: option.nombre,
+                                  id: option.idCliente,
                                   radius: 15,
-                                  backgroundColor: AppTheme.primaryColor,
-                                  child: Icon(
-                                    Icons.person,
-                                    size: 16,
-                                    color: Colors.white,
-                                  ),
+                                  fontSize: 14,
                                 ),
                                 title: Text(
                                   "${option.nombre} ${option.apellidos}",

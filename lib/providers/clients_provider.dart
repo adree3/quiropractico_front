@@ -10,8 +10,7 @@ class ClientsProvider extends ChangeNotifier {
 
   List<Cliente> clients = [];
   bool isLoading = true;
-  bool isSearching = false;
-  bool filterActive = true;
+  bool? filterActive = true;
   String? errorMessage;
 
   String currentSearchTerm = '';
@@ -19,9 +18,10 @@ class ClientsProvider extends ChangeNotifier {
   int pageSize = 11;
   int totalPages = 0;
   int totalElements = 0;
+  int? lastActivityDays; // null, 7, o 30
 
   ClientsProvider() {
-    getPaginatedClients();
+    loadClients();
   }
 
   Future<String?> createClient(
@@ -49,10 +49,13 @@ class ClientsProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> getPaginatedClients({
+  // Método unificado para cargar clientes con todos los filtros
+  Future<void> loadClients({
     int page = 0,
+    bool resetPage = false,
     bool notifyLoading = true,
   }) async {
+    if (resetPage) currentPage = 0;
     if (notifyLoading) {
       isLoading = true;
       notifyListeners();
@@ -61,14 +64,20 @@ class ClientsProvider extends ChangeNotifier {
     errorMessage = null;
 
     try {
+      final Map<String, dynamic> params = {
+        'page': page,
+        'size': pageSize,
+        'sort': 'id_cliente,desc',
+      };
+
+      if (filterActive != null) params['activo'] = filterActive;
+      if (currentSearchTerm.isNotEmpty) params['texto'] = currentSearchTerm;
+      if (lastActivityDays != null)
+        params['lastActivityDays'] = lastActivityDays;
+
       final response = await ApiService.dio.get(
         '$_baseUrl/clientes',
-        queryParameters: {
-          'activo': filterActive,
-          'page': page,
-          'size': pageSize,
-          'sort': 'id_cliente,desc',
-        },
+        queryParameters: params,
       );
 
       final List<dynamic> data = response.data['content'];
@@ -84,23 +93,23 @@ class ClientsProvider extends ChangeNotifier {
     }
   }
 
+  // Método legacy para compatibilidad (ahora usa loadClients)
+  Future<void> getPaginatedClients({
+    int page = 0,
+    bool notifyLoading = true,
+  }) async {
+    await loadClients(page: page, notifyLoading: notifyLoading);
+  }
+
   void nextPage() {
     if (currentPage < totalPages - 1) {
-      if (isSearching) {
-        searchGlobal(currentSearchTerm, page: currentPage + 1);
-      } else {
-        getPaginatedClients(page: currentPage + 1);
-      }
+      loadClients(page: currentPage + 1);
     }
   }
 
   void prevPage() {
     if (currentPage > 0) {
-      if (isSearching) {
-        searchGlobal(currentSearchTerm, page: currentPage - 1);
-      } else {
-        getPaginatedClients(page: currentPage - 1);
-      }
+      loadClients(page: currentPage - 1);
     }
   }
 
@@ -134,67 +143,43 @@ class ClientsProvider extends ChangeNotifier {
     }
   }
 
-  // Barra de busqueda
+  // Actualiza el término de búsqueda y recarga
   Future<void> searchGlobal(
     String query, {
     int page = 0,
     bool notifyLoading = true,
   }) async {
-    if (query.isEmpty) {
-      isSearching = false;
-      currentSearchTerm = '';
-      await getPaginatedClients(page: 0);
-      return;
-    }
-
-    if (notifyLoading) {
-      isLoading = true;
-      notifyListeners();
-    }
-    isSearching = true;
     currentSearchTerm = query;
-    currentPage = page;
+    await loadClients(
+      page: page,
+      resetPage: true,
+      notifyLoading: notifyLoading,
+    );
+  }
 
-    try {
-      final response = await ApiService.dio.get(
-        '$_baseUrl/clientes/buscar-complejo',
-        queryParameters: {'texto': query, 'page': page, 'size': pageSize},
-      );
-
-      final List<dynamic> data = response.data['content'];
-
-      totalPages = response.data['totalPages'];
-      totalElements = response.data['totalElements'];
-
-      clients = data.map((json) => Cliente.fromJson(json)).toList();
-    } catch (e) {
-      errorMessage = ErrorHandler.extractMessage(e);
-      print('Error en búsqueda global: $errorMessage');
-    } finally {
-      isLoading = false;
-      notifyListeners();
-    }
+  // Nuevos métodos para filtros
+  void setActivityFilter(int? days) {
+    lastActivityDays = days;
+    loadClients(resetPage: true);
   }
 
   // Borrado Lógico
-  Future<String?> deleteClient(int idCliente) async {
+  Future<String?> deleteClient(int idCliente, {bool undo = false}) async {
     try {
-      await ApiService.dio.delete('$_baseUrl/clientes/$idCliente');
+      await ApiService.dio.delete(
+        '$_baseUrl/clientes/$idCliente',
+        queryParameters: {'undo': undo},
+      );
 
       final index = clients.indexWhere((c) => c.idCliente == idCliente);
       if (index != -1) {
-        if (filterActive) {
-          // Si estamos viendo "activos" y se borra uno, lo quitamos de la lista
+        if (filterActive == true) {
           clients.removeAt(index);
-          totalElements--; // Ajustamos contador visualmente
+          totalElements--;
         } else {
-          // Si estamos viendo "inactivos" o "todos", quizás solo cambiamos su estado
-          // Pero tu lógica de backend dirá. Asumiendo borrado lógico:
-          // Si es "Todos", lo marcamos inactivo. Si es "Inactivos", no debería estar aquí si estaba activo.
           clients[index] = clients[index].copyWith(activo: false);
         }
         notifyListeners();
-        // Silent refresh to fill the gap
         _refreshCurrentView(notifyLoading: false);
       }
       return null;
@@ -204,20 +189,12 @@ class ClientsProvider extends ChangeNotifier {
   }
 
   void _refreshCurrentView({bool notifyLoading = true}) {
-    if (isSearching) {
-      searchGlobal(
-        currentSearchTerm,
-        page: currentPage,
-        notifyLoading: notifyLoading,
-      );
-    } else {
-      getPaginatedClients(page: currentPage, notifyLoading: notifyLoading);
-    }
+    loadClients(page: currentPage, notifyLoading: notifyLoading);
   }
 
-  void toggleFilter(bool isActive) {
+  void toggleFilter(bool? isActive) {
     filterActive = isActive;
-    getPaginatedClients(page: 0);
+    loadClients(resetPage: true);
   }
 
   // Editar Cliente
@@ -241,6 +218,7 @@ class ClientsProvider extends ChangeNotifier {
       final response = await ApiService.dio.put(
         '$_baseUrl/clientes/$id',
         data: data,
+        queryParameters: {'undo': false}, // Normal update
       );
 
       final index = clients.indexWhere((c) => c.idCliente == id);
@@ -254,25 +232,57 @@ class ClientsProvider extends ChangeNotifier {
     }
   }
 
-  Future<String?> recoverClient(int idCliente) async {
+  // Método específico para UNDO UPDATE
+  Future<String?> undoUpdateClient(Cliente clienteAntiguo) async {
     try {
-      await ApiService.dio.put('$_baseUrl/clientes/$idCliente/recuperar');
+      final data = clienteAntiguo.toJson();
+      // Aseguramos que solo enviamos los campos necesarios o el objeto entero si el backend lo soporta.
+      // El backend espera ClienteRequestDto, asi que extraemos los campos.
+      final requestData = {
+        "nombre": clienteAntiguo.nombre,
+        "apellidos": clienteAntiguo.apellidos,
+        "telefono": clienteAntiguo.telefono,
+        "email": clienteAntiguo.email,
+        "direccion": clienteAntiguo.direccion,
+      };
+
+      final response = await ApiService.dio.put(
+        '$_baseUrl/clientes/${clienteAntiguo.idCliente}',
+        data: requestData,
+        queryParameters: {'undo': true},
+      );
+
+      final index = clients.indexWhere(
+        (c) => c.idCliente == clienteAntiguo.idCliente,
+      );
+      if (index != -1) {
+        clients[index] = Cliente.fromJson(response.data);
+        notifyListeners();
+      }
+      return null;
+    } catch (e) {
+      return ErrorHandler.extractMessage(e);
+    }
+  }
+
+  Future<String?> recoverClient(int idCliente, {bool undo = false}) async {
+    try {
+      await ApiService.dio.put(
+        '$_baseUrl/clientes/$idCliente/recuperar',
+        queryParameters: {'undo': undo},
+      );
 
       final index = clients.indexWhere((c) => c.idCliente == idCliente);
       if (index != -1) {
-        if (!filterActive) {
-          // Si estamos viendo "eliminados" y se recupera, se va de la lista
+        if (filterActive == false) {
           clients.removeAt(index);
           totalElements--;
         } else {
-          // Si estamos viendo "todos", se marca activo
           clients[index] = clients[index].copyWith(activo: true);
         }
         notifyListeners();
-        // Silent refresh to fill the gap
         _refreshCurrentView(notifyLoading: false);
       } else {
-        // Edge case: no está en la lista visible (raro), refrescamos por si acaso
         _refreshCurrentView();
       }
       return null;

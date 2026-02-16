@@ -1,14 +1,17 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:quiropractico_front/config/theme/app_theme.dart';
 import 'package:quiropractico_front/providers/clients_provider.dart';
 import 'package:quiropractico_front/ui/modals/client_modal.dart';
+import 'package:quiropractico_front/ui/modals/cita_modal.dart';
 import 'package:go_router/go_router.dart';
 import 'package:quiropractico_front/ui/widgets/custom_snackbar.dart';
 import 'package:quiropractico_front/ui/widgets/dashboard_dropdown.dart';
 import 'package:quiropractico_front/ui/widgets/paginated_table.dart';
 import 'package:quiropractico_front/ui/widgets/hoverable_action_button.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:quiropractico_front/ui/widgets/avatar_widget.dart';
 
 class ClientsView extends StatefulWidget {
   const ClientsView({super.key});
@@ -123,23 +126,39 @@ class _ClientsViewState extends State<ClientsView> {
                 const SizedBox(width: 15),
 
                 // Filtro estado
-                _buildStatusDropdown(clientsProvider),
+                Tooltip(
+                  message: "Filtrar estado",
+                  child: _buildStatusDropdown(clientsProvider),
+                ),
+
+                const SizedBox(width: 10),
+                Container(width: 1, height: 30, color: Colors.grey.shade300),
+                const SizedBox(width: 10),
+
+                // Filtro actividad reciente
+                Tooltip(
+                  message: "Filtrar por actividad reciente",
+                  child: _buildActivityDropdown(clientsProvider),
+                ),
 
                 const SizedBox(width: 10),
                 Container(width: 1, height: 30, color: Colors.grey.shade300),
                 const SizedBox(width: 10),
 
                 // Nuevo cliente
-                HoverableActionButton(
-                  label: "Paciente",
-                  icon: Icons.person_add,
-                  isPrimary: true,
-                  onTap: () {
-                    showDialog(
-                      context: context,
-                      builder: (context) => const ClientModal(),
-                    );
-                  },
+                Tooltip(
+                  message: "Crear paciente",
+                  child: HoverableActionButton(
+                    label: "Paciente",
+                    icon: Icons.person_add,
+                    isPrimary: true,
+                    onTap: () {
+                      showDialog(
+                        context: context,
+                        builder: (context) => const ClientModal(),
+                      );
+                    },
+                  ),
                 ),
               ],
             ),
@@ -157,14 +176,7 @@ class _ClientsViewState extends State<ClientsView> {
               pageSize: clientsProvider.pageSize,
               currentPage: clientsProvider.currentPage,
               onPageChanged: (page) {
-                if (clientsProvider.isSearching) {
-                  clientsProvider.searchGlobal(
-                    clientsProvider.currentSearchTerm,
-                    page: page,
-                  );
-                } else {
-                  clientsProvider.getPaginatedClients(page: page);
-                }
+                clientsProvider.loadClients(page: page);
               },
               columns: const [
                 DataColumn(
@@ -213,83 +225,211 @@ class _ClientsViewState extends State<ClientsView> {
                             clientsProvider.pageSize) +
                         index +
                         1;
-                    final rowColor =
-                        !clientsProvider.filterActive
-                            ? Colors.grey.shade50
-                            : null;
+
+                    final isDeleted = !cliente.activo;
+                    final textColor = isDeleted ? Colors.grey : Colors.black87;
+                    final textDecoration =
+                        isDeleted ? TextDecoration.lineThrough : null;
 
                     return DataRow(
-                      color: MaterialStateProperty.all(rowColor),
+                      color: WidgetStateProperty.resolveWith<Color?>((states) {
+                        // Hover effect
+                        if (states.contains(WidgetState.hovered)) {
+                          return isDeleted
+                              ? Colors.red.withOpacity(0.08)
+                              : Colors.grey.shade100;
+                        }
+                        // Default colors - white for normal rows
+                        return isDeleted
+                            ? Colors.red.withOpacity(0.05)
+                            : Colors.white;
+                      }),
+                      onSelectChanged: (_) {
+                        context.go('/pacientes/${cliente.idCliente}');
+                      },
                       cells: [
+                        // Index
                         DataCell(
                           Text(
                             "$realIndex",
-                            style: const TextStyle(
-                              color: Colors.grey,
+                            style: TextStyle(
+                              color: textColor,
                               fontWeight: FontWeight.w600,
+                              decoration: textDecoration,
                             ),
                           ),
                         ),
+                        // Nombre + Avatar + Última Visita
                         DataCell(
-                          Row(
-                            children: [
-                              CircleAvatar(
-                                radius: 14,
-                                backgroundColor: AppTheme.primaryColor
-                                    .withOpacity(0.1),
-                                child: Text(
-                                  cliente.nombre.isNotEmpty
-                                      ? cliente.nombre[0].toUpperCase()
-                                      : "?",
-                                  style: const TextStyle(
-                                    color: AppTheme.primaryColor,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
+                          Tooltip(
+                            message: "Ver detalles de ${cliente.nombre}",
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 8.0,
+                              ),
+                              child: Row(
+                                children: [
+                                  AvatarWidget(
+                                    nombreCompleto: cliente.nombre,
+                                    id: cliente.idCliente,
+                                    radius: 16,
+                                    fontSize: 14,
                                   ),
-                                ),
+                                  const SizedBox(width: 12),
+                                  Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      // Nombre + Chips en la misma fila
+                                      Row(
+                                        children: [
+                                          Text(
+                                            '${cliente.nombre} ${cliente.apellidos}',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.w500,
+                                              fontSize: 14,
+                                              color: textColor,
+                                              decoration: textDecoration,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          // Chips al lado del nombre
+                                          if (cliente.citasPendientes != null &&
+                                              cliente.citasPendientes! > 0)
+                                            _buildClickableInfoChip(
+                                              context,
+                                              "${cliente.citasPendientes}",
+                                              Colors.blue,
+                                              Icons.event,
+                                              'Citas programadas',
+                                              () => _navigateToCitasTab(
+                                                context,
+                                                cliente.idCliente,
+                                              ),
+                                            ),
+                                          if (cliente.citasPendientes != null &&
+                                              cliente.citasPendientes! > 0 &&
+                                              cliente.bonosActivos != null &&
+                                              cliente.bonosActivos! > 0)
+                                            const SizedBox(width: 4),
+                                          if (cliente.bonosActivos != null &&
+                                              cliente.bonosActivos! > 0)
+                                            _buildClickableInfoChip(
+                                              context,
+                                              "${cliente.bonosActivos}",
+                                              Colors.green,
+                                              Icons.card_giftcard,
+                                              'Bonos activos',
+                                              () => _navigateToBonosTab(
+                                                context,
+                                                cliente.idCliente,
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 2),
+                                      // Última visita debajo
+                                      if (cliente.ultimaCita != null)
+                                        Text(
+                                          _formatLastVisit(cliente.ultimaCita!),
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            color: Colors.grey.shade600,
+                                          ),
+                                        )
+                                      else
+                                        Text(
+                                          "Sin citas",
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            color: Colors.grey.shade400,
+                                            fontStyle: FontStyle.italic,
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ],
                               ),
-                              const SizedBox(width: 10),
-                              Text(
-                                '${cliente.nombre} ${cliente.apellidos}',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
+                            ),
                           ),
                         ),
-                        DataCell(Text(cliente.telefono)),
+                        // Telefono (WhatsApp)
+                        DataCell(
+                          Tooltip(
+                            message: "Ir a WhatsApp",
+                            child: InkWell(
+                              onTap: () => _lanzarWhatsApp(cliente.telefono),
+                              borderRadius: BorderRadius.circular(4),
+                              child: Padding(
+                                padding: const EdgeInsets.all(8.0),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    FaIcon(
+                                      FontAwesomeIcons.whatsapp,
+                                      size: 16,
+                                      color:
+                                          isDeleted
+                                              ? Colors.grey
+                                              : Colors.green,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      cliente.telefono,
+                                      style: TextStyle(
+                                        color:
+                                            isDeleted
+                                                ? Colors.grey
+                                                : Colors.blueGrey,
+                                        decoration: textDecoration,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        // Acciones
                         DataCell(
                           Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
+                              // Botón Crear Cita
                               IconButton(
                                 icon: const Icon(
-                                  Icons.visibility_outlined,
-                                  color: AppTheme.primaryColor,
+                                  Icons.event_available,
+                                  color: Colors.blue,
                                 ),
-                                tooltip: 'Detalles',
-                                onPressed:
-                                    () => context.go(
-                                      '/pacientes/${cliente.idCliente}',
-                                    ),
+                                tooltip: "Crear cita para ${cliente.nombre}",
+                                onPressed: () async {
+                                  await showDialog(
+                                    context: context,
+                                    builder:
+                                        (_) => CitaModal(
+                                          preSelectedClient: cliente,
+                                        ),
+                                  );
+                                  clientsProvider.loadClients(
+                                    page: clientsProvider.currentPage,
+                                  );
+                                },
                               ),
+                              // Botón Eliminar/Reactivar
                               IconButton(
                                 icon: Icon(
-                                  clientsProvider.filterActive
-                                      ? Icons.delete_outline
-                                      : Icons.restore_from_trash,
+                                  isDeleted
+                                      ? Icons.restore_from_trash
+                                      : Icons.delete_outline,
                                   color:
-                                      clientsProvider.filterActive
-                                          ? Colors.redAccent
-                                          : Colors.green,
+                                      isDeleted
+                                          ? Colors.green
+                                          : Colors.redAccent,
                                 ),
-                                tooltip:
-                                    clientsProvider.filterActive
-                                        ? 'Eliminar'
-                                        : 'Reactivar',
+                                tooltip: isDeleted ? 'Reactivar' : 'Eliminar',
                                 onPressed: () async {
-                                  _confirmarAccion(
+                                  _ejecutarAccionDirecta(
                                     context,
                                     clientsProvider,
                                     cliente,
@@ -311,8 +451,9 @@ class _ClientsViewState extends State<ClientsView> {
 
   // Dropdown estilizado como en PaymentsView
   Widget _buildStatusDropdown(ClientsProvider provider) {
-    return DashboardDropdown<bool>(
+    return DashboardDropdown<bool?>(
       selectedValue: provider.filterActive,
+      tooltip: "Filtrar estado",
       onSelected: (val) => provider.toggleFilter(val),
       options: const [
         DropdownOption(
@@ -327,67 +468,161 @@ class _ClientsViewState extends State<ClientsView> {
           icon: Icons.delete_outline,
           color: Colors.redAccent,
         ),
+        DropdownOption(
+          value: null,
+          label: "Todos",
+          icon: Icons.list,
+          color: Colors.grey,
+        ),
       ],
     );
   }
 
-  // Confirmacion de eliminar paciente
-  Future<void> _confirmarAccion(
+  Widget _buildActivityDropdown(ClientsProvider provider) {
+    return DashboardDropdown<int?>(
+      selectedValue: provider.lastActivityDays,
+      tooltip: "Filtrar por última visita",
+      onSelected: (val) => provider.setActivityFilter(val),
+      options: const [
+        DropdownOption(
+          value: null,
+          label: "Todos",
+          icon: Icons.all_inclusive,
+          color: Colors.grey,
+        ),
+        DropdownOption(
+          value: 7,
+          label: "7 días",
+          icon: Icons.today,
+          color: Colors.blue,
+        ),
+        DropdownOption(
+          value: 30,
+          label: "30 días",
+          icon: Icons.calendar_month,
+          color: Colors.green,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildClickableInfoChip(
+    BuildContext context,
+    String label,
+    Color color,
+    IconData icon,
+    String tooltip,
+    VoidCallback onTap,
+  ) {
+    return Tooltip(
+      message: tooltip,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        hoverColor: color.withOpacity(0.2),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: color.withOpacity(0.3)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 12, color: color),
+              const SizedBox(width: 3),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: color,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _navigateToCitasTab(BuildContext context, int clienteId) {
+    // Navegar a cliente detalle con tab de citas (índice 0) y filtro programada
+    context.go('/pacientes/$clienteId?tab=0&filtro=programada');
+  }
+
+  void _navigateToBonosTab(BuildContext context, int clienteId) {
+    // Navegar a cliente detalle con tab de bonos (índice 1)
+    context.go('/pacientes/$clienteId?tab=1');
+  }
+
+  String _formatLastVisit(DateTime lastVisit) {
+    final now = DateTime.now();
+    final difference = now.difference(lastVisit);
+
+    if (difference.inDays == 0) return "Última visita: Hoy";
+    if (difference.inDays == 1) return "Última visita: Hace 1 día";
+    return "Última visita: Hace ${difference.inDays} días";
+  }
+
+  Future<void> _ejecutarAccionDirecta(
     BuildContext context,
     ClientsProvider provider,
     dynamic cliente,
   ) async {
-    final isDeleting = provider.filterActive;
-    final title = isDeleting ? "¿Eliminar paciente?" : "¿Reactivar paciente?";
-    final content =
-        isDeleting
-            ? "Se moverá a la papelera."
-            : "Volverá a aparecer en la lista de activos.";
-    final actionColor = isDeleting ? Colors.red : Colors.green;
+    final isDeleting = cliente.activo;
+    final nombreCompleto = "${cliente.nombre} ${cliente.apellidos}";
 
-    final confirm = await showDialog(
-      context: context,
-      builder:
-          (ctx) => AlertDialog(
-            title: Text(title),
-            content: Text(content),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: const Text("Cancelar"),
-              ),
-              ElevatedButton(
-                onPressed: () => Navigator.pop(ctx, true),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: actionColor,
-                  foregroundColor: Colors.white,
-                ),
-                child: Text(isDeleting ? "Eliminar" : "Reactivar"),
-              ),
-            ],
-          ),
-    );
+    String? error;
+    if (isDeleting) {
+      error = await provider.deleteClient(cliente.idCliente);
+    } else {
+      error = await provider.recoverClient(cliente.idCliente);
+    }
 
-    if (confirm == true) {
-      String? error;
-      if (isDeleting) {
-        error = await provider.deleteClient(cliente.idCliente);
+    if (context.mounted) {
+      if (error == null) {
+        CustomSnackBar.show(
+          context,
+          message:
+              isDeleting
+                  ? "Cliente $nombreCompleto eliminado"
+                  : "Cliente $nombreCompleto reactivado",
+          type: SnackBarType.success,
+          actionLabel: isDeleting ? "DESHACER" : null,
+          onAction:
+              isDeleting
+                  ? () async {
+                    await provider.recoverClient(cliente.idCliente);
+                    if (context.mounted) {
+                      CustomSnackBar.show(
+                        context,
+                        message: "Borrado deshecho",
+                        type: SnackBarType.info,
+                      );
+                    }
+                  }
+                  : null,
+        );
       } else {
-        error = await provider.recoverClient(cliente.idCliente);
-      }
-
-      if (context.mounted) {
-        if (error == null) {
-          _mostrarSnack(
-            isDeleting ? "Paciente borrado" : "Paciente reactivado",
-            Colors.green,
-          );
-        } else {
-          _mostrarSnack(error, Colors.red);
-        }
+        _mostrarSnack(error, Colors.red);
       }
     }
   }
-}
 
-// BOTÓN HOVERABLE (Igual que en Auditoría pero adaptado)
+  Future<void> _lanzarWhatsApp(String telefono) async {
+    // Normalizar telefono (quitar espacios, guiones, etc)
+    final num = telefono.replaceAll(RegExp(r'\s+'), '').replaceAll('-', '');
+    final uri = Uri.parse("https://wa.me/$num");
+
+    try {
+      // Intentar primero con externalApplication
+      if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+        throw 'El sistema no pudo manejar la URL';
+      }
+    } catch (e) {
+      if (mounted) _mostrarSnack("No se puede abrir WhatsApp", Colors.red);
+    }
+  }
+}

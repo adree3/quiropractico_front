@@ -89,10 +89,9 @@ class PaginatedTable extends StatelessWidget {
                                       const Color(0xFF00AEEF),
                                     ),
                                     columnSpacing: 20,
-                                    dataRowMinHeight:
-                                        dataRowHeight ?? defaultHeight,
-                                    dataRowMaxHeight:
-                                        dataRowHeight ?? defaultHeight,
+                                    dataRowMinHeight: dataRowHeight ?? defaultHeight,
+                                    dataRowMaxHeight: dataRowHeight ?? defaultHeight,
+                                    showCheckboxColumn: false,
                                     columns: columns,
                                     rows: rows,
                                     border: const TableBorder(

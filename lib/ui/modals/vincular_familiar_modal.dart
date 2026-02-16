@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:quiropractico_front/config/theme/app_theme.dart';
 import 'package:quiropractico_front/models/cliente.dart';
 import 'package:quiropractico_front/providers/client_detail_provider.dart';
 import 'package:quiropractico_front/providers/clients_provider.dart';
 import 'package:quiropractico_front/ui/widgets/custom_snackbar.dart';
+import 'package:quiropractico_front/ui/widgets/avatar_widget.dart';
 
 class VincularFamiliarModal extends StatefulWidget {
   final ClientDetailProvider detailProvider;
@@ -18,7 +18,7 @@ class VincularFamiliarModal extends StatefulWidget {
 class _VincularFamiliarModalState extends State<VincularFamiliarModal> {
   final _formKey = GlobalKey<FormState>();
   final relacionCtrl = TextEditingController();
-  
+
   Cliente? selectedBeneficiario;
 
   @override
@@ -29,8 +29,11 @@ class _VincularFamiliarModalState extends State<VincularFamiliarModal> {
 
     return AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-      title: const Text("Añadir Familiar", style: TextStyle(fontWeight: FontWeight.bold)),
-      
+      title: const Text(
+        "Añadir Familiar",
+        style: TextStyle(fontWeight: FontWeight.bold),
+      ),
+
       content: SizedBox(
         width: 400,
         child: Form(
@@ -46,15 +49,19 @@ class _VincularFamiliarModalState extends State<VincularFamiliarModal> {
               const SizedBox(height: 20),
 
               // Autocomplete
-              Autocomplete<Cliente>(
-                displayStringForOption: (Cliente option) => "${option.nombre} ${option.apellidos} (${option.telefono})",
-                
+              RawAutocomplete<Cliente>(
+                displayStringForOption:
+                    (Cliente option) =>
+                        "${option.nombre} ${option.apellidos} (${option.telefono})",
+
                 optionsBuilder: (TextEditingValue textEditingValue) async {
-                  if (textEditingValue.text == '') {
+                  if (textEditingValue.text.isEmpty) {
                     return const Iterable<Cliente>.empty();
                   }
-                  final resultados = await clientsProvider.searchClientesByName(textEditingValue.text);
-                  
+                  final resultados = await clientsProvider.searchClientesByName(
+                    textEditingValue.text,
+                  );
+
                   return resultados.where((c) => c.idCliente != idTitular);
                 },
 
@@ -64,22 +71,50 @@ class _VincularFamiliarModalState extends State<VincularFamiliarModal> {
                   });
                 },
 
-                // Diseño del text field 
-                fieldViewBuilder: (context, textEditingController, focusNode, onFieldSubmitted) {
+                // Diseño del text field
+                fieldViewBuilder: (
+                  context,
+                  textEditingController,
+                  focusNode,
+                  onFieldSubmitted,
+                ) {
                   return TextFormField(
                     controller: textEditingController,
                     focusNode: focusNode,
+                    autovalidateMode: AutovalidateMode.onUserInteraction,
                     decoration: InputDecoration(
                       labelText: 'Buscar Paciente (Nombre o Teléfono)',
-                      prefixIcon: const Icon(Icons.search),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                      suffixIcon: selectedBeneficiario != null 
-                          ? const Icon(Icons.check_circle, color: Colors.green)
-                          : null,
+                      prefixIcon: const Icon(Icons.person_search),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      suffixIcon:
+                          selectedBeneficiario != null
+                              ? IconButton(
+                                icon: const Icon(
+                                  Icons.clear,
+                                  color: Colors.grey,
+                                ),
+                                onPressed: () {
+                                  textEditingController.clear();
+                                  setState(() {
+                                    selectedBeneficiario = null;
+                                  });
+                                },
+                              )
+                              : null,
                     ),
+                    onChanged: (text) {
+                      // Si cambia el texto, invalidamos la selección anterior
+                      if (selectedBeneficiario != null) {
+                        setState(() {
+                          selectedBeneficiario = null;
+                        });
+                      }
+                    },
                     validator: (value) {
                       if (selectedBeneficiario == null) {
-                        return 'Debes seleccionar un paciente de la lista';
+                        return 'Debes buscar y seleccionar un paciente de la lista';
                       }
                       return null;
                     },
@@ -103,12 +138,15 @@ class _VincularFamiliarModalState extends State<VincularFamiliarModal> {
                           itemBuilder: (BuildContext context, int index) {
                             final Cliente option = options.elementAt(index);
                             return ListTile(
-                              leading: const CircleAvatar(
-                                radius: 15, 
-                                backgroundColor: AppTheme.primaryColor, 
-                                child: Icon(Icons.person, size: 16, color: Colors.white)
+                              leading: AvatarWidget(
+                                nombreCompleto: option.nombre,
+                                id: option.idCliente,
+                                radius: 15,
+                                fontSize: 14,
                               ),
-                              title: Text("${option.nombre} ${option.apellidos}"),
+                              title: Text(
+                                "${option.nombre} ${option.apellidos}",
+                              ),
                               subtitle: Text(option.telefono),
                               onTap: () => onSelected(option),
                             );
@@ -119,17 +157,19 @@ class _VincularFamiliarModalState extends State<VincularFamiliarModal> {
                   );
                 },
               ),
-              
+
               const SizedBox(height: 15),
 
               // RELACIÓN
               TextFormField(
                 controller: relacionCtrl,
+                autovalidateMode: AutovalidateMode.onUserInteraction,
                 decoration: const InputDecoration(
                   labelText: 'Relación (ej. Hijo, Pareja)',
                   prefixIcon: Icon(Icons.link),
                 ),
-                validator: (val) => (val == null || val.isEmpty) ? 'Requerido' : null,
+                validator:
+                    (val) => (val == null || val.isEmpty) ? 'Requerido' : null,
               ),
             ],
           ),
@@ -137,28 +177,29 @@ class _VincularFamiliarModalState extends State<VincularFamiliarModal> {
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.pop(context), 
-          child: const Text('Cancelar')
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancelar'),
         ),
         ElevatedButton(
           onPressed: () async {
-            if (_formKey.currentState!.validate() && selectedBeneficiario != null) {
+            if (_formKey.currentState!.validate() &&
+                selectedBeneficiario != null) {
               final String? error = await detailProvider.vincularFamiliar(
                 selectedBeneficiario!.idCliente,
-                relacionCtrl.text.trim()
+                relacionCtrl.text.trim(),
               );
 
               if (context.mounted) {
                 if (error == null) {
-                  Navigator.pop(context);
-                  CustomSnackBar.show(context, 
-                    message: 'Familiar vinculado correctamente', 
-                    type: SnackBarType.success
-                  );
+                  Navigator.pop(context, {
+                    'familiar': selectedBeneficiario,
+                    'relacion': relacionCtrl.text.trim(),
+                  });
                 } else {
-                  CustomSnackBar.show(context, 
-                    message: error, 
-                    type: SnackBarType.error
+                  CustomSnackBar.show(
+                    context,
+                    message: error,
+                    type: SnackBarType.error,
                   );
                 }
               }
