@@ -10,6 +10,7 @@ class Cita {
   final String estado;
   final String? notas;
   final String infoPago;
+  final int? idBonoCliente;
 
   Cita({
     required this.idCita,
@@ -23,6 +24,7 @@ class Cita {
     required this.estado,
     this.notas,
     required this.infoPago,
+    this.idBonoCliente,
   });
 
   factory Cita.fromJson(Map<String, dynamic> json) {
@@ -38,6 +40,7 @@ class Cita {
       estado: json['estado'],
       notas: json['notasRecepcion'],
       infoPago: json['infoPago'] ?? 'Desconocido',
+      idBonoCliente: json['idBonoCliente'],
     );
   }
 }

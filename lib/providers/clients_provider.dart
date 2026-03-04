@@ -15,10 +15,10 @@ class ClientsProvider extends ChangeNotifier {
 
   String currentSearchTerm = '';
   int currentPage = 0;
-  int pageSize = 11;
+  int pageSize = 10;
   int totalPages = 0;
   int totalElements = 0;
-  int? lastActivityDays; // null, 7, o 30
+  int? lastActivityDays;
 
   ClientsProvider() {
     loadClients();
@@ -303,6 +303,19 @@ class ClientsProvider extends ChangeNotifier {
     } catch (e) {
       print('Error cargando cliente individual: $e');
       return null;
+    }
+  }
+
+  Future<void> reloadClient(int id) async {
+    print("DEBUG: reloadClient($id) called. CurrentPage: $currentPage");
+    try {
+      // Recargamos la página actual en segundo plano (sin mostrar loading)
+      // Esto asegura que se actualicen todos los contadores y fechas calculadas (como citasPendientes)
+      // que solo vienen en el endpoint de listado, no en el de detalle.
+      await loadClients(page: currentPage, notifyLoading: false);
+      print("DEBUG: reloadClient($id) finished.");
+    } catch (e) {
+      print("Error recargando clientes: $e");
     }
   }
 }

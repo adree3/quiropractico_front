@@ -8,6 +8,7 @@ import 'package:quiropractico_front/providers/agenda_bloqueo_provider.dart';
 import 'package:quiropractico_front/providers/agenda_provider.dart';
 import 'package:quiropractico_front/providers/auditoria_provider.dart';
 import 'package:quiropractico_front/providers/auth_provider.dart';
+import 'package:quiropractico_front/providers/citas_provider.dart';
 import 'package:quiropractico_front/providers/clients_provider.dart';
 import 'package:quiropractico_front/providers/historial_provider.dart';
 import 'package:quiropractico_front/providers/horarios_provider.dart';
@@ -29,6 +30,7 @@ void main() async {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => ClientsProvider()),
+        ChangeNotifierProvider(create: (_) => CitasProvider()),
         ChangeNotifierProvider(create: (_) => AgendaProvider()),
         ChangeNotifierProvider(create: (_) => VentasProvider()),
         ChangeNotifierProvider(create: (_) => ServicesProvider()),

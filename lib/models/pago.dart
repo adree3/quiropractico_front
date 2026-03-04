@@ -1,5 +1,6 @@
 class Pago {
   final int idPago;
+  final int idCliente;
   final String nombreCliente;
   final String concepto;
   final double monto;
@@ -7,11 +8,21 @@ class Pago {
   final DateTime fechaPago;
   final bool pagado;
 
-  Pago({required this.idPago, required this.nombreCliente, required this.concepto, required this.monto, required this.metodoPago, required this.fechaPago, required this.pagado});
+  Pago({
+    required this.idPago,
+    required this.idCliente,
+    required this.nombreCliente,
+    required this.concepto,
+    required this.monto,
+    required this.metodoPago,
+    required this.fechaPago,
+    required this.pagado,
+  });
 
   factory Pago.fromJson(Map<String, dynamic> json) {
     return Pago(
       idPago: json['idPago'],
+      idCliente: json['idCliente'],
       nombreCliente: json['nombreCliente'],
       concepto: json['concepto'],
       monto: (json['monto'] as num).toDouble(),

@@ -19,7 +19,7 @@ class UsersProvider extends ChangeNotifier {
   int blockedCount = 0;
 
   int currentPage = 0;
-  int pageSize = 11;
+  int pageSize = 10;
   int totalElements = 0;
   int totalPages = 0;
 

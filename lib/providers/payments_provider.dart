@@ -23,18 +23,22 @@ class PaymentsProvider extends ChangeNotifier {
   int pagePendientes = 0;
   int totalPendientesCount = 0;
   bool isLoadingPendientes = false;
+  bool isLoadingMorePendientes = false;
+  bool hasMorePendientes = true;
 
   // Tabla de historial
   List<Pago> listaHistorial = [];
   int pageHistorial = 0;
   int totalHistorialCount = 0;
   bool isLoadingHistorial = false;
+  bool isLoadingMoreHistorial = false;
+  bool hasMoreHistorial = true;
 
   // Filtros
   DateTime fechaInicio = DateTime(2000);
   DateTime fechaFin = DateTime(2100);
   String currentSearchTerm = '';
-  final int pageSize = 8;
+  final int pageSize = 15;
   Timer? _debounce;
 
   PaymentsProvider() {
@@ -52,8 +56,7 @@ class PaymentsProvider extends ChangeNotifier {
     if (_debounce?.isActive ?? false) _debounce!.cancel();
     _debounce = Timer(const Duration(milliseconds: 500), () {
       currentSearchTerm = query;
-      getPagosPendientes(page: 0);
-      getPagosHistorial(page: 0);
+      loadAll(fechaInicio, fechaFin);
     });
   }
 
@@ -62,6 +65,8 @@ class PaymentsProvider extends ChangeNotifier {
     fechaFin = end;
     pagePendientes = 0;
     pageHistorial = 0;
+    hasMorePendientes = true;
+    hasMoreHistorial = true;
 
     isLoading = true;
     notifyListeners();
@@ -108,9 +113,14 @@ class PaymentsProvider extends ChangeNotifier {
   Future<void> getPagosPendientes({
     required int page,
     bool notifyLoading = true,
+    bool append = false,
   }) async {
     if (notifyLoading) {
-      isLoadingPendientes = true;
+      if (append) {
+        isLoadingMorePendientes = true;
+      } else {
+        isLoadingPendientes = true;
+      }
       notifyListeners();
     }
     pagePendientes = page;
@@ -128,22 +138,47 @@ class PaymentsProvider extends ChangeNotifier {
 
       final data = response.data;
       final List<dynamic> content = data['content'];
+      final totalPages = data['totalPages'];
 
-      listaPendientes = content.map((e) => Pago.fromJson(e)).toList();
+      final newItems = content.map((e) => Pago.fromJson(e)).toList();
+
+      if (append) {
+        listaPendientes.addAll(newItems);
+      } else {
+        listaPendientes = newItems;
+      }
+
       totalPendientesCount = data['totalElements'];
+      hasMorePendientes = (page + 1) < totalPages;
     } catch (e) {
       print("Error pendientes: ${ErrorHandler.extractMessage(e)}");
     } finally {
       isLoadingPendientes = false;
+      isLoadingMorePendientes = false;
       notifyListeners();
     }
   }
 
+  Future<void> loadMorePendientes() async {
+    if (isLoadingMorePendientes || !hasMorePendientes) return;
+    await getPagosPendientes(page: pagePendientes + 1, append: true);
+  }
+
   // Obtiene los pagos historial
-  Future<void> getPagosHistorial({required int page}) async {
-    isLoadingHistorial = true;
+  Future<void> getPagosHistorial({
+    required int page,
+    bool notifyLoading = true,
+    bool append = false,
+  }) async {
+    if (notifyLoading) {
+      if (append) {
+        isLoadingMoreHistorial = true;
+      } else {
+        isLoadingHistorial = true;
+      }
+      notifyListeners();
+    }
     pageHistorial = page;
-    notifyListeners();
 
     try {
       final response = await ApiService.dio.get(
@@ -160,15 +195,30 @@ class PaymentsProvider extends ChangeNotifier {
 
       final data = response.data;
       final List<dynamic> content = data['content'];
+      final totalPages = data['totalPages'];
 
-      listaHistorial = content.map((e) => Pago.fromJson(e)).toList();
+      final newItems = content.map((e) => Pago.fromJson(e)).toList();
+
+      if (append) {
+        listaHistorial.addAll(newItems);
+      } else {
+        listaHistorial = newItems;
+      }
+
       totalHistorialCount = data['totalElements'];
+      hasMoreHistorial = (page + 1) < totalPages;
     } catch (e) {
       print("Error historial: ${ErrorHandler.extractMessage(e)}");
     } finally {
       isLoadingHistorial = false;
+      isLoadingMoreHistorial = false;
       notifyListeners();
     }
+  }
+
+  Future<void> loadMoreHistorial() async {
+    if (isLoadingMoreHistorial || !hasMoreHistorial) return;
+    await getPagosHistorial(page: pageHistorial + 1, append: true);
   }
 
   // Comprobación ligera para el Sidebar

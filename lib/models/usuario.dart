@@ -5,6 +5,7 @@ class Usuario {
   final String rol;
   final bool activo;
   final bool cuentaBloqueada;
+  final DateTime? ultimaConexion;
 
   Usuario({
     required this.idUsuario,
@@ -13,6 +14,7 @@ class Usuario {
     required this.rol,
     required this.activo,
     required this.cuentaBloqueada,
+    this.ultimaConexion,
   });
 
   Usuario copyWith({
@@ -22,6 +24,7 @@ class Usuario {
     String? rol,
     bool? activo,
     bool? cuentaBloqueada,
+    DateTime? ultimaConexion,
   }) {
     return Usuario(
       idUsuario: idUsuario ?? this.idUsuario,
@@ -30,6 +33,7 @@ class Usuario {
       rol: rol ?? this.rol,
       activo: activo ?? this.activo,
       cuentaBloqueada: cuentaBloqueada ?? this.cuentaBloqueada,
+      ultimaConexion: ultimaConexion ?? this.ultimaConexion,
     );
   }
 
@@ -42,6 +46,10 @@ class Usuario {
       activo: (json['activo'] == 1 || json['activo'] == true),
       cuentaBloqueada:
           (json['cuentaBloqueada'] == 1 || json['cuentaBloqueada'] == true),
+      ultimaConexion:
+          json['ultimaConexion'] != null
+              ? DateTime.tryParse(json['ultimaConexion'].toString())
+              : null,
     );
   }
 
