@@ -10,6 +10,7 @@ import 'package:quiropractico_front/ui/views/config/services_view.dart';
 import 'package:quiropractico_front/ui/views/config/users_view.dart';
 import 'package:quiropractico_front/ui/views/config/vacaciones_calendar_view.dart';
 import 'package:quiropractico_front/ui/views/dashboard/agenda_view.dart';
+import 'package:quiropractico_front/ui/views/dashboard/citas_view.dart';
 import 'package:quiropractico_front/ui/views/dashboard/cliente_detalle_view.dart';
 import 'package:quiropractico_front/ui/views/dashboard/clients_view.dart';
 import 'package:quiropractico_front/ui/views/dashboard/home_view.dart';
@@ -65,7 +66,16 @@ class AppRouter {
           ),
           GoRoute(
             path: '/agenda',
-            builder: (context, state) => const AgendaView(),
+            builder: (context, state) {
+              final fechaStr = state.uri.queryParameters['fecha'];
+              final initialDate =
+                  fechaStr != null ? DateTime.tryParse(fechaStr) : null;
+              return AgendaView(initialDate: initialDate);
+            },
+          ),
+          GoRoute(
+            path: '/citas',
+            builder: (context, state) => const CitasView(),
           ),
           GoRoute(
             path: '/pacientes',
@@ -77,16 +87,27 @@ class AppRouter {
               final String id = state.pathParameters['uid'] ?? '0';
 
               // Leer query parameters opcionales
-              final tabParam = state.uri.queryParameters['tab'];
+              final tabParam =
+                  state.uri.queryParameters['tab'] ??
+                  state.uri.queryParameters['tabIndex'];
               final filtroParam = state.uri.queryParameters['filtro'];
+              final showBonoParam = state.uri.queryParameters['showBono'];
+              final resaltarCitaParam =
+                  state.uri.queryParameters['resaltarCitaId'];
 
               final initialTab =
                   tabParam != null ? int.tryParse(tabParam) : null;
+              final resaltarCitaId =
+                  resaltarCitaParam != null
+                      ? int.tryParse(resaltarCitaParam)
+                      : null;
 
               return ClienteDetalleView(
                 idCliente: int.parse(id),
                 initialTab: initialTab,
                 initialFilter: filtroParam,
+                showBono: showBonoParam == 'true',
+                resaltarCitaId: resaltarCitaId,
               );
             },
           ),
