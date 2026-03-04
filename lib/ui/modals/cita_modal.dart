@@ -108,7 +108,8 @@ class _CitaModalState extends State<CitaModal> {
         if (mounted) {
           setState(() {
             selectedCliente = widget.preSelectedClient;
-            _clientSearchController.text = "${selectedCliente!.nombre} ${selectedCliente!.apellidos} (${selectedCliente!.telefono})";
+            _clientSearchController.text =
+                "${selectedCliente!.nombre} ${selectedCliente!.apellidos} (${selectedCliente!.telefono})";
           });
         }
       }
@@ -621,7 +622,7 @@ class _CitaModalState extends State<CitaModal> {
                                 setState(() {
                                   _isLoading = false;
                                 });
-                              Navigator.pop(context);
+                              Navigator.pop(context, true);
                               CustomSnackBar.show(
                                 context,
                                 message:
@@ -789,7 +790,7 @@ class _CitaModalState extends State<CitaModal> {
                                       _isLoading = false;
                                     });
                                     if (reintentoError == null) {
-                                      Navigator.pop(context);
+                                      Navigator.pop(context, true);
 
                                       CustomSnackBar.show(
                                         context,
