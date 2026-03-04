@@ -10,12 +10,14 @@ class BonoDetalleModal extends StatefulWidget {
   final Bono bono;
   final String nombreCliente;
   final int idCliente;
+  final int? resaltarCitaId;
 
   const BonoDetalleModal({
     super.key,
     required this.bono,
     required this.nombreCliente,
     required this.idCliente,
+    this.resaltarCitaId,
   });
 
   @override
@@ -26,6 +28,9 @@ class _BonoDetalleModalState extends State<BonoDetalleModal> {
   bool isLoading = true;
   List<ConsumoBono> consumos = [];
   String? errorMessage;
+
+  // Variables para el scroll auto
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
@@ -47,12 +52,45 @@ class _BonoDetalleModalState extends State<BonoDetalleModal> {
                   .toList();
           isLoading = false;
         });
+
+        // Disparar scroll hacia el item resaltado
+        if (widget.resaltarCitaId != null) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _scrollToResaltado();
+          });
+        }
       }
     } catch (e) {
       setState(() {
         errorMessage = "Error al cargar el historial: $e";
         isLoading = false;
       });
+    }
+  }
+
+  void _scrollToResaltado() {
+    final targetIndex = consumos.indexWhere(
+      (c) => c.idCita == widget.resaltarCitaId,
+    );
+
+    print(
+      "DEBUG Modal - Cita Target: ${widget.resaltarCitaId} | Encontrado en Index: $targetIndex",
+    );
+
+    if (targetIndex != -1) {
+      // Altura real del item suele rondar los 170px dependiendo de la información
+      final double estimatedItemHeight = 170.0;
+      // Reducimos el offset negativo a solo 20.0 para que se posicione más arriba en pantalla
+      double targetScroll = (targetIndex * estimatedItemHeight) - 20.0;
+      if (targetScroll < 0) targetScroll = 0;
+
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          targetScroll,
+          duration: const Duration(milliseconds: 700),
+          curve: Curves.easeInOut,
+        );
+      }
     }
   }
 
@@ -243,6 +281,7 @@ class _BonoDetalleModalState extends State<BonoDetalleModal> {
     }
 
     return ListView.builder(
+      controller: _scrollController,
       itemCount: consumos.length,
       itemBuilder: (context, index) {
         final consumo = consumos[index];
@@ -251,172 +290,230 @@ class _BonoDetalleModalState extends State<BonoDetalleModal> {
           'dd/MM/yyyy • HH:mm',
         ).format(consumo.fechaConsumo);
 
+        final isResaltado = consumo.idCita == widget.resaltarCitaId;
+
         return IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Timeline line and dot
-              SizedBox(
-                width: 40,
-                child: Column(
-                  children: [
-                    Container(
-                      width: 12,
-                      height: 12,
-                      margin: const EdgeInsets.symmetric(vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.blue.shade100,
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: Colors.blue.shade500,
-                          width: 2,
-                        ),
-                      ),
-                    ),
-                    if (!isLast)
-                      Expanded(
-                        child: Container(width: 2, color: Colors.grey.shade200),
-                      ),
-                  ],
-                ),
-              ),
-              // Content
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.only(bottom: 24.0),
+          child: Container(
+            padding: const EdgeInsets.only(right: 8),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Timeline line and dot
+                SizedBox(
+                  width: 40,
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        "Sesión consumida",
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                          color: Colors.black87,
+                      Container(
+                        width: 12,
+                        height: 12,
+                        margin: const EdgeInsets.symmetric(vertical: 4),
+                        decoration: BoxDecoration(
+                          color:
+                              isResaltado
+                                  ? Colors.orange.shade100
+                                  : Colors.blue.shade100,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color:
+                                isResaltado
+                                    ? Colors.orange.shade500
+                                    : Colors.blue.shade500,
+                            width: isResaltado ? 3 : 2,
+                          ),
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        fecha,
-                        style: TextStyle(
-                          color: Colors.grey.shade600,
-                          fontSize: 12,
+                      if (!isLast)
+                        Expanded(
+                          child: Container(
+                            width: 2,
+                            color: Colors.grey.shade200,
+                          ),
                         ),
-                      ),
-                      if (consumo.nombrePaciente != null) ...[
-                        const SizedBox(height: 4),
+                    ],
+                  ),
+                ),
+                // Content
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 24.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
                         Row(
                           children: [
-                            AvatarWidget(
-                              nombreCompleto: consumo.nombrePaciente!,
-                              id: consumo.idPaciente,
-                              radius: 8,
-                              fontSize: 8,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              "Paciente: ${consumo.nombrePaciente}",
+                            const Text(
+                              "Sesión consumida",
                               style: TextStyle(
-                                color: Colors.blue.shade700,
-                                fontSize: 12,
                                 fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                                color: Colors.black87,
                               ),
                             ),
-                            if (consumo.idPaciente != null &&
-                                consumo.idPaciente != widget.idCliente) ...[
-                              const SizedBox(width: 4),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 6,
-                                  vertical: 2,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.orange.shade100,
-                                  borderRadius: BorderRadius.circular(4),
-                                  border: Border.all(
-                                    color: Colors.orange.shade300,
+                            if (isResaltado) ...[
+                              const SizedBox(width: 8),
+                              Tooltip(
+                                message:
+                                    'Cita desde la que consultaste este bono',
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 3,
                                   ),
-                                ),
-                                child: Text(
-                                  "Familiar",
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.orange.shade800,
+                                  decoration: BoxDecoration(
+                                    color: Colors.orange.shade50,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: Colors.orange.shade200,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.visibility,
+                                        color: Colors.orange.shade800,
+                                        size: 14,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        "Cita Seleccionada",
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.orange.shade800,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ),
                             ],
                           ],
                         ),
-                      ],
-                      const SizedBox(height: 8),
-                      // Card de detalle de la cita asociada
-                      if (consumo.fechaCita != null)
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade50,
-                            border: Border.all(color: Colors.grey.shade200),
-                            borderRadius: BorderRadius.circular(8),
+                        const SizedBox(height: 4),
+                        Text(
+                          fecha,
+                          style: TextStyle(
+                            color: Colors.grey.shade600,
+                            fontSize: 12,
                           ),
-                          child: Row(
+                        ),
+                        if (consumo.nombrePaciente != null) ...[
+                          const SizedBox(height: 4),
+                          Row(
                             children: [
-                              Icon(
-                                Icons.event,
-                                size: 16,
-                                color: Colors.grey.shade700,
+                              AvatarWidget(
+                                nombreCompleto: consumo.nombrePaciente!,
+                                id: consumo.idPaciente,
+                                radius: 8,
+                                fontSize: 8,
                               ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      "Cita asociada",
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.grey.shade700,
-                                      ),
-                                    ),
-                                    Text(
-                                      DateFormat(
-                                        'dd/MM/yyyy HH:mm',
-                                      ).format(consumo.fechaCita!),
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.grey.shade900,
-                                      ),
-                                    ),
-                                    if (consumo.nombreQuiropractico != null)
-                                      Text(
-                                        "Dr. ${consumo.nombreQuiropractico}",
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          color: Colors.grey.shade600,
-                                        ),
-                                      ),
-                                  ],
+                              const SizedBox(width: 4),
+                              Text(
+                                "Paciente: ${consumo.nombrePaciente}",
+                                style: TextStyle(
+                                  color: Colors.blue.shade700,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
                                 ),
                               ),
+                              if (consumo.idPaciente != null &&
+                                  consumo.idPaciente != widget.idCliente) ...[
+                                const SizedBox(width: 4),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.orange.shade100,
+                                    borderRadius: BorderRadius.circular(4),
+                                    border: Border.all(
+                                      color: Colors.orange.shade300,
+                                    ),
+                                  ),
+                                  child: Text(
+                                    "Familiar",
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.orange.shade800,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ],
                           ),
+                        ],
+                        const SizedBox(height: 8),
+                        // Card de detalle de la cita asociada
+                        if (consumo.fechaCita != null)
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade50,
+                              border: Border.all(color: Colors.grey.shade200),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.event,
+                                  size: 16,
+                                  color: Colors.grey.shade700,
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        "Cita asociada",
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.grey.shade700,
+                                        ),
+                                      ),
+                                      Text(
+                                        DateFormat(
+                                          'dd/MM/yyyy HH:mm',
+                                        ).format(consumo.fechaCita!),
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.grey.shade900,
+                                        ),
+                                      ),
+                                      if (consumo.nombreQuiropractico != null)
+                                        Text(
+                                          "Dr. ${consumo.nombreQuiropractico}",
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            color: Colors.grey.shade600,
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        const SizedBox(height: 6),
+                        Text(
+                          "Saldo restante tras uso: ${consumo.sesionesRestantesSnapshot}",
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.grey.shade500,
+                            fontStyle: FontStyle.italic,
+                          ),
                         ),
-                      const SizedBox(height: 6),
-                      Text(
-                        "Saldo restante tras uso: ${consumo.sesionesRestantesSnapshot}",
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: Colors.grey.shade500,
-                          fontStyle: FontStyle.italic,
-                        ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         );
       },

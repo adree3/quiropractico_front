@@ -8,22 +8,100 @@ import 'package:quiropractico_front/providers/client_detail_provider.dart';
 import 'package:quiropractico_front/ui/widgets/bono_detalle_modal.dart';
 import 'package:quiropractico_front/ui/modals/venta_bono_modal.dart';
 import 'package:quiropractico_front/ui/widgets/empty_state.dart';
+import 'package:quiropractico_front/services/api_service.dart';
+import 'package:quiropractico_front/config/api_config.dart';
 
-class ClienteBonosTab extends StatelessWidget {
+class ClienteBonosTab extends StatefulWidget {
   final Cliente cliente;
+  final bool showBono;
+  final int? resaltarCitaId;
 
-  const ClienteBonosTab({super.key, required this.cliente});
+  const ClienteBonosTab({
+    super.key,
+    required this.cliente,
+    this.showBono = false,
+    this.resaltarCitaId,
+  });
+
+  @override
+  State<ClienteBonosTab> createState() => _ClienteBonosTabState();
+}
+
+class _ClienteBonosTabState extends State<ClienteBonosTab> {
+  bool _dialogShown = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // La apertura del modal se evaluará en el build después de cargar datos
+  }
+
+  Future<void> _abrirPrimerBono(ClientDetailProvider provider) async {
+    if (provider.bonos.isEmpty) return;
+
+    if (widget.resaltarCitaId != null) {
+      // Búsqueda silenciosa
+    }
+
+    Bono? targetBono;
+
+    if (widget.resaltarCitaId != null) {
+      // Buscar el bono dueño de la cita consultando sus consumos
+      for (final bono in provider.bonos) {
+        try {
+          final res = await ApiService.dio.get(
+            '${ApiConfig.baseUrl}/bonos/${bono.idBonoActivo}/consumos',
+          );
+
+          if (res.data is List) {
+            final list = res.data as List;
+            final hasCita = list.any(
+              (item) =>
+                  item['idCita']?.toString() ==
+                  widget.resaltarCitaId.toString(),
+            );
+
+            if (hasCita) {
+              targetBono = bono;
+              break;
+            }
+          }
+        } catch (_) {}
+      }
+    }
+
+    if (targetBono == null) {
+      final activeBonos =
+          provider.bonos.where((b) => b.sesionesRestantes > 0).toList();
+      targetBono =
+          activeBonos.isNotEmpty ? activeBonos.first : provider.bonos.first;
+    }
+
+    if (!mounted) return;
+
+    showDialog(
+      context: context,
+      builder:
+          (ctx) => BonoDetalleModal(
+            bono: targetBono!,
+            nombreCliente:
+                "${widget.cliente.nombre} ${widget.cliente.apellidos}",
+            idCliente: widget.cliente.idCliente,
+            resaltarCitaId: widget.resaltarCitaId,
+          ),
+    );
+  }
 
   void _mostrarVentaBono(BuildContext context) {
     showDialog(
       context: context,
-      builder: (context) => VentaBonoModal(cliente: cliente),
+      builder: (context) => VentaBonoModal(cliente: widget.cliente),
     ).then((val) {
       if (val == true) {
         Provider.of<ClientDetailProvider>(
           context,
           listen: false,
-        ).loadFullData(cliente.idCliente);
+        ).loadFullData(widget.cliente.idCliente);
       }
     });
   }
@@ -64,7 +142,8 @@ class ClienteBonosTab extends StatelessWidget {
         textoSesiones = "Sesión única consumida";
       }
     } else {
-      textoSesiones = "${bono.sesionesRestantes} de ${bono.sesionesTotales} sesiones disponibles";
+      textoSesiones =
+          "${bono.sesionesRestantes} de ${bono.sesionesTotales} sesiones disponibles";
     }
 
     return Card(
@@ -83,8 +162,10 @@ class ClienteBonosTab extends StatelessWidget {
               builder:
                   (ctx) => BonoDetalleModal(
                     bono: bono,
-                    nombreCliente: "${cliente.nombre} ${cliente.apellidos}",
-                    idCliente: cliente.idCliente,
+                    nombreCliente:
+                        "${widget.cliente.nombre} ${widget.cliente.apellidos}",
+                    idCliente: widget.cliente.idCliente,
+                    resaltarCitaId: widget.resaltarCitaId,
                   ),
             );
           },
@@ -213,6 +294,17 @@ class ClienteBonosTab extends StatelessWidget {
     final bonosConsumidos =
         provider.bonos.where((b) => b.sesionesRestantes == 0).toList();
 
+    // Auto-abrir modal de bono si se solicita
+    if (widget.showBono &&
+        !_dialogShown &&
+        !provider.isLoading &&
+        provider.bonos.isNotEmpty) {
+      _dialogShown = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _abrirPrimerBono(provider);
+      });
+    }
+
     return Stack(
       children: [
         if (provider.bonos.isEmpty)
@@ -233,7 +325,7 @@ class ClienteBonosTab extends StatelessWidget {
         else
           RefreshIndicator(
             onRefresh: () async {
-              await provider.loadFullData(cliente.idCliente);
+              await provider.loadFullData(widget.cliente.idCliente);
             },
             child: ListView(
               padding: const EdgeInsets.only(bottom: 80),

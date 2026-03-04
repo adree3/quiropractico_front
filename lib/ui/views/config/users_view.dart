@@ -32,7 +32,6 @@ class _UsersViewState extends State<UsersView> {
   }
 
   @override
-  @override
   Widget build(BuildContext context) {
     final provider = Provider.of<UsersProvider>(context);
 
@@ -85,18 +84,21 @@ class _UsersViewState extends State<UsersView> {
                   color: Colors.grey.shade700,
                 ),
                 const SizedBox(width: 10),
-                Text(
-                  'Gestionar Equipo',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                Expanded(
+                  child: Text(
+                    'Gestionar Equipo',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
 
                 const Spacer(),
 
                 // FILTRO ESTADO
                 DashboardDropdown<bool?>(
-                  tooltip: "Estado",
+                  tooltip: "Filtrar estado",
                   selectedValue: provider.filterActive,
                   onSelected: (val) => provider.setFilter(val),
                   options: const [
@@ -158,53 +160,66 @@ class _UsersViewState extends State<UsersView> {
               onPageChanged: (page) => provider.getUsers(page: page),
               columns: const [
                 DataColumn(
-                  label: Text(
-                    "#",
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                  label: Flexible(
+                    child: Text(
+                      "id",
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
                     ),
                   ),
                 ),
                 DataColumn(
-                  label: Text(
-                    "Nombre",
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                  label: Flexible(
+                    child: Text(
+                      "Nombre",
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
                     ),
                   ),
                 ),
                 DataColumn(
-                  label: Text(
-                    "Usuario",
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                  label: Flexible(
+                    child: Text(
+                      "Usuario",
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
                     ),
                   ),
                 ),
                 DataColumn(
-                  label: Text(
-                    "Rol",
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                  label: Flexible(
+                    child: Text(
+                      "Rol",
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
                     ),
                   ),
                 ),
                 DataColumn(
-                  label: Text(
-                    "Acciones",
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                  label: Flexible(
+                    child: Text(
+                      "Acciones",
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                      textAlign: TextAlign.end,
                     ),
-                    textAlign: TextAlign.end,
                   ),
                 ),
               ],
               rows: _generateRows(usuariosOrdenados, provider),
+              rowSpacing: 8.0,
+              hoverElevation: 0.0,
+              enableSmoothTransitions: true,
             ),
           ),
         ],
@@ -216,11 +231,7 @@ class _UsersViewState extends State<UsersView> {
   List<DataRow> _generateRows(List<Usuario> usuarios, UsersProvider provider) {
     if (usuarios.isEmpty) return [];
 
-    final int start = provider.currentPage * provider.pageSize;
-
-    return usuarios.asMap().entries.map((entry) {
-      final int index = start + entry.key + 1;
-      final Usuario usuario = entry.value;
+    return usuarios.map((usuario) {
       final colorTexto = usuario.activo ? Colors.black87 : Colors.grey;
       final textDecoration = usuario.activo ? null : TextDecoration.lineThrough;
 
@@ -240,14 +251,24 @@ class _UsersViewState extends State<UsersView> {
           !usuario.activo ? Colors.grey.shade50 : baseColor.withOpacity(0.04);
 
       return DataRow(
-        color: WidgetStateProperty.all(rowColor),
+        color: WidgetStateProperty.resolveWith<Color?>((states) {
+          if (states.contains(WidgetState.hovered)) {
+            return usuario.activo
+                ? baseColor.withOpacity(0.10)
+                : Colors.grey.withOpacity(0.12);
+          }
+          return rowColor;
+        }),
+        onSelectChanged: (_) {
+          // TODO: navegar al perfil del usuario cuando exista
+        },
         cells: [
           DataCell(
             Text(
-              "$index",
+              "#${usuario.idUsuario}",
               style: TextStyle(
-                color: Colors.grey[400],
-                fontWeight: FontWeight.bold,
+                color: usuario.activo ? Colors.grey[400] : Colors.grey[300],
+                fontWeight: FontWeight.w400,
                 decoration: textDecoration,
               ),
             ),
@@ -270,14 +291,57 @@ class _UsersViewState extends State<UsersView> {
                   ),
                 ),
                 const SizedBox(width: 10),
-                Text(
-                  usuario.nombreCompleto,
-                  style: TextStyle(
-                    color: colorTexto,
-                    fontWeight: FontWeight.w600,
-                    decoration: textDecoration,
-                  ),
+                Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      usuario.nombreCompleto,
+                      style: TextStyle(
+                        color: colorTexto,
+                        fontWeight: FontWeight.w600,
+                        decoration: textDecoration,
+                      ),
+                    ),
+                    Text(
+                      _tiempoDesde(usuario.ultimaConexion),
+                      style: TextStyle(color: Colors.grey[400], fontSize: 11),
+                    ),
+                  ],
                 ),
+                if (usuario.cuentaBloqueada) ...[
+                  const SizedBox(width: 8),
+                  Tooltip(
+                    message: 'Cuenta bloqueada',
+                    child: InkWell(
+                      onTap: () async {
+                        final result = await showDialog(
+                          context: context,
+                          builder: (_) => UserModal(usuarioExistente: usuario),
+                        );
+                        if (result != null && result is Map) {
+                          _handleUserFeedback(result);
+                        }
+                      },
+                      borderRadius: BorderRadius.circular(20),
+                      child: Chip(
+                        label: const Text(
+                          'BLOQUEADA',
+                          style: TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.red,
+                          ),
+                        ),
+                        backgroundColor: Colors.red.withOpacity(0.08),
+                        side: const BorderSide(color: Colors.red),
+                        padding: EdgeInsets.zero,
+                        labelPadding: const EdgeInsets.symmetric(horizontal: 6),
+                        visualDensity: VisualDensity.compact,
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -375,6 +439,17 @@ class _UsersViewState extends State<UsersView> {
         ],
       );
     }).toList();
+  }
+
+  // Formatea el tiempo desde la última conexión
+  String _tiempoDesde(DateTime? dt) {
+    if (dt == null) return 'Sin conexiones registradas';
+    final diff = DateTime.now().difference(dt);
+    if (diff.inMinutes < 1) return 'hace un momento';
+    if (diff.inMinutes < 60) return 'hace ${diff.inMinutes} min';
+    if (diff.inHours < 24) return 'hace ${diff.inHours} h';
+    if (diff.inDays == 1) return 'hace 1 día';
+    return 'hace ${diff.inDays} días';
   }
 
   void _handleUserFeedback(Map result) {

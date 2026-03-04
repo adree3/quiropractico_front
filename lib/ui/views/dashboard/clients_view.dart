@@ -23,11 +23,13 @@ class ClientsView extends StatefulWidget {
 class _ClientsViewState extends State<ClientsView> {
   Timer? _debounce;
   final searchCtrl = TextEditingController();
+  final ScrollController _headerScroll = ScrollController();
 
   @override
   void dispose() {
     _debounce?.cancel();
     searchCtrl.dispose();
+    _headerScroll.dispose();
     super.dispose();
   }
 
@@ -54,113 +56,174 @@ class _ClientsViewState extends State<ClientsView> {
         children: [
           // CABECERA
           Container(
-            padding: const EdgeInsets.all(10),
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(10, 10, 10, 1),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(10),
               border: Border.all(color: Colors.grey.shade300),
             ),
-            child: Row(
-              children: [
-                const SizedBox(width: 10),
-                Icon(
-                  Icons.groups_outlined,
-                  size: 24,
-                  color: Colors.grey.shade700,
-                ),
-                const SizedBox(width: 10),
-                Text(
-                  'Pacientes',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(width: 15),
-                Container(width: 1, height: 30, color: Colors.grey.shade300),
-                const SizedBox(width: 15),
-                // Buscador
-                Expanded(
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 400),
-                      child: TextField(
-                        controller: searchCtrl,
-                        decoration: InputDecoration(
-                          hintText: 'Buscar por nombre, apellido o teléfono',
-                          prefixIcon: const Icon(
-                            Icons.search,
-                            color: Colors.grey,
-                          ),
-                          border: InputBorder.none,
-                          isDense: true,
-                          contentPadding: const EdgeInsets.symmetric(
-                            vertical: 8,
-                          ),
-                          suffixIcon:
-                              searchCtrl.text.isNotEmpty
-                                  ? IconButton(
-                                    icon: const Icon(
-                                      Icons.clear,
-                                      size: 18,
-                                      color: Colors.grey,
-                                    ),
-                                    onPressed: () {
-                                      searchCtrl.clear();
-                                      _debounce?.cancel();
-                                      Provider.of<ClientsProvider>(
-                                        context,
-                                        listen: false,
-                                      ).searchGlobal('');
-                                    },
-                                  )
-                                  : null,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return ScrollbarTheme(
+                  data: ScrollbarThemeData(
+                    thickness: WidgetStateProperty.all(4),
+                    radius: const Radius.circular(4),
+                    thumbColor: WidgetStateProperty.all(
+                      Colors.grey.withOpacity(0.35),
+                    ),
+                    trackColor: WidgetStateProperty.all(Colors.transparent),
+                    trackBorderColor: WidgetStateProperty.all(
+                      Colors.transparent,
+                    ),
+                    thumbVisibility: WidgetStateProperty.all(true),
+                  ),
+                  child: Scrollbar(
+                    controller: _headerScroll,
+                    child: SingleChildScrollView(
+                      controller: _headerScroll,
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.only(bottom: 9),
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          minWidth: constraints.maxWidth,
                         ),
-                        onChanged: _onSearchChanged,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            // GRUPO IZQUIERDO: Título + Buscador
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const SizedBox(width: 10),
+                                Icon(
+                                  Icons.groups_outlined,
+                                  size: 24,
+                                  color: Colors.grey.shade700,
+                                ),
+                                const SizedBox(width: 10),
+                                Text(
+                                  'Pacientes',
+                                  style: Theme.of(context).textTheme.titleLarge
+                                      ?.copyWith(fontWeight: FontWeight.bold),
+                                ),
+                                const SizedBox(width: 20),
+                                Container(
+                                  width: 1,
+                                  height: 30,
+                                  color: Colors.grey.shade300,
+                                ),
+                                const SizedBox(width: 20),
+                                // Buscador
+                                SizedBox(
+                                  width: (constraints.maxWidth - 670).clamp(
+                                    200.0,
+                                    400.0,
+                                  ),
+                                  child: TextField(
+                                    controller: searchCtrl,
+                                    decoration: InputDecoration(
+                                      hintText:
+                                          'Buscar por nombre, apellido o teléfono',
+                                      prefixIcon: const Icon(
+                                        Icons.search,
+                                        color: Colors.grey,
+                                      ),
+                                      border: InputBorder.none,
+                                      isDense: true,
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                            vertical: 8,
+                                          ),
+                                      suffixIcon:
+                                          searchCtrl.text.isNotEmpty
+                                              ? IconButton(
+                                                icon: const Icon(
+                                                  Icons.clear,
+                                                  size: 18,
+                                                  color: Colors.grey,
+                                                ),
+                                                onPressed: () {
+                                                  searchCtrl.clear();
+                                                  _debounce?.cancel();
+                                                  Provider.of<ClientsProvider>(
+                                                    context,
+                                                    listen: false,
+                                                  ).searchGlobal('');
+                                                },
+                                              )
+                                              : null,
+                                    ),
+                                    onChanged: _onSearchChanged,
+                                  ),
+                                ),
+                              ],
+                            ),
+
+                            // GRUPO DERECHO: Filtros + Botón
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const SizedBox(width: 10),
+                                Container(
+                                  width: 1,
+                                  height: 30,
+                                  color: Colors.grey.shade300,
+                                ),
+                                const SizedBox(width: 10),
+                                // Filtro estado
+                                Tooltip(
+                                  message: "Filtrar estado",
+                                  child: _buildStatusDropdown(clientsProvider),
+                                ),
+                                const SizedBox(width: 10),
+                                Container(
+                                  width: 1,
+                                  height: 30,
+                                  color: Colors.grey.shade300,
+                                ),
+                                const SizedBox(width: 10),
+
+                                // Filtro actividad reciente
+                                Tooltip(
+                                  message: "Filtrar por actividad reciente",
+                                  child: _buildActivityDropdown(
+                                    clientsProvider,
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Container(
+                                  width: 1,
+                                  height: 30,
+                                  color: Colors.grey.shade300,
+                                ),
+                                const SizedBox(width: 10),
+
+                                // Nuevo cliente
+                                Tooltip(
+                                  message: "Crear paciente",
+                                  child: HoverableActionButton(
+                                    label: "Paciente",
+                                    icon: Icons.person_add,
+                                    isPrimary: true,
+                                    onTap: () {
+                                      showDialog(
+                                        context: context,
+                                        builder:
+                                            (context) => const ClientModal(),
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 15),
-                Container(width: 1, height: 30, color: Colors.grey.shade300),
-                const SizedBox(width: 15),
-
-                // Filtro estado
-                Tooltip(
-                  message: "Filtrar estado",
-                  child: _buildStatusDropdown(clientsProvider),
-                ),
-
-                const SizedBox(width: 10),
-                Container(width: 1, height: 30, color: Colors.grey.shade300),
-                const SizedBox(width: 10),
-
-                // Filtro actividad reciente
-                Tooltip(
-                  message: "Filtrar por actividad reciente",
-                  child: _buildActivityDropdown(clientsProvider),
-                ),
-
-                const SizedBox(width: 10),
-                Container(width: 1, height: 30, color: Colors.grey.shade300),
-                const SizedBox(width: 10),
-
-                // Nuevo cliente
-                Tooltip(
-                  message: "Crear paciente",
-                  child: HoverableActionButton(
-                    label: "Paciente",
-                    icon: Icons.person_add,
-                    isPrimary: true,
-                    onTap: () {
-                      showDialog(
-                        context: context,
-                        builder: (context) => const ClientModal(),
-                      );
-                    },
-                  ),
-                ),
-              ],
+                );
+              },
             ),
           ),
 
@@ -171,17 +234,20 @@ class _ClientsViewState extends State<ClientsView> {
             child: PaginatedTable(
               isLoading: clientsProvider.isLoading,
               isEmpty: clientes.isEmpty,
-              emptyMessage: "No hay pacientes registrados",
+              emptyMessage: "No se encuentran pacientes",
               totalElements: clientsProvider.totalElements,
               pageSize: clientsProvider.pageSize,
               currentPage: clientsProvider.currentPage,
+              rowSpacing: 8.0,
+              hoverElevation: 0.0,
+              enableSmoothTransitions: true,
               onPageChanged: (page) {
                 clientsProvider.loadClients(page: page);
               },
               columns: const [
                 DataColumn(
                   label: Text(
-                    "#",
+                    "Id",
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
@@ -191,6 +257,15 @@ class _ClientsViewState extends State<ClientsView> {
                 DataColumn(
                   label: Text(
                     "Nombre Completo",
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+                DataColumn(
+                  label: Text(
+                    "Email",
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
@@ -219,27 +294,20 @@ class _ClientsViewState extends State<ClientsView> {
               rows:
                   clientes.asMap().entries.map((entry) {
                     final cliente = entry.value;
-                    final index = entry.key;
-                    final realIndex =
-                        (clientsProvider.currentPage *
-                            clientsProvider.pageSize) +
-                        index +
-                        1;
 
                     final isDeleted = !cliente.activo;
                     final textColor = isDeleted ? Colors.grey : Colors.black87;
-                    final textDecoration =
-                        isDeleted ? TextDecoration.lineThrough : null;
+                    final textDecoration = isDeleted ? TextDecoration.lineThrough : null;
 
                     return DataRow(
                       color: WidgetStateProperty.resolveWith<Color?>((states) {
-                        // Hover effect
+                        // Hover effect más marcado
                         if (states.contains(WidgetState.hovered)) {
                           return isDeleted
-                              ? Colors.red.withOpacity(0.08)
-                              : Colors.grey.shade100;
+                              ? Colors.red.withOpacity(0.12)
+                              : Colors.blue.shade50.withOpacity(0.5);
                         }
-                        // Default colors - white for normal rows
+                        // Default colors - white para filas normales
                         return isDeleted
                             ? Colors.red.withOpacity(0.05)
                             : Colors.white;
@@ -248,13 +316,15 @@ class _ClientsViewState extends State<ClientsView> {
                         context.go('/pacientes/${cliente.idCliente}');
                       },
                       cells: [
-                        // Index
                         DataCell(
                           Text(
-                            "$realIndex",
+                            "#${cliente.idCliente}",
                             style: TextStyle(
-                              color: textColor,
-                              fontWeight: FontWeight.w600,
+                              color:
+                                  isDeleted
+                                      ? Colors.grey[300]
+                                      : Colors.grey[400],
+                              fontWeight: FontWeight.w400,
                               decoration: textDecoration,
                             ),
                           ),
@@ -287,7 +357,7 @@ class _ClientsViewState extends State<ClientsView> {
                                           Text(
                                             '${cliente.nombre} ${cliente.apellidos}',
                                             style: TextStyle(
-                                              fontWeight: FontWeight.w500,
+                                              fontWeight: FontWeight.bold,
                                               fontSize: 14,
                                               color: textColor,
                                               decoration: textDecoration,
@@ -354,6 +424,16 @@ class _ClientsViewState extends State<ClientsView> {
                             ),
                           ),
                         ),
+                        // Email
+                        DataCell(
+                          Text(
+                            cliente.email ?? '-',
+                            style: TextStyle(
+                              color: textColor,
+                              decoration: textDecoration,
+                            ),
+                          ),
+                        ),
                         // Telefono (WhatsApp)
                         DataCell(
                           Tooltip(
@@ -404,16 +484,42 @@ class _ClientsViewState extends State<ClientsView> {
                                 ),
                                 tooltip: "Crear cita para ${cliente.nombre}",
                                 onPressed: () async {
-                                  await showDialog(
+                                  final result = await showDialog(
                                     context: context,
                                     builder:
                                         (_) => CitaModal(
                                           preSelectedClient: cliente,
                                         ),
                                   );
-                                  clientsProvider.loadClients(
-                                    page: clientsProvider.currentPage,
+                                  // Si se creó cita (result != null), recargar solo este cliente
+                                  if (result != null) {
+                                    clientsProvider.reloadClient(
+                                      cliente.idCliente,
+                                    );
+                                  }
+                                },
+                              ),
+                              // Botón Editar
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.edit,
+                                  color: Colors.orange,
+                                ),
+                                tooltip: "Editar",
+                                onPressed: () async {
+                                  final changed = await showDialog<bool>(
+                                    context: context,
+                                    builder:
+                                        (_) => ClientModal(
+                                          clienteExistente: cliente,
+                                        ),
                                   );
+                                  // Si hubo cambios, recargar solo este cliente
+                                  if (changed == true) {
+                                    clientsProvider.reloadClient(
+                                      cliente.idCliente,
+                                    );
+                                  }
                                 },
                               ),
                               // Botón Eliminar/Reactivar

@@ -5,6 +5,7 @@ import 'package:quiropractico_front/config/theme/app_theme.dart';
 import 'package:quiropractico_front/models/cliente.dart';
 import 'package:quiropractico_front/models/cita.dart';
 import 'package:quiropractico_front/providers/client_detail_provider.dart';
+import 'package:quiropractico_front/providers/clients_provider.dart';
 import 'package:quiropractico_front/ui/modals/cita_detalle_modal.dart';
 import 'package:quiropractico_front/ui/modals/cita_modal.dart';
 import 'package:quiropractico_front/ui/widgets/custom_date_range_picker.dart';
@@ -321,16 +322,43 @@ class _CitaCard extends StatelessWidget {
         message: "Ver detalles de la cita",
         child: InkWell(
           onTap: () async {
-            await showDialog(
+            final result = await showDialog(
               context: context,
               builder: (_) => CitaDetalleModal(cita: cita),
             );
-            if (context.mounted) {
-              Provider.of<ClientDetailProvider>(
+
+            if (!context.mounted) return;
+
+            final provider = Provider.of<ClientDetailProvider>(
+              context,
+              listen: false,
+            );
+
+            // Si result es true recargar todo
+            if (result == true) {
+              provider.loadFullData(cliente.idCliente);
+              // También recargamos el ClientsProvider para que la vista de lista se actualice
+              Provider.of<ClientsProvider>(
                 context,
                 listen: false,
-              ).loadCitas(resetPage: false, notify: true);
+              ).reloadClient(cliente.idCliente);
             }
+            // Si result es 'edit' abrir modal de edición
+            else if (result == 'edit') {
+              final editResult = await showDialog(
+                context: context,
+                builder: (_) => CitaModal(citaExistente: cita),
+              );
+              // Si se editó correctamente, recargar todo
+              if (editResult == true && context.mounted) {
+                provider.loadFullData(cliente.idCliente);
+                Provider.of<ClientsProvider>(
+                  context,
+                  listen: false,
+                ).reloadClient(cliente.idCliente);
+              }
+            }
+            // Si result es null no hacer nada.
           },
           borderRadius: BorderRadius.circular(12),
           child: Padding(

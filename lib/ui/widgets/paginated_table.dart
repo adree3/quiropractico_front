@@ -1,7 +1,8 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:quiropractico_front/ui/widgets/skeleton_loader.dart';
 
-class PaginatedTable extends StatelessWidget {
+class PaginatedTable extends StatefulWidget {
   final bool isLoading;
   final bool isEmpty;
   final String emptyMessage;
@@ -12,6 +13,11 @@ class PaginatedTable extends StatelessWidget {
   final List<DataColumn> columns;
   final List<DataRow> rows;
   final double? dataRowHeight;
+
+  // Parámetros opcionales para personalización estética
+  final double rowSpacing;
+  final double hoverElevation;
+  final bool enableSmoothTransitions;
 
   const PaginatedTable({
     super.key,
@@ -25,16 +31,35 @@ class PaginatedTable extends StatelessWidget {
     required this.columns,
     required this.rows,
     this.dataRowHeight,
+    this.rowSpacing = 0.0,
+    this.hoverElevation = 0.0,
+    this.enableSmoothTransitions = true,
   });
 
   @override
-  Widget build(BuildContext context) {
-    final bool showPagination = totalElements > pageSize;
-    final int totalPages = (totalElements / pageSize).ceil();
+  State<PaginatedTable> createState() => _PaginatedTableState();
+}
 
-    final int startRecord = (currentPage * pageSize) + 1;
-    final int endRecord = min((currentPage + 1) * pageSize, totalElements);
-    final double defaultHeight = pageSize > 10 ? 57.5 : 55.0;
+class _PaginatedTableState extends State<PaginatedTable> {
+  final ScrollController _hScroll = ScrollController();
+
+  @override
+  void dispose() {
+    _hScroll.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bool showPagination = widget.totalElements > widget.pageSize;
+    final int totalPages = (widget.totalElements / widget.pageSize).ceil();
+
+    final int startRecord = (widget.currentPage * widget.pageSize) + 1;
+    final int endRecord = min(
+      (widget.currentPage + 1) * widget.pageSize,
+      widget.totalElements,
+    );
+    final double defaultHeight = widget.pageSize > 10 ? 57.5 : 55.0;
 
     return Container(
       width: double.infinity,
@@ -59,7 +84,7 @@ class PaginatedTable extends StatelessWidget {
                 // TABLA
                 Expanded(
                   child:
-                      isEmpty && !isLoading
+                      widget.isEmpty && !widget.isLoading
                           ? Center(
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
@@ -71,43 +96,104 @@ class PaginatedTable extends StatelessWidget {
                                 ),
                                 const SizedBox(height: 10),
                                 Text(
-                                  emptyMessage,
+                                  widget.emptyMessage,
                                   style: TextStyle(color: Colors.grey[600]),
                                 ),
                               ],
                             ),
                           )
-                          : SingleChildScrollView(
-                            child: SizedBox(
-                              width: double.infinity,
-                              child: IgnorePointer(
-                                ignoring: isLoading,
-                                child: Opacity(
-                                  opacity: isLoading ? 0.5 : 1.0,
-                                  child: DataTable(
-                                    headingRowColor: WidgetStateProperty.all(
-                                      const Color(0xFF00AEEF),
-                                    ),
-                                    columnSpacing: 20,
-                                    dataRowMinHeight: dataRowHeight ?? defaultHeight,
-                                    dataRowMaxHeight: dataRowHeight ?? defaultHeight,
-                                    showCheckboxColumn: false,
-                                    columns: columns,
-                                    rows: rows,
-                                    border: const TableBorder(
-                                      bottom: BorderSide(
-                                        color: Colors.transparent,
+                          : widget.isLoading && widget.rows.isEmpty
+                          ? const SkeletonLoader(rowCount: 6)
+                          : Stack(
+                            children: [
+                              LayoutBuilder(
+                                builder: (context, constraints) {
+                                  return ScrollbarTheme(
+                                    data: ScrollbarThemeData(
+                                      // Barra fina y discreta
+                                      thickness: WidgetStateProperty.all(3),
+                                      radius: const Radius.circular(4),
+                                      thumbColor: WidgetStateProperty.all(
+                                        Colors.grey.withOpacity(0.35),
+                                      ),
+                                      trackColor: WidgetStateProperty.all(
+                                        Colors.transparent,
+                                      ),
+                                      trackBorderColor: WidgetStateProperty.all(
+                                        Colors.transparent,
+                                      ),
+                                      thumbVisibility: WidgetStateProperty.all(
+                                        true,
                                       ),
                                     ),
+                                    child: Scrollbar(
+                                      controller: _hScroll,
+                                      child: SingleChildScrollView(
+                                        controller: _hScroll,
+                                        scrollDirection: Axis.horizontal,
+                                        child: SingleChildScrollView(
+                                          scrollDirection: Axis.vertical,
+                                          child: ConstrainedBox(
+                                            constraints: BoxConstraints(
+                                              minWidth: constraints.maxWidth,
+                                            ),
+                                            child: DataTable(
+                                              headingRowColor:
+                                                  WidgetStateProperty.all(
+                                                    const Color(0xFF00AEEF),
+                                                  ),
+                                              dataRowMinHeight:
+                                                  (widget.dataRowHeight ??
+                                                      defaultHeight) +
+                                                  widget.rowSpacing,
+                                              dataRowMaxHeight:
+                                                  (widget.dataRowHeight ??
+                                                      defaultHeight) +
+                                                  widget.rowSpacing,
+                                              showCheckboxColumn: false,
+                                              columns: widget.columns,
+                                              rows: widget.rows,
+                                              border: TableBorder(
+                                                horizontalInside: BorderSide(
+                                                  color:
+                                                      widget.rowSpacing > 0
+                                                          ? Colors.transparent
+                                                          : Colors
+                                                              .grey
+                                                              .shade200,
+                                                  width: 0.5,
+                                                ),
+                                                bottom: const BorderSide(
+                                                  color: Colors.transparent,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                              if (widget.isLoading && widget.rows.isNotEmpty)
+                                Positioned.fill(
+                                  child: Container(
+                                    color: Colors.white.withOpacity(0.5),
                                   ),
                                 ),
-                              ),
-                            ),
+                              if (widget.isLoading && widget.rows.isNotEmpty)
+                                const Positioned(
+                                  top: 0,
+                                  left: 0,
+                                  right: 0,
+                                  child: LinearProgressIndicator(minHeight: 3),
+                                ),
+                            ],
                           ),
                 ),
 
                 // PAGINACIÓN
-                if (showPagination && !isEmpty)
+                if (showPagination && !widget.isEmpty)
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 20,
@@ -122,7 +208,7 @@ class PaginatedTable extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          "Mostrando $startRecord - $endRecord de $totalElements registros",
+                          "Mostrando $startRecord - $endRecord de ${widget.totalElements} registros",
                           style: TextStyle(
                             fontSize: 13,
                             color: Colors.grey[600],
@@ -131,14 +217,16 @@ class PaginatedTable extends StatelessWidget {
                         ),
 
                         IgnorePointer(
-                          ignoring: isLoading,
+                          ignoring: widget.isLoading,
                           child: Row(
                             children: [
                               IconButton(
                                 icon: const Icon(Icons.chevron_left),
                                 onPressed:
-                                    currentPage > 0
-                                        ? () => onPageChanged(currentPage - 1)
+                                    widget.currentPage > 0
+                                        ? () => widget.onPageChanged(
+                                          widget.currentPage - 1,
+                                        )
                                         : null,
                                 padding: EdgeInsets.zero,
                                 tooltip: "Anterior",
@@ -148,7 +236,7 @@ class PaginatedTable extends StatelessWidget {
                                   horizontal: 10,
                                 ),
                                 child: Text(
-                                  "Página ${currentPage + 1} de $totalPages",
+                                  "Página ${widget.currentPage + 1} de $totalPages",
                                   style: const TextStyle(
                                     fontSize: 13,
                                     fontWeight: FontWeight.bold,
@@ -158,8 +246,10 @@ class PaginatedTable extends StatelessWidget {
                               IconButton(
                                 icon: const Icon(Icons.chevron_right),
                                 onPressed:
-                                    currentPage < totalPages - 1
-                                        ? () => onPageChanged(currentPage + 1)
+                                    widget.currentPage < totalPages - 1
+                                        ? () => widget.onPageChanged(
+                                          widget.currentPage + 1,
+                                        )
                                         : null,
                                 padding: EdgeInsets.zero,
                                 tooltip: "Siguiente",
@@ -172,15 +262,6 @@ class PaginatedTable extends StatelessWidget {
                   ),
               ],
             ),
-
-            // LOADING OVERLAY
-            if (isLoading)
-              Positioned.fill(
-                child: Container(
-                  color: Colors.white.withOpacity(0.5),
-                  child: const Center(child: CircularProgressIndicator()),
-                ),
-              ),
           ],
         ),
       ),

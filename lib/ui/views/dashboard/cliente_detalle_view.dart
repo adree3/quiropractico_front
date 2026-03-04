@@ -1,4 +1,6 @@
-﻿import 'package:flutter/material.dart';
+﻿import 'dart:async';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -20,12 +22,16 @@ class ClienteDetalleView extends StatelessWidget {
   final int idCliente;
   final int? initialTab;
   final String? initialFilter;
+  final bool showBono;
+  final int? resaltarCitaId;
 
   const ClienteDetalleView({
     super.key,
     required this.idCliente,
     this.initialTab,
     this.initialFilter,
+    this.showBono = false,
+    this.resaltarCitaId,
   });
 
   @override
@@ -36,15 +42,25 @@ class ClienteDetalleView extends StatelessWidget {
               ClientDetailProvider()
                 ..loadFullData(idCliente)
                 ..setFiltroEstado(initialFilter),
-      child: _Content(initialTab: initialTab ?? 0),
+      child: _Content(
+        initialTab: initialTab ?? 0,
+        showBono: showBono,
+        resaltarCitaId: resaltarCitaId,
+      ),
     );
   }
 }
 
 class _Content extends StatefulWidget {
   final int initialTab;
+  final bool showBono;
+  final int? resaltarCitaId;
 
-  const _Content({required this.initialTab});
+  const _Content({
+    required this.initialTab,
+    this.showBono = false,
+    this.resaltarCitaId,
+  });
 
   @override
   State<_Content> createState() => _ContentState();
@@ -183,6 +199,15 @@ class _ContentState extends State<_Content>
                               ),
                             ),
                           ),
+                          const SizedBox(width: 8),
+                          Text(
+                            '#${cliente.idCliente}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[400],
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
                         ],
                       ),
                       const SizedBox(height: 5),
@@ -218,6 +243,12 @@ class _ContentState extends State<_Content>
                           ),
                         ),
                       ),
+                      // Email (si existe) con copia al portapapeles
+                      if (cliente.email != null &&
+                          cliente.email!.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        _EmailCopyRow(email: cliente.email!),
+                      ],
                       const SizedBox(height: 15),
                       // Stats Chips Mejorados
                       SingleChildScrollView(
@@ -225,16 +256,13 @@ class _ContentState extends State<_Content>
                         child: Row(
                           children: [
                             _StatChip(
-                              label: "Citas del paciente",
-                              value: provider.historialCitas.length.toString(),
+                              label: "Citas programadas",
+                              value: (cliente.citasPendientes ?? 0).toString(),
                               icon: Icons.calendar_month,
                               color: Colors.blue,
                               tooltip:
                                   "Ver historial de citas de ${cliente.nombre}",
-                              onTap:
-                                  () => DefaultTabController.of(
-                                    context,
-                                  ).animateTo(0),
+                              onTap: () => _tabController.animateTo(0),
                             ),
                             const SizedBox(width: 15),
                             _StatChip(
@@ -243,10 +271,7 @@ class _ContentState extends State<_Content>
                               icon: Icons.card_membership,
                               color: Colors.orange,
                               tooltip: "Ver cartera de bonos activos",
-                              onTap:
-                                  () => DefaultTabController.of(
-                                    context,
-                                  ).animateTo(1),
+                              onTap: () => _tabController.animateTo(1),
                             ),
                             const SizedBox(width: 15),
                             _StatChip(
@@ -255,10 +280,7 @@ class _ContentState extends State<_Content>
                               icon: Icons.account_balance_wallet,
                               color: Colors.green,
                               tooltip: "Total de sesiones disponibles en bonos",
-                              onTap:
-                                  () => DefaultTabController.of(
-                                    context,
-                                  ).animateTo(1),
+                              onTap: () => _tabController.animateTo(1),
                             ),
                             const SizedBox(width: 15),
                             // CHIP PRÓXIMA CITA
@@ -293,12 +315,46 @@ class _ContentState extends State<_Content>
                               onTap: () async {
                                 final proxima = provider.proximaCita;
                                 if (proxima != null) {
-                                  await showDialog(
+                                  final result = await showDialog(
                                     context: context,
                                     builder:
                                         (_) => CitaDetalleModal(cita: proxima),
                                   );
-                                  provider.loadFullData(cliente.idCliente);
+
+                                  // Si hubo cambios en la cita próxima
+                                  if (result == true || result == 'edit') {
+                                    print(
+                                      "DEBUG: StatChip interaction returned changed. Reloading...",
+                                    );
+                                    provider.loadFullData(cliente.idCliente);
+                                    if (context.mounted) {
+                                      Provider.of<ClientsProvider>(
+                                        context,
+                                        listen: false,
+                                      ).reloadClient(cliente.idCliente);
+                                    }
+                                  } else {
+                                    // Si solo se cerró, intentamos recargar por si acaso (comportamiento original)
+                                    // pero idealmente deberíamos respetar el result.
+                                    // Dejamos carga solo si el usuario hizo algo, para evitar parpadeos.
+                                    // Pero como el código anterior forzaba carga, y "proximaCita" puede haber cambiado...
+                                    // Mejor: Si result es null, NO recargar (fix duplicación/parpadeo).
+                                  }
+                                  if (result == 'edit' && context.mounted) {
+                                    final editResult = await showDialog(
+                                      context: context,
+                                      builder:
+                                          (_) =>
+                                              CitaModal(citaExistente: proxima),
+                                    );
+                                    if (editResult == true && context.mounted) {
+                                      provider.loadFullData(cliente.idCliente);
+                                      Provider.of<ClientsProvider>(
+                                        context,
+                                        listen: false,
+                                      ).reloadClient(cliente.idCliente);
+                                    }
+                                  }
                                 } else {
                                   final refresh = await showDialog(
                                     context: context,
@@ -309,6 +365,12 @@ class _ContentState extends State<_Content>
                                   );
                                   if (refresh == true) {
                                     provider.loadFullData(cliente.idCliente);
+                                    if (context.mounted) {
+                                      Provider.of<ClientsProvider>(
+                                        context,
+                                        listen: false,
+                                      ).reloadClient(cliente.idCliente);
+                                    }
                                   }
                                 }
                               },
@@ -472,7 +534,11 @@ class _ContentState extends State<_Content>
                   physics: const NeverScrollableScrollPhysics(),
                   children: [
                     ClienteCitasTab(cliente: cliente),
-                    ClienteBonosTab(cliente: cliente),
+                    ClienteBonosTab(
+                      cliente: cliente,
+                      showBono: widget.showBono,
+                      resaltarCitaId: widget.resaltarCitaId,
+                    ),
                     ClienteFamiliaresTab(cliente: cliente),
                   ],
                 ),
@@ -579,6 +645,88 @@ class _StatChip extends StatelessWidget {
                 ],
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// Email con copia al portapapeles
+class _EmailCopyRow extends StatefulWidget {
+  final String email;
+  const _EmailCopyRow({required this.email});
+
+  @override
+  State<_EmailCopyRow> createState() => _EmailCopyRowState();
+}
+
+class _EmailCopyRowState extends State<_EmailCopyRow> {
+  bool _copiado = false;
+  Timer? _timer;
+
+  void _copiar() async {
+    await Clipboard.setData(ClipboardData(text: widget.email));
+    setState(() => _copiado = true);
+    _timer?.cancel();
+    _timer = Timer(const Duration(seconds: 2), () {
+      if (mounted) setState(() => _copiado = false);
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: 'Copiar correo',
+      child: InkWell(
+        onTap: _copiar,
+        borderRadius: BorderRadius.circular(5),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 250),
+            child:
+                _copiado
+                    ? Row(
+                      key: const ValueKey('copiado'),
+                      mainAxisSize: MainAxisSize.min,
+                      children: const [
+                        Icon(Icons.check_circle, size: 16, color: Colors.green),
+                        SizedBox(width: 5),
+                        Text(
+                          'Correo copiado',
+                          style: TextStyle(
+                            color: Colors.green,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    )
+                    : Row(
+                      key: const ValueKey('email'),
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.email_outlined,
+                          size: 16,
+                          color: Colors.blueGrey,
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          widget.email,
+                          style: const TextStyle(
+                            color: Colors.blueGrey,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
           ),
         ),
       ),
