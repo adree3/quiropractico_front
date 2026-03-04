@@ -4,7 +4,6 @@ import 'package:provider/provider.dart';
 import 'package:quiropractico_front/config/theme/app_theme.dart';
 import 'package:quiropractico_front/providers/agenda_provider.dart';
 import 'package:quiropractico_front/providers/horarios_provider.dart';
-import 'package:quiropractico_front/ui/modals/cita_modal.dart';
 
 class AgendaHeader extends StatelessWidget {
   const AgendaHeader({super.key});
@@ -25,134 +24,94 @@ class AgendaHeader extends StatelessWidget {
         DateFormat('MMMM yyyy', 'es_ES').format(fechaActual).toUpperCase();
     final bool mostrarBotonHoy = !isSameDay(fechaActual, hoy);
 
-    const double buttonHeight = 42.0;
-    // Aumentamos el ancho lateral para que quepa el toggle sin desplazar el centro
-    const double sideWidth = 120.0;
-
     return Column(
       children: [
-        // TÍTULO DEL MES
+        // TÍTULO DEL MES Y BOTÓN HOY
         Padding(
-          padding: const EdgeInsets.only(top: 20, bottom: 5),
-          child: Text(
-            tituloMes,
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w900,
-              color: AppTheme.primaryColor,
-              letterSpacing: 1.5,
-            ),
-          ),
-        ),
-
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          padding: const EdgeInsets.only(top: 15, bottom: 5),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Cita
-              SizedBox(
-                width: sideWidth,
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      final now = DateTime.now();
-                      final horaInicio = DateTime(
-                        fechaActual.year,
-                        fechaActual.month,
-                        fechaActual.day,
-                        now.hour + 1,
-                        0,
-                      );
-                      showDialog(
-                        context: context,
-                        builder:
-                            (context) => CitaModal(selectedDate: horaInicio),
-                      );
-                    },
-                    label: const Text("+ Cita"),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.primaryColor,
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      fixedSize: const Size.fromHeight(buttonHeight),
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+              // Selector de Fecha Integrado en el Título
+              InkWell(
+                onTap: () => _abrirPickerNativo(context, provider),
+                borderRadius: BorderRadius.circular(10),
+                child: Tooltip(
+                  message: "Seleccionar fecha",
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          tituloMes,
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w900,
+                            color: AppTheme.primaryColor,
+                            letterSpacing: 1.5,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        const Icon(
+                          Icons.edit_calendar,
+                          size: 18,
+                          color: AppTheme.primaryColor,
+                        ),
+                      ],
                     ),
                   ),
                 ),
               ),
 
-              // BOLITAS DE DÍAS
-              Expanded(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children:
-                      horariosProvider.diasActivosSemana.map((diaNum) {
-                        final date = lunesSemana.add(
-                          Duration(days: diaNum - 1),
-                        );
-                        final isSelected = isSameDay(date, fechaActual);
-                        final esHoy = isSameDay(date, hoy);
-
-                        return _DayCircle(
-                          date: date,
-                          isSelected: isSelected,
-                          isToday: esHoy,
-                          onTap: () => provider.updateSelectedDate(date),
-                        );
-                      }).toList(),
-                ),
-              ),
-
-              // CALENDARIO Y TOGGLE
-              SizedBox(
-                width: sideWidth,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    const SizedBox(width: 15),
-
-                    // Volver a Hoy
-                    if (mostrarBotonHoy) ...[
-                      IconButton(
-                        onPressed: () => provider.updateSelectedDate(hoy),
-                        icon: const Icon(Icons.reply),
-                        tooltip: "Volver al día de hoy",
-                        color: Colors.grey[600],
-                        style: IconButton.styleFrom(
-                          backgroundColor: Colors.grey[100],
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          fixedSize: const Size(buttonHeight, buttonHeight),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                    ],
-
-                    // Botón Calendario
-                    IconButton.filledTonal(
-                      onPressed: () => _abrirPickerNativo(context, provider),
-                      icon: const Icon(Icons.calendar_month_outlined),
-                      iconSize: 22,
-                      tooltip: "Seleccionar fecha",
-                      style: IconButton.styleFrom(
-                        backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
-                        foregroundColor: AppTheme.primaryColor,
-                        fixedSize: const Size(buttonHeight, buttonHeight),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
+              // Botón "Hoy" integrado al lado si no es hoy
+              if (mostrarBotonHoy) ...[
+                const SizedBox(width: 10),
+                TextButton.icon(
+                  onPressed: () => provider.updateSelectedDate(hoy),
+                  icon: const Icon(Icons.reply, size: 16),
+                  label: const Text("Hoy", style: TextStyle(fontSize: 12)),
+                  style: TextButton.styleFrom(
+                    backgroundColor: Colors.grey[100],
+                    foregroundColor: Colors.grey[700],
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
                     ),
-                  ],
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                  ),
                 ),
-              ),
+              ],
             ],
+          ),
+        ),
+
+        // BOLITAS DE DÍAS (Centradas)
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          child: Center(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children:
+                    horariosProvider.diasActivosSemana.map((diaNum) {
+                      final date = lunesSemana.add(Duration(days: diaNum - 1));
+                      final isSelected = isSameDay(date, fechaActual);
+                      final esHoy = isSameDay(date, hoy);
+
+                      return _DayCircle(
+                        date: date,
+                        isSelected: isSelected,
+                        isToday: esHoy,
+                        onTap: () => provider.updateSelectedDate(date),
+                      );
+                    }).toList(),
+              ),
+            ),
           ),
         ),
 
@@ -174,10 +133,6 @@ class AgendaHeader extends StatelessWidget {
       locale: const Locale('es', 'ES'),
       initialEntryMode: DatePickerEntryMode.calendarOnly,
       helpText: '',
-      selectableDayPredicate: (DateTime date) {
-        return date.weekday != DateTime.saturday &&
-            date.weekday != DateTime.sunday;
-      },
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
