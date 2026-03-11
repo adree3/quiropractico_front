@@ -404,9 +404,15 @@ class CitaDetalleModal extends StatelessWidget {
   }
 
   Widget _buildActions(BuildContext context, AgendaProvider provider) {
-    final closeBtn = TextButton(
+    // Botón Cerrar consistente con CitaModal
+    final closeBtn = OutlinedButton(
       onPressed: () => Navigator.pop(context),
-      child: const Text('Cerrar', style: TextStyle(color: Colors.grey)),
+      style: OutlinedButton.styleFrom(
+        foregroundColor: Colors.grey[700],
+        side: BorderSide(color: Colors.grey.shade300),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      ),
+      child: const Text('Cerrar'),
     );
 
     switch (cita.estado) {
@@ -416,31 +422,37 @@ class CitaDetalleModal extends StatelessWidget {
           children: [
             closeBtn,
             const Spacer(),
-            IconButton(
-              tooltip: 'Editar cita',
-              icon: const Icon(Icons.edit_outlined, color: Colors.orange),
-              onPressed: () => Navigator.pop(context, 'edit'),
-            ),
-            const SizedBox(width: 4),
-            _ActionButton(
-              label: 'Ausente',
-              icon: Icons.person_off_outlined,
-              color: Colors.grey,
-              onPressed: () => _cambiarEstado(context, provider, 'ausente'),
-            ),
-            const SizedBox(width: 8),
-            _ActionButton(
-              label: 'Cancelar',
-              icon: Icons.cancel_outlined,
-              color: AppTheme.errorColor,
+            
+            // Iconos de estado rápido (estética CitaModal)
+            _buildActionIconButton(
+              tooltip: 'Cancelar',
+              iconOutlined: Icons.cancel_outlined,
+              color: Colors.red,
               onPressed: () => _cancelarCita(context, provider),
             ),
             const SizedBox(width: 8),
-            _ActionButton(
-              label: 'Completar',
-              icon: Icons.check_circle_outline,
-              color: const Color(0xFF4CAF50),
+            _buildActionIconButton(
+              tooltip: 'Ausente',
+              iconOutlined: Icons.person_off_outlined,
+              color: Colors.orange,
+              onPressed: () => _cambiarEstado(context, provider, 'ausente'),
+            ),
+            const SizedBox(width: 8),
+            _buildActionIconButton(
+              tooltip: 'Completada',
+              iconOutlined: Icons.check_circle_outline,
+              color: Colors.green,
               onPressed: () => _cambiarEstado(context, provider, 'completada'),
+            ),
+            
+            const Spacer(),
+            
+            // Botón Editar destacado y de tamaño generoso
+            _buildPrimaryButton(
+              context: context,
+              label: 'Editar',
+              icon: Icons.edit_outlined,
+              onPressed: () => Navigator.pop(context, 'edit'),
             ),
           ],
         );
@@ -451,11 +463,10 @@ class CitaDetalleModal extends StatelessWidget {
           children: [
             closeBtn,
             const Spacer(),
-            _ActionButton(
-              label: 'Editar / Reabrir',
+            _buildPrimaryButton(
+              context: context,
+              label: 'Editar',
               icon: Icons.edit_outlined,
-              color: Colors.orange,
-              outlined: true,
               onPressed: () => Navigator.pop(context, 'edit'),
             ),
           ],
@@ -467,11 +478,10 @@ class CitaDetalleModal extends StatelessWidget {
           children: [
             closeBtn,
             const Spacer(),
-            _ActionButton(
-              label: 'Editar / Justificar',
+            _buildPrimaryButton(
+              context: context,
+              label: 'Editar',
               icon: Icons.edit_outlined,
-              color: Colors.orange,
-              outlined: true,
               onPressed: () => Navigator.pop(context, 'edit'),
             ),
           ],
@@ -490,11 +500,11 @@ class CitaDetalleModal extends StatelessWidget {
               outlined: true,
               onPressed: () => _restaurarCita(context, provider),
             ),
-            const SizedBox(width: 8),
-            _ActionButton(
+            const SizedBox(width: 12),
+            _buildPrimaryButton(
+              context: context,
               label: 'Reutilizar hueco',
               icon: Icons.event_available,
-              color: AppTheme.primaryColor,
               onPressed: () {
                 Navigator.pop(context);
                 showDialog(
@@ -511,6 +521,49 @@ class CitaDetalleModal extends StatelessWidget {
       default:
         return Row(children: [closeBtn]);
     }
+  }
+
+  Widget _buildPrimaryButton({
+    required BuildContext context,
+    required String label,
+    required IconData icon,
+    required VoidCallback onPressed,
+  }) {
+    return ElevatedButton.icon(
+      onPressed: onPressed,
+      icon: Icon(icon, size: 18),
+      label: Text(
+        label,
+        style: const TextStyle(fontSize: 15),
+      ),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: AppTheme.primaryColor,
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+        elevation: 0,
+      ),
+    );
+  }
+  Widget _buildActionIconButton({
+    required String tooltip,
+    required IconData iconOutlined,
+    required Color color,
+    required VoidCallback onPressed,
+  }) {
+    return Tooltip(
+      message: tooltip,
+      child: IconButton(
+        onPressed: onPressed,
+        icon: Icon(iconOutlined, color: color, size: 22),
+        style: IconButton.styleFrom(
+          backgroundColor: color.withOpacity(0.1),
+          shape: const CircleBorder(),
+        ),
+      ),
+    );
   }
 }
 

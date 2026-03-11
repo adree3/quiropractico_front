@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:provider/provider.dart';
+import 'package:quiropractico_front/providers/ui_provider.dart';
 import 'package:quiropractico_front/models/bloqueo_agenda.dart';
 import 'package:quiropractico_front/models/cita.dart';
 import 'package:quiropractico_front/models/horario.dart';
@@ -30,7 +31,6 @@ class _AgendaViewState extends State<AgendaView> {
   List<TimeRegion>? _cachedRegions;
   DateTime? _lastDateCalculated;
   int? _lastDataHash;
-  bool _sidePanelCollapsed = false;
 
   @override
   void initState() {
@@ -232,6 +232,7 @@ class _AgendaViewState extends State<AgendaView> {
 
   @override
   Widget build(BuildContext context) {
+    final uiProvider = Provider.of<UiProvider>(context);
     final agendaProvider = Provider.of<AgendaProvider>(context);
     final horariosProvider = Provider.of<HorariosProvider>(context);
     final bloqueosProvider = Provider.of<AgendaBloqueoProvider>(context);
@@ -361,7 +362,10 @@ class _AgendaViewState extends State<AgendaView> {
                             // para que la agenda se pueda leer sin montarse
                             padding: EdgeInsets.only(
                               right:
-                                  !isDesktop && _sidePanelCollapsed ? 100 : 0,
+                                  !isDesktop &&
+                                          uiProvider.isAgendaSidePanelCollapsed
+                                      ? 100
+                                      : 0,
                             ),
                             child: Container(
                               decoration: BoxDecoration(
@@ -711,7 +715,34 @@ class _AgendaViewState extends State<AgendaView> {
                                                             cita:
                                                                 rawAppointment,
                                                           ),
-                                                );
+                                                ).then((value) {
+                                                  if (value == 'edit') {
+                                                    showDialog(
+                                                      context: context,
+                                                      builder:
+                                                          (
+                                                            context,
+                                                          ) => CitaModal(
+                                                            citaExistente:
+                                                                rawAppointment,
+                                                          ),
+                                                    ).then((valEdit) {
+                                                      if (valEdit == true) {
+                                                        agendaProvider
+                                                            .getCitasDelDia(
+                                                              agendaProvider
+                                                                  .selectedDate,
+                                                            );
+                                                      }
+                                                    });
+                                                  } else if (value == true) {
+                                                    agendaProvider
+                                                        .getCitasDelDia(
+                                                          agendaProvider
+                                                              .selectedDate,
+                                                        );
+                                                  }
+                                                });
                                                 return; // Evita seguir y "agendar"
                                               }
                                               // Si tocamos un bloqueo, cae a la lógica de abajo de "celda libre"
@@ -767,7 +798,10 @@ class _AgendaViewState extends State<AgendaView> {
                           AnimatedContainer(
                             duration: const Duration(milliseconds: 300),
                             curve: Curves.easeInOut,
-                            width: _sidePanelCollapsed ? 80 : 320,
+                            width:
+                                uiProvider.isAgendaSidePanelCollapsed
+                                    ? 80
+                                    : 320,
                             decoration: BoxDecoration(
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(20),
@@ -783,11 +817,10 @@ class _AgendaViewState extends State<AgendaView> {
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(20),
                               child: AgendaSidePanel(
-                                isCollapsed: _sidePanelCollapsed,
+                                isCollapsed:
+                                    uiProvider.isAgendaSidePanelCollapsed,
                                 onToggle: () {
-                                  setState(() {
-                                    _sidePanelCollapsed = !_sidePanelCollapsed;
-                                  });
+                                  uiProvider.toggleAgendaSidePanel();
                                 },
                               ),
                             ),
@@ -806,7 +839,7 @@ class _AgendaViewState extends State<AgendaView> {
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 300),
                         curve: Curves.easeInOut,
-                        width: _sidePanelCollapsed ? 80 : 320,
+                        width: uiProvider.isAgendaSidePanelCollapsed ? 80 : 320,
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: const BorderRadius.only(
@@ -833,11 +866,9 @@ class _AgendaViewState extends State<AgendaView> {
                             bottomLeft: Radius.circular(20),
                           ),
                           child: AgendaSidePanel(
-                            isCollapsed: _sidePanelCollapsed,
+                            isCollapsed: uiProvider.isAgendaSidePanelCollapsed,
                             onToggle: () {
-                              setState(() {
-                                _sidePanelCollapsed = !_sidePanelCollapsed;
-                              });
+                              uiProvider.toggleAgendaSidePanel();
                             },
                           ),
                         ),

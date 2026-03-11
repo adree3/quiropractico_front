@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:quiropractico_front/providers/ui_provider.dart';
 import 'package:intl/intl.dart';
 import 'package:quiropractico_front/ui/widgets/hoverable_action_button.dart';
 import 'package:quiropractico_front/providers/citas_provider.dart';
@@ -8,7 +9,6 @@ import 'package:quiropractico_front/config/theme/app_theme.dart';
 import 'package:quiropractico_front/ui/modals/cita_modal.dart';
 import 'package:quiropractico_front/ui/modals/cita_detalle_modal.dart';
 import 'package:go_router/go_router.dart';
-
 import 'package:quiropractico_front/ui/widgets/paginated_table.dart';
 import 'package:quiropractico_front/ui/widgets/avatar_widget.dart';
 import 'package:quiropractico_front/ui/widgets/dashboard_dropdown.dart';
@@ -28,7 +28,6 @@ class _CitasViewState extends State<CitasView> {
   Timer? _debounce;
   final searchCtrl = TextEditingController();
   final ScrollController _headerScroll = ScrollController();
-  bool _kpiCollapsed = false;
 
   @override
   void dispose() {
@@ -59,7 +58,8 @@ class _CitasViewState extends State<CitasView> {
 
   @override
   Widget build(BuildContext context) {
-    final citasProvider = Provider.of<CitasProvider>(context);
+    final uiProvider = Provider.of<UiProvider>(context);
+        final citasProvider = Provider.of<CitasProvider>(context);
     final citas = citasProvider.citas;
     final kpis = citasProvider.kpis;
 
@@ -671,7 +671,7 @@ class _CitasViewState extends State<CitasView> {
                     if (showKpis) const SizedBox(width: 20),
                     if (showKpis)
                       SizedBox(
-                        width: _kpiCollapsed ? 80 : 250,
+                        width: uiProvider.isCitasSidePanelCollapsed ? 80 : 250,
                         child: _buildKpiPanel(kpis, citasProvider.isLoading),
                       ),
                   ],
@@ -734,8 +734,9 @@ class _CitasViewState extends State<CitasView> {
 
   // WIDGET DEL PANEL LATERAL KPI
   Widget _buildKpiPanel(dynamic kpis, bool isLoading) {
-    return Container(
-      padding: EdgeInsets.all(_kpiCollapsed ? 10 : 20),
+    final uiProvider = Provider.of<UiProvider>(context);
+        return Container(
+      padding: EdgeInsets.all(uiProvider.isCitasSidePanelCollapsed ? 10 : 20),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(10),
@@ -743,17 +744,17 @@ class _CitasViewState extends State<CitasView> {
       ),
       child: Column(
         crossAxisAlignment:
-            _kpiCollapsed
+            uiProvider.isCitasSidePanelCollapsed
                 ? CrossAxisAlignment.center
                 : CrossAxisAlignment.start,
         children: [
           Row(
             mainAxisAlignment:
-                _kpiCollapsed
+                uiProvider.isCitasSidePanelCollapsed
                     ? MainAxisAlignment.center
                     : MainAxisAlignment.spaceBetween,
             children: [
-              if (!_kpiCollapsed)
+              if (!uiProvider.isCitasSidePanelCollapsed)
                 Text(
                   "Resumen Actual",
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
@@ -762,14 +763,19 @@ class _CitasViewState extends State<CitasView> {
                   ),
                 ),
               Tooltip(
-                message: _kpiCollapsed ? "Expandir" : "Colapsar",
+                message:
+                    uiProvider.isCitasSidePanelCollapsed
+                        ? "Expandir"
+                        : "Colapsar",
                 child: InkWell(
-                  onTap: () => setState(() => _kpiCollapsed = !_kpiCollapsed),
+                  onTap: () => uiProvider.toggleCitasSidePanel(),
                   borderRadius: BorderRadius.circular(4),
                   child: Padding(
                     padding: const EdgeInsets.all(4.0),
                     child: Icon(
-                      _kpiCollapsed ? Icons.chevron_left : Icons.chevron_right,
+                      uiProvider.isCitasSidePanelCollapsed
+                          ? Icons.chevron_left
+                          : Icons.chevron_right,
                       color: Colors.grey,
                       size: 24,
                     ),
@@ -781,7 +787,7 @@ class _CitasViewState extends State<CitasView> {
 
           if (isLoading && kpis == null) ...[
             const SizedBox(height: 25),
-            if (_kpiCollapsed)
+            if (uiProvider.isCitasSidePanelCollapsed)
               const _KpiItem(
                 icon: Icons.hourglass_empty,
                 label: "Cargando",
@@ -792,7 +798,7 @@ class _CitasViewState extends State<CitasView> {
             else
               const KpiSkeletonLoader(count: 3),
           ] else ...[
-            if (!_kpiCollapsed) ...[
+            if (!uiProvider.isCitasSidePanelCollapsed) ...[
               const SizedBox(height: 5),
               Text(
                 "Datos basados en los filtros aplicados",
@@ -807,9 +813,9 @@ class _CitasViewState extends State<CitasView> {
                 label: "Total Filtradas",
                 value: kpis.total.toString(),
                 color: Colors.blueGrey,
-                isCollapsed: _kpiCollapsed,
+                isCollapsed: uiProvider.isCitasSidePanelCollapsed,
               ),
-              if (!_kpiCollapsed)
+              if (!uiProvider.isCitasSidePanelCollapsed)
                 const Divider(height: 30)
               else
                 const SizedBox(height: 15),
@@ -818,7 +824,7 @@ class _CitasViewState extends State<CitasView> {
                 label: "Programadas",
                 value: kpis.programadas.toString(),
                 color: AppTheme.primaryColor,
-                isCollapsed: _kpiCollapsed,
+                isCollapsed: uiProvider.isCitasSidePanelCollapsed,
               ),
               const SizedBox(height: 15),
               _KpiItem(
@@ -826,7 +832,7 @@ class _CitasViewState extends State<CitasView> {
                 label: "Completadas",
                 value: kpis.completadas.toString(),
                 color: Colors.green,
-                isCollapsed: _kpiCollapsed,
+                isCollapsed: uiProvider.isCitasSidePanelCollapsed,
               ),
               const SizedBox(height: 15),
               _KpiItem(
@@ -834,7 +840,7 @@ class _CitasViewState extends State<CitasView> {
                 label: "Canceladas",
                 value: kpis.canceladas.toString(),
                 color: Colors.red,
-                isCollapsed: _kpiCollapsed,
+                isCollapsed: uiProvider.isCitasSidePanelCollapsed,
               ),
               const SizedBox(height: 15),
               _KpiItem(
@@ -842,12 +848,12 @@ class _CitasViewState extends State<CitasView> {
                 label: "Ausentes",
                 value: kpis.ausentes.toString(),
                 color: Colors.grey,
-                isCollapsed: _kpiCollapsed,
+                isCollapsed: uiProvider.isCitasSidePanelCollapsed,
               ),
             ] else ...[
               Center(
                 child:
-                    _kpiCollapsed
+                    uiProvider.isCitasSidePanelCollapsed
                         ? const Icon(Icons.do_not_disturb)
                         : const Text("No hay datos"),
               ),

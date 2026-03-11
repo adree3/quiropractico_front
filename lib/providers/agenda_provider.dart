@@ -11,6 +11,7 @@ class AgendaProvider extends ChangeNotifier {
 
   List<Cita> citas = [];
   bool isLoading = true;
+  bool isLoadingHuecos = false;
   String? errorMessage;
 
   List<Usuario> quiropracticos = [];
@@ -167,6 +168,7 @@ class AgendaProvider extends ChangeNotifier {
     int? idCitaExcluir,
   }) async {
     huecosDisponibles = [];
+    isLoadingHuecos = true;
     notifyListeners();
 
     try {
@@ -201,6 +203,9 @@ class AgendaProvider extends ChangeNotifier {
       notifyListeners();
     } catch (e) {
       print('Error cargando huecos: ${ErrorHandler.extractMessage(e)}');
+    } finally {
+      isLoadingHuecos = false;
+      notifyListeners();
     }
   }
 }

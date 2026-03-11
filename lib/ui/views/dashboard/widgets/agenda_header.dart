@@ -97,19 +97,51 @@ class AgendaHeader extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 mainAxisSize: MainAxisSize.min,
-                children:
-                    horariosProvider.diasActivosSemana.map((diaNum) {
-                      final date = lunesSemana.add(Duration(days: diaNum - 1));
-                      final isSelected = isSameDay(date, fechaActual);
-                      final esHoy = isSameDay(date, hoy);
-
-                      return _DayCircle(
-                        date: date,
-                        isSelected: isSelected,
-                        isToday: esHoy,
-                        onTap: () => provider.updateSelectedDate(date),
+                children: [
+                  IconButton(
+                    icon: const Icon(
+                      Icons.chevron_left,
+                      color: AppTheme.primaryColor,
+                    ),
+                    onPressed: () {
+                      provider.updateSelectedDate(
+                        fechaActual.subtract(const Duration(days: 7)),
                       );
-                    }).toList(),
+                    },
+                    tooltip: 'Semana Anterior',
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
+                    children:
+                        horariosProvider.diasActivosSemana.map((diaNum) {
+                          final date = lunesSemana.add(
+                            Duration(days: diaNum - 1),
+                          );
+                          final isSelected = isSameDay(date, fechaActual);
+                          final esHoy = isSameDay(date, hoy);
+
+                          return _DayCircle(
+                            date: date,
+                            isSelected: isSelected,
+                            isToday: esHoy,
+                            onTap: () => provider.updateSelectedDate(date),
+                          );
+                        }).toList(),
+                  ),
+                  IconButton(
+                    icon: const Icon(
+                      Icons.chevron_right,
+                      color: AppTheme.primaryColor,
+                    ),
+                    onPressed: () {
+                      provider.updateSelectedDate(
+                        fechaActual.add(const Duration(days: 7)),
+                      );
+                    },
+                    tooltip: 'Semana Siguiente',
+                  ),
+                ],
               ),
             ),
           ),
