@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -179,7 +180,7 @@ class _AuditoriaViewState extends State<AuditoriaView> {
               emptyMessage: "No hay registros de auditoría",
               totalElements: provider.totalElements,
               pageSize: provider.pageSize,
-              dataRowHeight: 52.0,
+              dataRowHeight: 68.0,
               currentPage: provider.currentPage,
               onPageChanged: (p) => provider.getLogs(page: p),
               columns: const [
@@ -221,7 +222,7 @@ class _AuditoriaViewState extends State<AuditoriaView> {
                 ),
                 DataColumn(
                   label: Text(
-                    'Detalle',
+                    'Resumen',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
@@ -393,10 +394,21 @@ class _AuditoriaViewState extends State<AuditoriaView> {
 
     return DataRow(
       cells: [
+        // ── Fecha + #ID ──────────────────────────────────────
         DataCell(
-          Text(
-            dateFormat.format(log.fechaHora),
-            style: const TextStyle(fontWeight: FontWeight.w500),
+          Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                dateFormat.format(log.fechaHora),
+                style: const TextStyle(fontWeight: FontWeight.w500),
+              ),
+              Text(
+                '#${log.idAuditoria}',
+                style: TextStyle(fontSize: 11, color: Colors.grey[400]),
+              ),
+            ],
           ),
         ),
 
@@ -442,47 +454,70 @@ class _AuditoriaViewState extends State<AuditoriaView> {
           ),
         ),
 
-        // Detalles
+        // ── Resumen (legible) + Botones de acciones ─────────
         DataCell(
-          SizedBox(
-            width: 350,
+          ConstrainedBox(
+            constraints: const BoxConstraints(minWidth: 350, maxWidth: 450),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
                   child: Tooltip(
-                    message: log.detalles ?? "",
-                    waitDuration: const Duration(milliseconds: 500),
+                    message: (log.resumen != null && log.resumen!.isNotEmpty)
+                        ? log.resumen!
+                        : (log.detalles ?? '-'),
                     child: Text(
-                      log.detalles ?? "-",
-                      maxLines: 1,
+                      (log.resumen != null && log.resumen!.isNotEmpty)
+                          ? log.resumen!
+                          : (log.detalles ?? '-'),
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(color: Colors.grey[800], fontSize: 13),
                     ),
                   ),
                 ),
-                const SizedBox(width: 10),
-                // Botón Copiar
+                const SizedBox(width: 4),
+                // Botón copiar RESUMEN
+                SizedBox(
+                  width: 28,
+                  height: 28,
+                  child: IconButton(
+                    padding: EdgeInsets.zero,
+                    icon: Icon(
+                      Icons.copy_all,
+                      size: 16,
+                      color: Colors.grey[400],
+                    ),
+                    tooltip: 'Copiar resumen',
+                    onPressed: () {
+                      final text = (log.resumen != null && log.resumen!.isNotEmpty)
+                          ? log.resumen!
+                          : (log.detalles ?? '-');
+                      Clipboard.setData(ClipboardData(text: text));
+                      CustomSnackBar.show(
+                        context,
+                        message: 'Resumen copiado',
+                        type: SnackBarType.info,
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(width: 4),
+                // Botón detalles técnicos (JSON)
                 if (log.detalles != null && log.detalles!.isNotEmpty)
                   SizedBox(
-                    width: 24,
-                    height: 24,
+                    width: 28,
+                    height: 28,
                     child: IconButton(
                       padding: EdgeInsets.zero,
-                      icon: const Icon(
-                        Icons.copy,
+                      icon: Icon(
+                        Icons.data_object,
                         size: 16,
-                        color: Colors.grey,
+                        color: Colors.grey[400],
                       ),
-                      tooltip: "Copiar",
-                      onPressed: () {
-                        Clipboard.setData(ClipboardData(text: log.detalles!));
-                        CustomSnackBar.show(
-                          context,
-                          message: "Copiado al portapapeles",
-                          type: SnackBarType.info,
-                        );
-                      },
+                      tooltip: 'Ver JSON técnico',
+                      onPressed: () => _showDetallesTecnicosDialog(context, log),
                     ),
                   ),
               ],
@@ -490,6 +525,72 @@ class _AuditoriaViewState extends State<AuditoriaView> {
           ),
         ),
       ],
+    );
+  }
+
+  void _showDetallesTecnicosDialog(BuildContext context, AuditoriaLog log) {
+    String formattedContent;
+    try {
+      if (log.detalles == null || log.detalles!.isEmpty) {
+        formattedContent = '-';
+      } else {
+        final decoded = jsonDecode(log.detalles!);
+        formattedContent = const JsonEncoder.withIndent('  ').convert(decoded);
+      }
+    } on FormatException {
+      // No es un JSON válido, mostrar texto plano sin parsear
+      formattedContent = log.detalles ?? '-';
+    }
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.data_object, size: 20, color: Colors.grey[600]),
+            const SizedBox(width: 8),
+            const Text('Detalles Técnicos'),
+            const Spacer(),
+            Text(
+              '#${log.idAuditoria}',
+              style: TextStyle(fontSize: 13, color: Colors.grey[400], fontWeight: FontWeight.normal),
+            ),
+          ],
+        ),
+        content: SizedBox(
+          width: 600,
+          height: 400,
+          child: SingleChildScrollView(
+            child: SelectableText(
+              formattedContent,
+              style: const TextStyle(
+                fontFamily: 'monospace',
+                fontSize: 12,
+                height: 1.5,
+              ),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cerrar'),
+          ),
+          FilledButton.icon(
+            onPressed: () {
+              Clipboard.setData(ClipboardData(text: formattedContent));
+              Navigator.of(ctx).pop();
+              CustomSnackBar.show(
+                context,
+                message: 'JSON copiado al portapapeles',
+                type: SnackBarType.info,
+              );
+            },
+            icon: const Icon(Icons.copy, size: 16),
+            label: const Text('Copiar'),
+          ),
+        ],
+      ),
     );
   }
 
