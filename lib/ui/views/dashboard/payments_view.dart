@@ -154,40 +154,39 @@ class _PaymentsViewState extends State<PaymentsView> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            LayoutBuilder(
-              builder: (context, constraints) {
-                return ScrollbarTheme(
-                  data: ScrollbarThemeData(
-                    thumbColor: WidgetStateProperty.all(
-                      Colors.grey.withOpacity(0.3),
-                    ),
-                    thickness: WidgetStateProperty.all(4),
-                    radius: const Radius.circular(10),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.grey.shade300),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 5,
+                    offset: const Offset(0, 2),
                   ),
-                  child: Scrollbar(
-                    controller: _headerScroll,
-                    child: SingleChildScrollView(
+                ],
+              ),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  return ScrollbarTheme(
+                    data: ScrollbarThemeData(
+                      thumbColor: WidgetStateProperty.all(
+                        Colors.grey.withOpacity(0.3),
+                      ),
+                      thickness: WidgetStateProperty.all(4),
+                      radius: const Radius.circular(10),
+                    ),
+                    child: Scrollbar(
                       controller: _headerScroll,
-                      scrollDirection: Axis.horizontal,
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(
-                          minWidth:
-                              constraints
-                                  .maxWidth, // Estirar la cabecera al 100%
-                        ),
-                        child: Container(
-                          padding: const EdgeInsets.fromLTRB(10, 10, 10, 6),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: Colors.grey.shade300),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.05),
-                                blurRadius: 5,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
+                      child: SingleChildScrollView(
+                        controller: _headerScroll,
+                        scrollDirection: Axis.horizontal,
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(
+                            minWidth: constraints.maxWidth,
                           ),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -195,7 +194,7 @@ class _PaymentsViewState extends State<PaymentsView> {
                               Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  const SizedBox(width: 10),
+                                  const SizedBox(height: 40, width: 10),
                                   Icon(
                                     Icons.payments_outlined,
                                     size: 24,
@@ -315,12 +314,11 @@ class _PaymentsViewState extends State<PaymentsView> {
                         ),
                       ),
                     ),
-                  ),
-                );
-              },
+                  );
+                },
+              ),
             ),
-
-            const SizedBox(height: 15),
+          const SizedBox(height: 15),
 
             // KPIs
             Row(

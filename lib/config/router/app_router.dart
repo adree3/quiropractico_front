@@ -10,11 +10,13 @@ import 'package:quiropractico_front/ui/views/config/services_view.dart';
 import 'package:quiropractico_front/ui/views/config/users_view.dart';
 import 'package:quiropractico_front/ui/views/config/vacaciones_calendar_view.dart';
 import 'package:quiropractico_front/ui/views/dashboard/agenda_view.dart';
+import 'package:quiropractico_front/ui/views/dashboard/bonos_history_view.dart';
 import 'package:quiropractico_front/ui/views/dashboard/citas_view.dart';
 import 'package:quiropractico_front/ui/views/dashboard/cliente_detalle_view.dart';
 import 'package:quiropractico_front/ui/views/dashboard/clients_view.dart';
 import 'package:quiropractico_front/ui/views/dashboard/home_view.dart';
 import 'package:quiropractico_front/ui/views/dashboard/payments_view.dart';
+import 'package:quiropractico_front/ui/views/config/profile_view.dart';
 
 final GlobalKey<NavigatorState> _shellNavigatorKey =
     GlobalKey<NavigatorState>();
@@ -116,6 +118,10 @@ class AppRouter {
             builder: (context, state) => const PaymentsView(),
           ),
           GoRoute(
+            path: '/bonos',
+            builder: (context, state) => const BonosHistoryView(),
+          ),
+          GoRoute(
             path: '/servicios',
             builder: (context, state) => const ServicesView(),
           ),
@@ -134,6 +140,10 @@ class AppRouter {
           GoRoute(
             path: '/logs',
             builder: (context, state) => const AuditoriaView(),
+          ),
+          GoRoute(
+            path: '/perfil',
+            builder: (context, state) => const ProfileView(),
           ),
         ],
       ),

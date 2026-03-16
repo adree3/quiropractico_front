@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:quiropractico_front/config/theme/app_theme.dart';
 import 'package:quiropractico_front/ui/shared/sidebar.dart';
+import 'package:provider/provider.dart';
+import 'package:quiropractico_front/providers/users_provider.dart';
+import 'package:go_router/go_router.dart';
 
 class DashboardLayout extends StatelessWidget {
   final Widget child;
@@ -65,27 +68,57 @@ class DashboardLayout extends StatelessWidget {
                   children: [
                     // Topbar
                     if (!isMobile)
-                      Container(
-                        height: 56,
-                        width: double.infinity,
-                        color: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: const Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            CircleAvatar(
-                              radius: 16,
-                              backgroundColor: Colors.grey,
-                              child: Icon(
-                                Icons.person,
-                                size: 20,
-                                color: Colors.white,
-                              ),
+                      Consumer<UsersProvider>(
+                        builder: (context, usersProvider, child) {
+                          final user = usersProvider.currentUser;
+                          if (user == null && !usersProvider.isLoading) {
+                            Future.microtask(() => usersProvider.getMe());
+                          }
+                          return Container(
+                            height: 56,
+                            width: double.infinity,
+                            color: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 20),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                MouseRegion(
+                                  cursor: SystemMouseCursors.click,
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      context.go('/perfil');
+                                    },
+                                    child: Row(
+                                      children: [
+                                        CircleAvatar(
+                                          radius: 16,
+                                          backgroundColor: user?.rol == 'admin' 
+                                              ? Colors.indigo.shade100 
+                                              : Colors.grey.shade200,
+                                          child: Icon(
+                                            Icons.person,
+                                            size: 20,
+                                            color: user?.rol == 'admin' 
+                                                ? Colors.indigo 
+                                                : Colors.grey.shade600,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 10),
+                                        Text(
+                                          user?.nombreCompleto ?? "Cargando...",
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
-                            SizedBox(width: 10),
-                            Text("Usuario Conectado"),
-                          ],
-                        ),
+                          );
+                        },
                       ),
 
                     Expanded(

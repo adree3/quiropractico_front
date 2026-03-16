@@ -113,6 +113,13 @@ class _SidebarState extends State<Sidebar> with SingleTickerProviderStateMixin {
           badgeCount: pagosPendientes,
           badgeColor: Colors.orange,
         ),
+        _SidebarItem(
+          icon: Icons.confirmation_num_outlined,
+          title: 'Bonos',
+          isActive: location.startsWith('/bonos'),
+          isCollapsed: _collapsed,
+          onTap: () => context.go('/bonos'),
+        ),
         if (isAdminOrQuiro) ...[
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 6, horizontal: 4),
@@ -275,6 +282,12 @@ class _SidebarState extends State<Sidebar> with SingleTickerProviderStateMixin {
                   onTap: () => GoRouter.of(context).go('/pagos'),
                   badgeCount: pagosPendientes,
                   badgeColor: Colors.orange,
+                ),
+                _SidebarItem(
+                  icon: Icons.confirmation_num_outlined,
+                  title: 'Bonos',
+                  isActive: location.startsWith('/bonos'),
+                  onTap: () => context.go('/bonos'),
                 ),
                 if (isAdminOrQuiro) ...[
                   const Padding(
