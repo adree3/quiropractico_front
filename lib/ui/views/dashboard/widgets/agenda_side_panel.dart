@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:quiropractico_front/config/theme/app_theme.dart';
 import 'package:quiropractico_front/models/cita.dart';
 import 'package:quiropractico_front/providers/agenda_provider.dart';
+import 'package:syncfusion_flutter_calendar/calendar.dart';
 
 class AgendaSidePanel extends StatelessWidget {
   final bool isCollapsed;
@@ -65,11 +66,15 @@ class AgendaSidePanel extends StatelessWidget {
                         : MainAxisAlignment.spaceBetween,
                 children: [
                   if (!isCollapsed)
-                    const Text(
-                      "Resumen del Día",
-                      style: TextStyle(
+                    Text(
+                      provider.currentView == CalendarView.day
+                          ? "Resumen: ${DateFormat('EEEE d', 'es_ES').format(provider.selectedDate)}"
+                          : (provider.currentView == CalendarView.week
+                              ? "Resumen Semanal"
+                              : "Resumen Mensual"),
+                      style: const TextStyle(
                         fontWeight: FontWeight.bold,
-                        fontSize: 18,
+                        fontSize: 16,
                       ),
                     ),
                   Tooltip(
@@ -151,40 +156,14 @@ class AgendaSidePanel extends StatelessWidget {
                   ],
                 ),
 
-                const SizedBox(height: 30),
-                const Divider(),
-                const SizedBox(height: 10),
+                if (provider.currentView == CalendarView.day) ...[
+                  const SizedBox(height: 30),
+                  const Divider(),
+                  const SizedBox(height: 10),
 
-                // PRÓXIMO PACIENTE
-                const Text(
-                  "Siguiente en entrar:",
-                  style: TextStyle(
-                    color: Colors.grey,
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 10),
-
-                if (proximasCitas.isNotEmpty)
-                  _NextPatientCard(cita: proximasCitas.first)
-                else
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 20),
-                    child: Center(
-                      child: Text(
-                        "No hay más citas programadas hoy",
-                        style: TextStyle(color: Colors.grey),
-                      ),
-                    ),
-                  ),
-
-                const SizedBox(height: 20),
-
-                // COMING UP
-                if (proximasCitas.length > 1) ...[
+                  // PRÓXIMO PACIENTE
                   const Text(
-                    "A continuación:",
+                    "Siguiente en entrar:",
                     style: TextStyle(
                       color: Colors.grey,
                       fontSize: 12,
@@ -192,53 +171,81 @@ class AgendaSidePanel extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 10),
-                  Expanded(
-                    child: ListView.separated(
-                      itemCount: proximasCitas.length - 1,
-                      separatorBuilder:
-                          (ctx, i) => const Divider(
-                            height: 15,
-                            color: Colors.black12,
-                          ), // Separador
-                      itemBuilder: (context, index) {
-                        final cita = proximasCitas[index + 1];
-                        return ListTile(
-                          contentPadding: EdgeInsets.zero,
-                          leading: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.blue[50],
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              DateFormat('HH:mm').format(cita.fechaHoraInicio),
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: AppTheme.primaryColor,
-                                fontSize: 12,
+
+                  if (proximasCitas.isNotEmpty)
+                    _NextPatientCard(cita: proximasCitas.first)
+                  else
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 20),
+                      child: Center(
+                        child: Text(
+                          "No hay más citas programadas hoy",
+                          style: TextStyle(color: Colors.grey),
+                        ),
+                      ),
+                    ),
+
+                  const SizedBox(height: 20),
+
+                  // COMING UP
+                  if (proximasCitas.length > 1) ...[
+                    const Text(
+                      "A continuación:",
+                      style: TextStyle(
+                        color: Colors.grey,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Expanded(
+                      child: ListView.separated(
+                        itemCount: proximasCitas.length - 1,
+                        separatorBuilder:
+                            (ctx, i) => const Divider(
+                              height: 15,
+                              color: Colors.black12,
+                            ), // Separador
+                        itemBuilder: (context, index) {
+                          final cita = proximasCitas[index + 1];
+                          return ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            leading: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.blue[50],
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                DateFormat('HH:mm').format(cita.fechaHoraInicio),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: AppTheme.primaryColor,
+                                  fontSize: 12,
+                                ),
                               ),
                             ),
-                          ),
-                          title: Text(
-                            cita.nombreClienteCompleto,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
+                            title: Text(
+                              cita.nombreClienteCompleto,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
-                          ),
-                          subtitle: Text(
-                            "Dr. ${cita.nombreQuiropractico}",
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontSize: 11),
-                          ),
-                        );
-                      },
+                            subtitle: Text(
+                              "Dr. ${cita.nombreQuiropractico}",
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontSize: 11),
+                            ),
+                          );
+                        },
+                      ),
                     ),
-                  ),
+                  ],
                 ],
               ],
             ],
