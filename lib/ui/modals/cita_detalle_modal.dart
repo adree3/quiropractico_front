@@ -4,8 +4,11 @@ import 'package:provider/provider.dart';
 import 'package:quiropractico_front/config/theme/app_theme.dart';
 import 'package:quiropractico_front/models/cita.dart';
 import 'package:quiropractico_front/providers/agenda_provider.dart';
+import 'package:quiropractico_front/providers/users_provider.dart';
 import 'package:quiropractico_front/ui/modals/cita_modal.dart';
 import 'package:quiropractico_front/ui/widgets/custom_snackbar.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:go_router/go_router.dart';
 
 // ──────────────────────────────────────────────────────────
 // Helpers de estado
@@ -204,6 +207,10 @@ class CitaDetalleModal extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<AgendaProvider>(context, listen: false);
+    final usersProvider = Provider.of<UsersProvider>(context, listen: false);
+    final currentUser = usersProvider.currentUser;
+    final isAuthorized = currentUser?.rol == 'admin' || currentUser?.rol == 'quiropractico';
+
     final color = _colorForEstado(cita.estado);
     final dateFormat = DateFormat("EEEE, d 'de' MMMM · HH:mm", 'es');
     final timeFormat = DateFormat('HH:mm');
@@ -321,24 +328,48 @@ class CitaDetalleModal extends StatelessWidget {
                               icon: Icons.person_outline,
                               label: 'Paciente',
                               value: cita.nombreClienteCompleto,
+                              tooltip: 'Ver detalles del paciente',
+                              onTap: () {
+                                Navigator.pop(context);
+                                context.push('/pacientes/${cita.idCliente}');
+                              },
                             ),
                             _RowDivider(),
                             _InfoRow(
                               icon: Icons.phone_outlined,
                               label: 'Teléfono',
                               value: cita.telefonoCliente,
+                              tooltip: 'Abrir Whatsapp',
+                              onTap: () {
+                                final url = 'https://wa.me/34${cita.telefonoCliente.replaceAll(RegExp(r'[^\d]'), '')}';
+                                launchUrl(Uri.parse(url));
+                              },
                             ),
                             _RowDivider(),
                             _InfoRow(
                               icon: Icons.medical_services_outlined,
                               label: 'Doctor',
                               value: cita.nombreQuiropractico,
+                              tooltip: isAuthorized ? 'Ver perfil doctor' : null,
+                              onTap: isAuthorized 
+                                ? () {
+                                    Navigator.pop(context);
+                                    context.push('/config/usuarios/${cita.idQuiropractico}');
+                                  }
+                                : null,
                             ),
                             _RowDivider(),
                             _InfoRow(
                               icon: Icons.payment_outlined,
                               label: 'Método de pago',
                               value: cita.infoPago,
+                              tooltip: 'Ver pago',
+                              onTap: () {
+                                Navigator.pop(context);
+                                context.push(
+                                  '/pacientes/${cita.idBonoCliente ?? cita.idCliente}?tabIndex=1&showBono=true&resaltarCitaId=${cita.idCita}',
+                                );
+                              },
                             ),
                           ],
                         ),
@@ -570,16 +601,27 @@ class CitaDetalleModal extends StatelessWidget {
 // ──────────────────────────────────────────────────────────
 // Widgets auxiliares
 // ──────────────────────────────────────────────────────────
-class _InfoRow extends StatelessWidget {
+class _InfoRow extends StatefulWidget {
   final IconData icon;
   final String label;
   final String value;
+  final VoidCallback? onTap;
+  final String? tooltip;
 
   const _InfoRow({
     required this.icon,
     required this.label,
     required this.value,
+    this.onTap,
+    this.tooltip,
   });
+
+  @override
+  State<_InfoRow> createState() => _InfoRowState();
+}
+
+class _InfoRowState extends State<_InfoRow> {
+  bool _isHovering = false;
 
   @override
   Widget build(BuildContext context) {
@@ -587,30 +629,55 @@ class _InfoRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
       child: Row(
         children: [
-          Icon(icon, color: AppTheme.primaryColor, size: 20),
+          Icon(widget.icon, color: AppTheme.primaryColor, size: 20),
           const SizedBox(width: 14),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[500],
-                    fontWeight: FontWeight.w500,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: MouseRegion(
+                onEnter: (_) => setState(() => _isHovering = true),
+                onExit: (_) => setState(() => _isHovering = false),
+                cursor: widget.onTap != null ? SystemMouseCursors.click : SystemMouseCursors.basic,
+                child: GestureDetector(
+                  onTap: widget.onTap,
+                  child: Tooltip(
+                    message: widget.tooltip ?? '',
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: _isHovering && widget.onTap != null
+                            ? Colors.blue.withOpacity(0.08)
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            widget.label,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[500],
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(height: 1),
+                          Text(
+                            widget.value,
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.black87,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  value,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black87,
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
         ],

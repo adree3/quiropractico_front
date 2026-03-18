@@ -10,6 +10,7 @@ class UsersProvider extends ChangeNotifier {
   final String _baseUrl = ApiConfig.baseUrl;
 
   List<Usuario> usuarios = [];
+  Usuario? currentUser;
   bool isLoading = true;
   bool? filterActive = true;
 
@@ -242,6 +243,40 @@ class UsersProvider extends ChangeNotifier {
 
       // Silent Refresh
       getUsers(page: currentPage, silent: true);
+      return null;
+    } catch (e) {
+      return ErrorHandler.extractMessage(e);
+    }
+  }
+
+  bool _isFetchingMe = false;
+
+  Future<void> getMe() async {
+    if (_isFetchingMe) return;
+    _isFetchingMe = true;
+    isLoading = true;
+    notifyListeners();
+    try {
+      final response = await ApiService.dio.get('$_baseUrl/usuarios/me');
+      currentUser = Usuario.fromJson(response.data);
+    } catch (e) {
+      print('Error al cargar perfil: ${ErrorHandler.extractMessage(e)}');
+    } finally {
+      isLoading = false;
+      _isFetchingMe = false;
+      notifyListeners();
+    }
+  }
+
+  Future<String?> updateMyPassword(
+    String currentPassword,
+    String newPassword,
+  ) async {
+    try {
+      await ApiService.dio.put(
+        '$_baseUrl/usuarios/me/password',
+        data: {'currentPassword': currentPassword, 'newPassword': newPassword},
+      );
       return null;
     } catch (e) {
       return ErrorHandler.extractMessage(e);

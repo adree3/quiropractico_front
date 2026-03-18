@@ -3,7 +3,7 @@ import 'package:quiropractico_front/config/api_config.dart';
 import 'package:quiropractico_front/services/api_service.dart';
 import 'package:quiropractico_front/models/cita.dart';
 import 'package:quiropractico_front/models/usuario.dart';
-
+import 'package:syncfusion_flutter_calendar/calendar.dart';
 import 'package:quiropractico_front/utils/error_handler.dart';
 
 class AgendaProvider extends ChangeNotifier {
@@ -18,14 +18,57 @@ class AgendaProvider extends ChangeNotifier {
   List<Map<String, String>> huecosDisponibles = [];
   DateTime selectedDate = DateTime.now();
 
+  // Gestión de Vistas y Filtros
+  CalendarView currentView = CalendarView.day;
+  int? filterDoctorId;
+
+  // Seguimiento de rango visible para recargas (filtros, etc)
+  DateTime? _rangeStartDate;
+  DateTime? _rangeEndDate;
+
   AgendaProvider() {
-    updateSelectedDate(DateTime.now());
+    // No llamamos a updateSelectedDate aquí para evitar doble carga inicial
+    // si el widget ya lo hace en su initState.
+    selectedDate = DateTime.now();
   }
 
+  void setCurrentView(CalendarView view) {
+    currentView = view;
+    notifyListeners();
+    // Al cambiar la vista, solemos querer recargar datos para el rango visible
+    // Pero esto se manejará desde el widget al detectar el cambio de vista si es necesario,
+    // o podemos forzar una recarga aquí si tenemos el rango.
+  }
+
+  void setFilterDoctorId(int? id) {
+    filterDoctorId = id;
+    notifyListeners();
+    // Recargar con el filtro aplicado
+    refreshCurrentView();
+  }
+
+  Future<void> refreshCurrentView() async {
+    if (currentView == CalendarView.day) {
+      await getCitasDelDia(selectedDate);
+    } else {
+      // Si tenemos rango guardado, lo usamos para recargar todo el tramo visible
+      if (_rangeStartDate != null && _rangeEndDate != null) {
+        await getCitasPorRango(_rangeStartDate!, _rangeEndDate!);
+      } else {
+        await getCitasDelDia(selectedDate);
+      }
+    }
+  }
 
   Future<void> updateSelectedDate(DateTime date) async {
     selectedDate = date;
-    await getCitasDelDia(date);
+    if (currentView == CalendarView.day) {
+      await getCitasDelDia(date);
+    } else {
+      // Para otras vistas, la carga se suele disparar por el onViewChanged de Syncfusion
+      // No obstante, notificamos para sincronizar UI
+      notifyListeners();
+    }
   }
 
   Future<void> getCitasDelDia(DateTime fecha) async {
@@ -37,9 +80,14 @@ class AgendaProvider extends ChangeNotifier {
       final fechaStr =
           "${fecha.year}-${fecha.month.toString().padLeft(2, '0')}-${fecha.day.toString().padLeft(2, '0')}";
 
+      final Map<String, dynamic> params = {'fecha': fechaStr};
+      if (filterDoctorId != null) {
+        params['idQuiropractico'] = filterDoctorId;
+      }
+
       final response = await ApiService.dio.get(
         '$_baseUrl/citas/agenda',
-        queryParameters: {'fecha': fechaStr},
+        queryParameters: params,
       );
 
       final List<dynamic> data = response.data;
@@ -47,6 +95,45 @@ class AgendaProvider extends ChangeNotifier {
     } catch (e) {
       errorMessage = ErrorHandler.extractMessage(e);
       print('Error agenda: $errorMessage');
+    } finally {
+      isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> getCitasPorRango(DateTime desde, DateTime hasta) async {
+    _rangeStartDate = desde;
+    _rangeEndDate = hasta;
+    
+    isLoading = true;
+    errorMessage = null;
+    notifyListeners();
+
+    try {
+      final desdeStr =
+          "${desde.year}-${desde.month.toString().padLeft(2, '0')}-${desde.day.toString().padLeft(2, '0')}";
+      final hastaStr =
+          "${hasta.year}-${hasta.month.toString().padLeft(2, '0')}-${hasta.day.toString().padLeft(2, '0')}";
+
+      final Map<String, dynamic> params = {
+        'desde': desdeStr,
+        'hasta': hastaStr,
+      };
+      if (filterDoctorId != null) {
+        params['idQuiropractico'] = filterDoctorId;
+      }
+
+      // IMPORTANTE: Este endpoint requiere ser implementado en el Backend
+      final response = await ApiService.dio.get(
+        '$_baseUrl/citas/rango',
+        queryParameters: params,
+      );
+
+      final List<dynamic> data = response.data;
+      citas = data.map((json) => Cita.fromJson(json)).toList();
+    } catch (e) {
+      errorMessage = ErrorHandler.extractMessage(e);
+      print('Error rango citas: $errorMessage');
     } finally {
       isLoading = false;
       notifyListeners();
