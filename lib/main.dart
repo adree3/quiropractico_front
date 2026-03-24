@@ -19,6 +19,7 @@ import 'package:quiropractico_front/providers/stats_provider.dart';
 import 'package:quiropractico_front/providers/ventas_provider.dart';
 import 'package:quiropractico_front/providers/users_provider.dart';
 import 'package:quiropractico_front/providers/bonos_provider.dart';
+import 'package:quiropractico_front/providers/documentos_provider.dart';
 import 'package:quiropractico_front/services/api_service.dart';
 import 'package:quiropractico_front/services/local_storage.dart';
 
@@ -45,6 +46,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => AuditoriaProvider()),
         ChangeNotifierProvider(create: (_) => UiProvider()),
         ChangeNotifierProvider(create: (_) => BonosProvider()),
+        ChangeNotifierProvider(create: (_) => DocumentosProvider()),
       ],
       child: const MyApp(),
     ),

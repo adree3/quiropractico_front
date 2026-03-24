@@ -15,6 +15,7 @@ import 'package:quiropractico_front/ui/widgets/custom_snackbar.dart';
 import 'package:quiropractico_front/ui/widgets/avatar_widget.dart';
 import 'package:quiropractico_front/ui/widgets/fecha_picker_dialog.dart';
 import 'package:quiropractico_front/ui/widgets/horario_picker_dialog.dart';
+import 'package:quiropractico_front/ui/widgets/user_avatar_widget.dart';
 
 class CitaModal extends StatefulWidget {
   final DateTime? selectedDate;
@@ -478,24 +479,14 @@ class _CitaModalState extends State<CitaModal> {
         dropdownColor: Colors.white,
         menuMaxHeight: 300,
         items: agendaProvider.quiropracticos.map((u) {
-          final initials = u.nombreCompleto.isNotEmpty
-              ? u.nombreCompleto.substring(0, 1).toUpperCase()
-              : 'D';
           return DropdownMenuItem(
             value: u,
             child: Row(
               children: [
-                CircleAvatar(
+                UserAvatarWidget(
+                  usuario: u,
                   radius: 12,
-                  backgroundColor: AppTheme.primaryColor.withOpacity(0.15),
-                  child: Text(
-                    initials,
-                    style: const TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.primaryColor,
-                    ),
-                  ),
+                  fontSize: 10,
                 ),
                 const SizedBox(width: 12),
                 Text(

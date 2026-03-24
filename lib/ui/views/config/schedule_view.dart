@@ -12,6 +12,7 @@ import 'package:quiropractico_front/ui/modals/bloqueo_modal.dart';
 import 'package:quiropractico_front/ui/widgets/hoverable_action_button.dart';
 import 'package:quiropractico_front/ui/widgets/dashboard_dropdown.dart';
 import 'package:quiropractico_front/ui/widgets/custom_snackbar.dart';
+import 'package:quiropractico_front/ui/widgets/user_avatar_widget.dart';
 
 class ScheduleView extends StatefulWidget {
   const ScheduleView({super.key});
@@ -135,20 +136,10 @@ class _ScheduleViewState extends State<ScheduleView> {
                               (u) => DropdownOption<Usuario?>(
                                 value: u,
                                 label: u.nombreCompleto,
-                                iconWidget: CircleAvatar(
+                                iconWidget: UserAvatarWidget(
+                                  usuario: u,
                                   radius: 10,
-                                  backgroundColor: AppTheme.primaryColor
-                                      .withOpacity(0.1),
-                                  child: Text(
-                                    u.nombreCompleto.isNotEmpty
-                                        ? u.nombreCompleto[0].toUpperCase()
-                                        : "?",
-                                    style: const TextStyle(
-                                      fontSize: 10,
-                                      color: AppTheme.primaryColor,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
+                                  fontSize: 10,
                                 ),
                               ),
                             )

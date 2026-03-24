@@ -7,6 +7,7 @@ import 'package:quiropractico_front/providers/horarios_provider.dart';
 import 'package:quiropractico_front/providers/agenda_bloqueo_provider.dart';
 import 'package:quiropractico_front/ui/widgets/fecha_picker_dialog.dart';
 import 'package:syncfusion_flutter_calendar/calendar.dart';
+import 'package:quiropractico_front/ui/widgets/user_avatar_widget.dart';
 
 class AgendaHeader extends StatelessWidget {
   const AgendaHeader({super.key});
@@ -177,17 +178,10 @@ class AgendaHeader extends StatelessWidget {
                             return Center(
                               child: Row(
                                 children: [
-                                  CircleAvatar(
+                                  UserAvatarWidget(
+                                    usuario: doc,
                                     radius: 12,
-                                    backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
-                                    child: Text(
-                                      doc.nombreCompleto.split(' ').first[0],
-                                      style: const TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.bold,
-                                        color: AppTheme.primaryColor,
-                                      ),
-                                    ),
+                                    fontSize: 11,
                                   ),
                                   const SizedBox(width: 6),
                                   Text(
@@ -218,17 +212,10 @@ class AgendaHeader extends StatelessWidget {
                           value: doc.idUsuario,
                           child: Row(
                             children: [
-                              CircleAvatar(
+                              UserAvatarWidget(
+                                usuario: doc,
                                 radius: 12,
-                                backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
-                                child: Text(
-                                  doc.nombreCompleto.split(' ').first[0],
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                    color: AppTheme.primaryColor,
-                                  ),
-                                ),
+                                fontSize: 12,
                               ),
                               const SizedBox(width: 10),
                               Text(doc.nombreCompleto),

@@ -1,0 +1,96 @@
+import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
+import 'package:quiropractico_front/config/api_config.dart';
+import 'package:quiropractico_front/models/documento.dart';
+import 'package:quiropractico_front/services/api_service.dart';
+import 'package:quiropractico_front/utils/error_handler.dart';
+
+class DocumentosProvider extends ChangeNotifier {
+  final String _baseUrl = ApiConfig.baseUrl;
+
+  List<Documento> documentos = [];
+  bool isLoading = false;
+  bool isUploading = false;
+  String? errorMessage;
+
+  /// Carga la lista de documentos de un cliente (sin URLs temporales)
+  Future<void> loadDocumentos(int idCliente) async {
+    isLoading = true;
+    errorMessage = null;
+    notifyListeners();
+
+    try {
+      final response = await ApiService.dio.get('$_baseUrl/documentos/clientes/$idCliente');
+      final data = response.data as List;
+      documentos = data.map((e) => Documento.fromJson(e)).toList();
+    } catch (e) {
+      errorMessage = ErrorHandler.extractMessage(e);
+      print('Error cargando documentos: $errorMessage');
+    } finally {
+      isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  /// Sube un documento a R2 utilizando la llamada Multipart. 
+  /// Soporta envío de bytes directo para compatibilidad con Web y Desktop.
+  Future<String?> subirDocumento({
+    required int idCliente,
+    required List<int> bytes,
+    required String filename,
+    required String tipoDocumento,
+  }) async {
+    isUploading = true;
+    notifyListeners();
+
+    try {
+      final formData = FormData.fromMap({
+        'file': MultipartFile.fromBytes(bytes, filename: filename),
+      });
+
+      // El tipo se pasa como query parameter en la URL
+      final url = '$_baseUrl/documentos/clientes/$idCliente?tipo=$tipoDocumento';
+
+      final response = await ApiService.dio.post(url, data: formData);
+      
+      if (response.statusCode == 200) {
+        final nuevoDoc = Documento.fromJson(response.data);
+        // Insertamos el más reciente arriba
+        documentos.insert(0, nuevoDoc);
+        return null; // OK
+      }
+      return 'Error desconocido al subir archivo.';
+    } catch (e) {
+      final msg = ErrorHandler.extractMessage(e);
+      return msg;
+    } finally {
+      isUploading = false;
+      notifyListeners();
+    }
+  }
+
+  /// Petición JIT (Just-In-Time) para obtener la URL temporal en el momento del click
+  Future<String?> obtenerUrlTemporal(int idDocumento) async {
+    try {
+      final response = await ApiService.dio.get('$_baseUrl/documentos/$idDocumento/url');
+      // Aseguramos que se devuelve como un String limpio
+      return response.data.toString();
+    } catch (e) {
+      print('Error obteniendo URL JIT: ${ErrorHandler.extractMessage(e)}');
+      return null;
+    }
+  }
+
+  /// Realiza el borrado lógico del documento
+  Future<String?> eliminarDocumento(int idDocumento) async {
+    try {
+      await ApiService.dio.delete('$_baseUrl/documentos/$idDocumento');
+      // Lo eliminamos localmente de la lista para actualizar la UI sin recargar
+      documentos.removeWhere((d) => d.idDocumento == idDocumento);
+      notifyListeners();
+      return null;
+    } catch (e) {
+      return ErrorHandler.extractMessage(e);
+    }
+  }
+}

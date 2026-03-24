@@ -5,6 +5,7 @@ import 'package:quiropractico_front/services/api_service.dart';
 import 'package:quiropractico_front/models/usuario.dart';
 import 'package:quiropractico_front/services/local_storage.dart';
 import 'package:quiropractico_front/utils/error_handler.dart';
+import 'package:file_picker/file_picker.dart';
 
 class UsersProvider extends ChangeNotifier {
   final String _baseUrl = ApiConfig.baseUrl;
@@ -13,9 +14,13 @@ class UsersProvider extends ChangeNotifier {
   Usuario? currentUser;
   bool isLoading = true;
   bool? filterActive = true;
+  int avatarIndex = LocalStorage.getAvatarIndex();
 
   int _realBlockedCount = 0;
   bool _showBadge = false;
+
+  // Cache buster para la foto de perfil (hace que Flutter refresque la imagen al subir otra)
+  int profilePictureVersion = DateTime.now().millisecondsSinceEpoch;
 
   int blockedCount = 0;
 
@@ -277,6 +282,59 @@ class UsersProvider extends ChangeNotifier {
         '$_baseUrl/usuarios/me/password',
         data: {'currentPassword': currentPassword, 'newPassword': newPassword},
       );
+      return null;
+    } catch (e) {
+      return ErrorHandler.extractMessage(e);
+    }
+  }
+
+  // --- Subida de foto R2 (JIT Proxy) ---
+  Future<String?> uploadProfilePicture(PlatformFile file) async {
+    if (currentUser == null) return "No hay usuario activo";
+    isLoading = true;
+    notifyListeners();
+    try {
+      final formData = FormData.fromMap({
+        'file': MultipartFile.fromBytes(
+          file.bytes!, 
+          filename: file.name,
+        )
+      });
+      await ApiService.dio.put(
+        '$_baseUrl/usuarios/${currentUser!.idUsuario}/foto-perfil',
+        data: formData,
+      );
+      
+      // Actualizamos el flag local y rompemos la caché para que la recargue
+      currentUser = currentUser!.copyWith(tieneFotoPerfil: true);
+      profilePictureVersion = DateTime.now().millisecondsSinceEpoch;
+      return null;
+    } catch (e) {
+      return ErrorHandler.extractMessage(e);
+    } finally {
+      isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  // Actualizar avatar (persiste en localStorage)
+  Future<void> updateAvatar(int index) async {
+    avatarIndex = index;
+    await LocalStorage.saveAvatarIndex(index);
+    notifyListeners();
+  }
+
+  // Actualizar nombre del usuario en el backend
+  Future<String?> updateMyProfile(String nombreCompleto) async {
+    try {
+      await ApiService.dio.put(
+        '$_baseUrl/usuarios/me',
+        data: {'nombreCompleto': nombreCompleto},
+      );
+      if (currentUser != null) {
+        currentUser = currentUser!.copyWith(nombreCompleto: nombreCompleto);
+        notifyListeners();
+      }
       return null;
     } catch (e) {
       return ErrorHandler.extractMessage(e);

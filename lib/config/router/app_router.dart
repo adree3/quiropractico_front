@@ -145,6 +145,13 @@ class AppRouter {
             path: '/perfil',
             builder: (context, state) => const ProfileView(),
           ),
+          GoRoute(
+            path: '/perfil/:id',
+            builder: (context, state) {
+              final String id = state.pathParameters['id'] ?? '0';
+              return ProfileView(targetUserId: int.tryParse(id));
+            },
+          ),
         ],
       ),
     ],

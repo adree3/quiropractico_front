@@ -41,5 +41,22 @@ class LocalStorage {
   static int getLastSeenBlockedCount() {
     return prefs.getInt('lastSeenBlockedCount') ?? -1;
   }
- 
+
+  // Avatar de usuario (índice 0-11)
+  static Future<void> saveAvatarIndex(int index) async {
+    await prefs.setInt('avatarIndex', index);
+  }
+
+  static int getAvatarIndex() {
+    return prefs.getInt('avatarIndex') ?? 0;
+  }
+
+  // Vista por defecto de la agenda
+  static Future<void> saveDefaultAgendaView(String view) async {
+    await prefs.setString('defaultAgendaView', view);
+  }
+
+  static String getDefaultAgendaView() {
+    return prefs.getString('defaultAgendaView') ?? 'day';
+  }
 }

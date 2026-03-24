@@ -353,8 +353,7 @@ class CitaDetalleModal extends StatelessWidget {
                               tooltip: isAuthorized ? 'Ver perfil doctor' : null,
                               onTap: isAuthorized 
                                 ? () {
-                                    Navigator.pop(context);
-                                    context.push('/config/usuarios/${cita.idQuiropractico}');
+                                    context.push('/perfil/${cita.idQuiropractico}');
                                   }
                                 : null,
                             ),

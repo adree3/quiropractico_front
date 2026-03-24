@@ -5,6 +5,7 @@ import 'package:quiropractico_front/models/cita.dart';
 import 'package:quiropractico_front/models/usuario.dart';
 import 'package:syncfusion_flutter_calendar/calendar.dart';
 import 'package:quiropractico_front/utils/error_handler.dart';
+import 'package:quiropractico_front/services/local_storage.dart';
 
 class AgendaProvider extends ChangeNotifier {
   final String _baseUrl = ApiConfig.baseUrl;
@@ -27,9 +28,12 @@ class AgendaProvider extends ChangeNotifier {
   DateTime? _rangeEndDate;
 
   AgendaProvider() {
-    // No llamamos a updateSelectedDate aquí para evitar doble carga inicial
-    // si el widget ya lo hace en su initState.
     selectedDate = DateTime.now();
+    try {
+      final v = LocalStorage.getDefaultAgendaView();
+      if (v == 'week') currentView = CalendarView.week;
+      else if (v == 'month') currentView = CalendarView.month;
+    } catch (_) {}
   }
 
   void setCurrentView(CalendarView view) {

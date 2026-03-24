@@ -8,6 +8,7 @@ import 'package:quiropractico_front/ui/widgets/custom_snackbar.dart';
 import 'package:quiropractico_front/ui/widgets/dashboard_dropdown.dart';
 import 'package:quiropractico_front/ui/widgets/paginated_table.dart';
 import 'package:quiropractico_front/ui/widgets/hoverable_action_button.dart';
+import 'package:quiropractico_front/ui/widgets/user_avatar_widget.dart';
 
 class UsersView extends StatefulWidget {
   const UsersView({super.key});
@@ -276,19 +277,10 @@ class _UsersViewState extends State<UsersView> {
           DataCell(
             Row(
               children: [
-                CircleAvatar(
+                UserAvatarWidget(
+                  usuario: usuario,
                   radius: 14,
-                  backgroundColor: baseColor.withOpacity(0.1),
-                  child: Text(
-                    usuario.nombreCompleto.isNotEmpty
-                        ? usuario.nombreCompleto[0].toUpperCase()
-                        : "?",
-                    style: TextStyle(
-                      color: baseColor,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                  fontSize: 12,
                 ),
                 const SizedBox(width: 10),
                 Column(

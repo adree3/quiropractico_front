@@ -6,6 +6,7 @@ import 'package:quiropractico_front/models/usuario.dart';
 import 'package:quiropractico_front/providers/agenda_bloqueo_provider.dart';
 import 'package:quiropractico_front/providers/agenda_provider.dart';
 import 'package:quiropractico_front/exceptions/bloqueo_conflict_exception.dart';
+import 'package:quiropractico_front/ui/widgets/user_avatar_widget.dart';
 
 class BloqueoModal extends StatefulWidget {
   final BloqueoAgenda? bloqueoEditar;
@@ -124,7 +125,13 @@ class _BloqueoModalState extends State<BloqueoModal> {
                   ...agendaProvider.quiropracticos.map(
                     (u) => DropdownMenuItem(
                       value: u,
-                      child: Text(u.nombreCompleto),
+                      child: Row(
+                        children: [
+                          UserAvatarWidget(usuario: u, radius: 12, fontSize: 10),
+                          const SizedBox(width: 8),
+                          Text(u.nombreCompleto),
+                        ],
+                      ),
                     ),
                   ),
                 ],

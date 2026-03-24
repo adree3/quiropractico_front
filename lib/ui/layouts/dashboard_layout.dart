@@ -4,6 +4,7 @@ import 'package:quiropractico_front/ui/shared/sidebar.dart';
 import 'package:provider/provider.dart';
 import 'package:quiropractico_front/providers/users_provider.dart';
 import 'package:go_router/go_router.dart';
+import 'package:quiropractico_front/ui/widgets/user_avatar_widget.dart';
 
 class DashboardLayout extends StatelessWidget {
   final Widget child;
@@ -82,36 +83,39 @@ class DashboardLayout extends StatelessWidget {
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.end,
                               children: [
-                                MouseRegion(
-                                  cursor: SystemMouseCursors.click,
-                                  child: GestureDetector(
+                                Material(
+                                  color: Colors.transparent,
+                                  child: InkWell(
                                     onTap: () {
-                                      context.go('/perfil');
+                                      Navigator.of(context, rootNavigator: true).popUntil((route) => route is! PopupRoute);
+                                      context.push('/perfil');
                                     },
-                                    child: Row(
-                                      children: [
-                                        CircleAvatar(
-                                          radius: 16,
-                                          backgroundColor: user?.rol == 'admin' 
-                                              ? Colors.indigo.shade100 
-                                              : Colors.grey.shade200,
-                                          child: Icon(
-                                            Icons.person,
-                                            size: 20,
-                                            color: user?.rol == 'admin' 
-                                                ? Colors.indigo 
-                                                : Colors.grey.shade600,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 10),
-                                        Text(
-                                          user?.nombreCompleto ?? "Cargando...",
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.w600,
+                                    borderRadius: BorderRadius.circular(10),
+                                    hoverColor: AppTheme.primaryColor.withOpacity(0.05),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(10),
+                                        color: GoRouterState.of(context).uri.toString() == '/perfil' ? AppTheme.primaryColor.withOpacity(0.08) : Colors.transparent,
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          UserAvatarWidget(
+                                            usuario: user,
+                                            profilePictureVersion: usersProvider.profilePictureVersion,
+                                            radius: 16,
                                             fontSize: 14,
                                           ),
-                                        ),
-                                      ],
+                                          const SizedBox(width: 10),
+                                          Text(
+                                            user?.nombreCompleto ?? "Cargando...",
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 14,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ),
                                 ),

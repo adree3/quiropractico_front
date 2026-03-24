@@ -6,7 +6,10 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:quiropractico_front/models/auditoria_log.dart';
 import 'package:quiropractico_front/providers/auditoria_provider.dart';
+import 'package:quiropractico_front/providers/users_provider.dart';
+import 'package:quiropractico_front/models/usuario.dart';
 import 'package:quiropractico_front/ui/widgets/custom_snackbar.dart';
+import 'package:quiropractico_front/ui/widgets/user_avatar_widget.dart';
 import 'package:quiropractico_front/ui/widgets/dashboard_dropdown.dart';
 import 'package:quiropractico_front/ui/widgets/custom_date_range_picker.dart';
 import 'package:quiropractico_front/ui/widgets/paginated_table.dart';
@@ -413,22 +416,36 @@ class _AuditoriaViewState extends State<AuditoriaView> {
         ),
 
         DataCell(
-          Row(
-            children: [
-              CircleAvatar(
-                radius: 14,
-                backgroundColor: _getColorHash(log.usernameResponsable),
-                child: Text(
-                  (log.usernameResponsable ?? "S")[0].toUpperCase(),
-                  style: const TextStyle(fontSize: 12, color: Colors.white),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                log.usernameResponsable ?? "Sistema",
-                style: const TextStyle(fontSize: 13),
-              ),
-            ],
+          Builder(
+            builder: (ctx) {
+              final usersProvider = Provider.of<UsersProvider>(ctx, listen: false);
+              Usuario? responsable;
+              try {
+                if (log.idUsuarioResponsable != null) {
+                  responsable = usersProvider.usuarios.firstWhere((u) => u.idUsuario == log.idUsuarioResponsable);
+                }
+              } catch (_) {}
+
+              return Row(
+                children: [
+                  responsable != null 
+                    ? UserAvatarWidget(usuario: responsable, radius: 14, fontSize: 12)
+                    : CircleAvatar(
+                        radius: 14,
+                        backgroundColor: _getColorHash(log.usernameResponsable),
+                        child: Text(
+                          (log.usernameResponsable ?? "S").isNotEmpty ? (log.usernameResponsable ?? "S")[0].toUpperCase() : "S",
+                          style: const TextStyle(fontSize: 12, color: Colors.white),
+                        ),
+                      ),
+                  const SizedBox(width: 8),
+                  Text(
+                    log.usernameResponsable ?? "Sistema",
+                    style: const TextStyle(fontSize: 13),
+                  ),
+                ],
+              );
+            }
           ),
         ),
 

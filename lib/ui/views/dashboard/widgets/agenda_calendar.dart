@@ -415,7 +415,6 @@ class AgendaCalendar extends StatelessWidget {
     HorariosProvider horariosProvider,
     AgendaBloqueoProvider bloqueosProvider,
   ) {
-    if (details.targetElement == null) return;
     final date = details.date!;
 
     if (!AgendaUtils.isDayWorkable(date, horariosProvider.horariosGlobales) ||
