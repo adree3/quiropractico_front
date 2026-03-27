@@ -137,4 +137,19 @@ class CitasProvider extends ChangeNotifier {
       return false;
     }
   }
+
+  /// Recupera el historial plano de citas para cruce relacional (Ej: asociar documentos)
+  Future<List<Cita>> fetchCitasCliente(int idCliente) async {
+    try {
+      final response = await ApiService.dio.get(
+        '$_baseUrl/citas/cliente/$idCliente',
+        queryParameters: {'size': 500, 'sort': 'fechaHoraInicio,desc'},
+      );
+      final List<dynamic> data = response.data['content'];
+      return data.map((json) => Cita.fromJson(json)).toList();
+    } catch (e) {
+      print('Error loading client citas: $e');
+      return [];
+    }
+  }
 }

@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
@@ -12,11 +12,13 @@ import 'package:quiropractico_front/ui/modals/cita_detalle_modal.dart';
 import 'package:quiropractico_front/ui/modals/cita_modal.dart';
 import 'package:quiropractico_front/ui/views/dashboard/tabs/cliente_bonos_tab.dart';
 import 'package:quiropractico_front/ui/views/dashboard/tabs/cliente_citas_tab.dart';
+import 'package:quiropractico_front/ui/views/dashboard/tabs/cliente_archivos_tab.dart';
 import 'package:quiropractico_front/ui/views/dashboard/tabs/cliente_familiares_tab.dart';
 import 'package:quiropractico_front/ui/widgets/avatar_widget.dart';
 import 'package:quiropractico_front/ui/widgets/custom_snackbar.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:shimmer/shimmer.dart';
 
 class ClienteDetalleView extends StatelessWidget {
   final int idCliente;
@@ -74,7 +76,7 @@ class _ContentState extends State<_Content>
   void initState() {
     super.initState();
     _tabController = TabController(
-      length: 3,
+      length: 4,
       vsync: this,
       initialIndex: widget.initialTab,
     );
@@ -92,7 +94,7 @@ class _ContentState extends State<_Content>
 
     // Solo mostramos pantalla de carga si no tenemos datos del cliente
     if (provider.isLoading && provider.cliente == null) {
-      return const Center(child: CircularProgressIndicator());
+      return const _SkeletonClienteDetalle();
     }
 
     if (provider.cliente == null) {
@@ -525,6 +527,7 @@ class _ContentState extends State<_Content>
                     icon: Icon(Icons.card_membership),
                   ),
                   Tab(text: "Familiares", icon: Icon(Icons.family_restroom)),
+                  Tab(text: "Archivos", icon: Icon(Icons.folder_open)),
                 ],
               ),
               const SizedBox(height: 10),
@@ -540,6 +543,7 @@ class _ContentState extends State<_Content>
                       resaltarCitaId: widget.resaltarCitaId,
                     ),
                     ClienteFamiliaresTab(cliente: cliente),
+                    ClienteArchivosTab(cliente: cliente),
                   ],
                 ),
               ),
@@ -578,6 +582,137 @@ class _ContentState extends State<_Content>
     }
   }
 }
+
+/// Widget que imita el layout de la pantalla de detalles mientras carga
+class _SkeletonClienteDetalle extends StatelessWidget {
+  const _SkeletonClienteDetalle();
+
+  /// Elemento principal: opacidad completa → más visible en shimmer
+  Widget _box(double w, double h, {double radius = 8}) {
+    return Container(
+      width: w,
+      height: h,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(radius),
+      ),
+    );
+  }
+
+  /// Elemento secundario: opacidad reducida → más tenue en shimmer
+  Widget _boxFaded(double w, double h, {double radius = 8, double opacity = 0.45}) {
+    return Opacity(
+      opacity: opacity,
+      child: Container(
+        width: w,
+        height: h,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(radius),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Shimmer.fromColors(
+      baseColor: Colors.grey.shade300,
+      highlightColor: Colors.grey.shade100,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Navegación: botón atrás (tenue) + título (completo)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+            child: Row(
+              children: [
+                _boxFaded(36, 36, radius: 18),
+                const SizedBox(width: 12),
+                _box(200, 24),               // título prominente
+              ],
+            ),
+          ),
+
+          // Card del paciente
+          Card(
+            elevation: 2,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _box(70, 70, radius: 35),    // avatar: prominente
+                  const SizedBox(width: 25),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _box(240, 26),              // nombre: prominente
+                        const SizedBox(height: 12),
+                        _boxFaded(140, 16),          // teléfono: tenue
+                        const SizedBox(height: 10),
+                        _boxFaded(180, 14, opacity: 0.3), // email: muy tenue
+                        const SizedBox(height: 20),
+                        Row(
+                          children: [
+                            _box(130, 60, radius: 12),          // chip 1: prominente
+                            const SizedBox(width: 15),
+                            _boxFaded(130, 60, radius: 12),     // chip 2: tenue
+                            const SizedBox(width: 15),
+                            _box(130, 60, radius: 12),          // chip 3: prominente
+                            const SizedBox(width: 15),
+                            _boxFaded(130, 60, radius: 12),     // chip 4: tenue
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // Tabs: el primero prominent (activo), los demás tenues
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Row(
+              children: [
+                _box(140, 36, radius: 6),           // tab activo
+                const SizedBox(width: 12),
+                _boxFaded(140, 36, radius: 6),
+                const SizedBox(width: 12),
+                _boxFaded(120, 36, radius: 6),
+                const SizedBox(width: 12),
+                _boxFaded(100, 36, radius: 6),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Filas de contenido: alternamos prominente / tenue
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Column(
+                children: List.generate(5, (i) => Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: i.isEven
+                      ? _box(double.infinity, 72, radius: 10)
+                      : _boxFaded(double.infinity, 72, radius: 10),
+                )),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+
 
 class _StatChip extends StatelessWidget {
   final String label;
