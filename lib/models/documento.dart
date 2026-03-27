@@ -1,5 +1,8 @@
 class Documento {
   final int idDocumento;
+  final int? idCliente;
+  final int? idCita;
+  final String? notasMedicas;
   final String nombreOriginal;
   final String tipoDocumento;
   final String? mimeType;
@@ -9,6 +12,9 @@ class Documento {
 
   Documento({
     required this.idDocumento,
+    this.idCliente,
+    this.idCita,
+    this.notasMedicas,
     required this.nombreOriginal,
     required this.tipoDocumento,
     this.mimeType,
@@ -20,6 +26,9 @@ class Documento {
   factory Documento.fromJson(Map<String, dynamic> json) {
     return Documento(
       idDocumento: json['idDocumento'] ?? 0,
+      idCliente: json['idCliente'],
+      idCita: json['idCita'],
+      notasMedicas: json['notasMedicas'],
       nombreOriginal: json['nombreOriginal'] ?? '',
       tipoDocumento: json['tipoDocumento'] ?? 'OTRO',
       mimeType: json['mimeType'],
