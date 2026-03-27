@@ -4,6 +4,7 @@ import 'package:quiropractico_front/config/api_config.dart';
 import 'package:quiropractico_front/models/documento.dart';
 import 'package:quiropractico_front/services/api_service.dart';
 import 'package:quiropractico_front/utils/error_handler.dart';
+import 'package:quiropractico_front/services/local_storage.dart';
 
 class DocumentosProvider extends ChangeNotifier {
   final String _baseUrl = ApiConfig.baseUrl;
@@ -39,6 +40,9 @@ class DocumentosProvider extends ChangeNotifier {
     required List<int> bytes,
     required String filename,
     required String tipoDocumento,
+    int? idCita,
+    int? idPago,
+    String? notas,
   }) async {
     isUploading = true;
     notifyListeners();
@@ -48,8 +52,11 @@ class DocumentosProvider extends ChangeNotifier {
         'file': MultipartFile.fromBytes(bytes, filename: filename),
       });
 
-      // El tipo se pasa como query parameter en la URL
-      final url = '$_baseUrl/documentos/clientes/$idCliente?tipo=$tipoDocumento';
+      // El tipo y los meta-datos relacionales se pasan como query parameters
+      String url = '$_baseUrl/documentos/clientes/$idCliente?tipo=$tipoDocumento';
+      if (idCita != null) url += '&idCita=$idCita';
+      if (idPago != null) url += '&idPago=$idPago';
+      if (notas != null && notas.isNotEmpty) url += '&notas=${Uri.encodeComponent(notas)}';
 
       final response = await ApiService.dio.post(url, data: formData);
       
@@ -69,10 +76,12 @@ class DocumentosProvider extends ChangeNotifier {
     }
   }
 
-  /// Petición JIT (Just-In-Time) para obtener la URL temporal en el momento del click
-  Future<String?> obtenerUrlTemporal(int idDocumento) async {
+  Future<String?> obtenerUrlTemporal(int idDocumento, {bool download = false}) async {
     try {
-      final response = await ApiService.dio.get('$_baseUrl/documentos/$idDocumento/url');
+      final response = await ApiService.dio.get(
+        '$_baseUrl/documentos/$idDocumento/url',
+        queryParameters: {'download': download},
+      );
       // Aseguramos que se devuelve como un String limpio
       return response.data.toString();
     } catch (e) {
@@ -89,6 +98,44 @@ class DocumentosProvider extends ChangeNotifier {
       documentos.removeWhere((d) => d.idDocumento == idDocumento);
       notifyListeners();
       return null;
+    } catch (e) {
+      return ErrorHandler.extractMessage(e);
+    }
+  }
+
+  /// Devuelve la URL de descarga directa (Proxy) para evitar CORS
+  String getDownloadUrl(int idDocumento) {
+    final token = LocalStorage.getToken();
+    return '$_baseUrl/documentos/$idDocumento/download?token=$token';
+  }
+
+  /// Devuelve la URL de visualización inline (sin descargar) — para PDFs en nueva pestaña
+  String getViewUrl(int idDocumento) {
+    final token = LocalStorage.getToken();
+    return '$_baseUrl/documentos/$idDocumento/view?token=$token';
+  }
+
+  /// Actualiza notas, cita y/o pago de un documento
+  Future<String?> actualizarMetadatos(int idDocumento, {int? idCita, int? idPago, String? notas}) async {
+    try {
+      String url = '$_baseUrl/documentos/$idDocumento';
+      Map<String, dynamic> params = {};
+      if (idCita != null) params['idCita'] = idCita;
+      if (idPago != null) params['idPago'] = idPago;
+      if (notas != null) params['notas'] = notas;
+
+      final response = await ApiService.dio.patch(url, queryParameters: params);
+      
+      if (response.statusCode == 200) {
+        final docActualizado = Documento.fromJson(response.data);
+        final index = documentos.indexWhere((d) => d.idDocumento == idDocumento);
+        if (index != -1) {
+          documentos[index] = docActualizado;
+          notifyListeners();
+        }
+        return null;
+      }
+      return 'Error al actualizar el documento.';
     } catch (e) {
       return ErrorHandler.extractMessage(e);
     }

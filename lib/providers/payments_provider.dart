@@ -294,4 +294,15 @@ class PaymentsProvider extends ChangeNotifier {
       return ErrorHandler.extractMessage(e);
     }
   }
+
+  Future<List<Pago>> fetchPagosCliente(int idCliente) async {
+    try {
+      final response = await ApiService.dio.get('$_baseUrl/pagos/cliente/$idCliente');
+      final List<dynamic> data = response.data;
+      return data.map((e) => Pago.fromJson(e)).toList();
+    } catch (e) {
+      print("Error buscando pagos del cliente: $e");
+      return [];
+    }
+  }
 }
