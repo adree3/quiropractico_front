@@ -226,37 +226,54 @@ class _IncomeChart extends StatelessWidget {
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
           ),
           const SizedBox(height: 20),
-          SizedBox(
-            height: 250,
-            child: SfCartesianChart(
-              primaryXAxis: CategoryAxis(
-                majorGridLines: const MajorGridLines(width: 0),
-                axisLine: const AxisLine(width: 0),
+          if (data.isEmpty)
+            SizedBox(
+              height: 250,
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.bar_chart_rounded, size: 48, color: Colors.grey.shade300),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Sin datos de ingresos para mostrar',
+                      style: TextStyle(color: Colors.grey.shade400, fontSize: 14),
+                    ),
+                  ],
+                ),
               ),
-              primaryYAxis: NumericAxis(
-                majorGridLines: MajorGridLines(width: 1, color: Colors.grey.shade200, dashArray: <double>[5, 5]),
-                axisLine: const AxisLine(width: 0),
-                numberFormat: NumberFormat.compactCurrency(symbol: '€'),
+            )
+          else
+            SizedBox(
+              height: 250,
+              child: SfCartesianChart(
+                primaryXAxis: CategoryAxis(
+                  majorGridLines: const MajorGridLines(width: 0),
+                  axisLine: const AxisLine(width: 0),
+                ),
+                primaryYAxis: NumericAxis(
+                  majorGridLines: MajorGridLines(width: 1, color: Colors.grey.shade200, dashArray: <double>[5, 5]),
+                  axisLine: const AxisLine(width: 0),
+                  numberFormat: NumberFormat.compactCurrency(symbol: '€'),
+                ),
+                tooltipBehavior: TooltipBehavior(enable: true, header: '', format: 'point.y€'),
+                series: <CartesianSeries>[
+                  SplineAreaSeries<ChartData, String>(
+                    dataSource: data,
+                    xValueMapper: (ChartData data, _) => data.label,
+                    yValueMapper: (ChartData data, _) => data.value,
+                    gradient: LinearGradient(
+                      colors: [AppTheme.primaryColor.withOpacity(0.4), AppTheme.primaryColor.withOpacity(0.01)],
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                    ),
+                    borderColor: AppTheme.primaryColor,
+                    borderWidth: 3,
+                    markerSettings: const MarkerSettings(isVisible: true, height: 8, width: 8),
+                  )
+                ],
               ),
-              tooltipBehavior: TooltipBehavior(enable: true, header: '', format: 'point.y€'),
-              series: <CartesianSeries>[
-                SplineAreaSeries<ChartData, String>(
-                  dataSource: data,
-                  xValueMapper: (ChartData data, _) => data.label,
-                  yValueMapper: (ChartData data, _) => data.value,
-                  // DISEÑO ELEGANTE
-                  gradient: LinearGradient(
-                    colors: [AppTheme.primaryColor.withOpacity(0.4), AppTheme.primaryColor.withOpacity(0.01)],
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                  ),
-                  borderColor: AppTheme.primaryColor,
-                  borderWidth: 3,
-                  markerSettings: const MarkerSettings(isVisible: true, height: 8, width: 8), // Puntitos
-                )
-              ],
             ),
-          ),
         ],
       ),
     );

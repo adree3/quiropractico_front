@@ -98,7 +98,7 @@ class AgendaProvider extends ChangeNotifier {
       citas = data.map((json) => Cita.fromJson(json)).toList();
     } catch (e) {
       errorMessage = ErrorHandler.extractMessage(e);
-      print('Error agenda: $errorMessage');
+      debugPrint('Error agenda: $errorMessage');
     } finally {
       isLoading = false;
       notifyListeners();
@@ -137,7 +137,7 @@ class AgendaProvider extends ChangeNotifier {
       citas = data.map((json) => Cita.fromJson(json)).toList();
     } catch (e) {
       errorMessage = ErrorHandler.extractMessage(e);
-      print('Error rango citas: $errorMessage');
+      debugPrint('Error rango citas: $errorMessage');
     } finally {
       isLoading = false;
       notifyListeners();
@@ -181,7 +181,7 @@ class AgendaProvider extends ChangeNotifier {
       quiropracticos = data.map((json) => Usuario.fromJson(json)).toList();
       notifyListeners();
     } catch (e) {
-      print('Error: ${ErrorHandler.extractMessage(e)}');
+      debugPrint('Error: ${ErrorHandler.extractMessage(e)}');
     }
   }
 
@@ -199,7 +199,7 @@ class AgendaProvider extends ChangeNotifier {
 
       return null;
     } catch (e) {
-      print('Error cambiando estado: $e');
+      debugPrint('Error cambiando estado: $e');
       return ErrorHandler.extractMessage(e);
     }
   }
@@ -215,7 +215,7 @@ class AgendaProvider extends ChangeNotifier {
 
       return null;
     } catch (e) {
-      print('Error cancelando cita: $e');
+      debugPrint('Error cancelando cita: $e');
       return ErrorHandler.extractMessage(e);
     }
   }
@@ -293,7 +293,7 @@ class AgendaProvider extends ChangeNotifier {
 
       notifyListeners();
     } catch (e) {
-      print('Error cargando huecos: ${ErrorHandler.extractMessage(e)}');
+      debugPrint('Error cargando huecos: ${ErrorHandler.extractMessage(e)}');
     } finally {
       isLoadingHuecos = false;
       notifyListeners();

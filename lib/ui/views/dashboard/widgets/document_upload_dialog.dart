@@ -23,13 +23,16 @@ class DocumentUploadDialog extends StatefulWidget {
 class _DocumentUploadDialogState extends State<DocumentUploadDialog> {
   final _formKey = GlobalKey<FormState>();
   final _notasController = TextEditingController();
-  PlatformFile? _selectedFile;
+  List<PlatformFile> _selectedFiles = [];
   Cita? _selectedCita;
   Pago? _selectedPago;
   List<Cita> _clientCitas = [];
   List<Pago> _clientPagos = [];
   bool _isLoadingCitas = true;
   bool _isLoadingPagos = true;
+  bool _isSubmitting = false;
+  String? _globalError;
+  bool _autoValidate = false;
   
   // Para Consentimientos
   String? _selectedConsentType;
@@ -113,11 +116,20 @@ class _DocumentUploadDialogState extends State<DocumentUploadDialog> {
       type: fileType,
       allowedExtensions: allowedExtensions,
       withData: true,
+      allowMultiple: widget.carpeta.id == 'imagenes',
     );
 
-    if (result != null && result.files.isNotEmpty) {
+    if (result != null) {
+      // Limitar tamaño a 15MB para la web
+      if (result.files.any((f) => f.size > 15 * 1024 * 1024)) {
+        setState(() {
+          _globalError = 'Algún archivo supera el límite de 15MB.';
+        });
+        return;
+      }
       setState(() {
-        _selectedFile = result.files.first;
+        _selectedFiles = result.files;
+        _globalError = null; // Limpiar error global al seleccionar archivo
       });
     }
   }
@@ -139,8 +151,10 @@ class _DocumentUploadDialogState extends State<DocumentUploadDialog> {
           width: 450,
           child: Form(
             key: _formKey,
+            autovalidateMode: _autoValidate ? AutovalidateMode.onUserInteraction : AutovalidateMode.disabled,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 // ── 1. Selector de archivo ──
                 InkWell(
@@ -150,11 +164,11 @@ class _DocumentUploadDialogState extends State<DocumentUploadDialog> {
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
                       border: Border.all(
-                        color: _selectedFile != null ? widget.carpeta.color : Colors.grey.shade400,
-                        width: _selectedFile != null ? 2 : 1,
+                        color: _selectedFiles.isNotEmpty ? widget.carpeta.color : Colors.grey.shade400,
+                        width: _selectedFiles.isNotEmpty ? 2 : 1,
                       ),
                       borderRadius: BorderRadius.circular(12),
-                      color: _selectedFile != null
+                      color: _selectedFiles.isNotEmpty
                           ? widget.carpeta.color.withOpacity(0.05)
                           : Colors.grey.shade50,
                     ),
@@ -166,10 +180,10 @@ class _DocumentUploadDialogState extends State<DocumentUploadDialog> {
                             alignment: Alignment.center,
                             children: [
                               Icon(Icons.picture_as_pdf_rounded, size: 56,
-                                  color: _selectedFile != null
+                                  color: _selectedFiles.isNotEmpty
                                       ? Colors.red.shade600
                                       : Colors.red.shade200),
-                              if (_selectedFile != null)
+                              if (_selectedFiles.isNotEmpty)
                                 Positioned(
                                   bottom: 0, right: 0,
                                   child: Container(
@@ -187,23 +201,28 @@ class _DocumentUploadDialogState extends State<DocumentUploadDialog> {
                               color: widget.carpeta.color.withOpacity(0.5)),
                         const SizedBox(height: 12),
                         Text(
-                          _selectedFile != null
-                              ? _selectedFile!.name
+                          _selectedFiles.isNotEmpty
+                              ? (_selectedFiles.length == 1 ? _selectedFiles.first.name : '${_selectedFiles.length} archivos seleccionados')
                               : isFirma
                                   ? '1. Seleccionar documento PDF firmado'
-                                  : '1. Haz clic aquí para adjuntar archivo',
+                                  : '1. Haz clic aquí para adjuntar archivo${widget.carpeta.id == 'imagenes' ? 's' : ''}',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
-                            color: _selectedFile != null ? Colors.black87 : Colors.blueGrey,
+                            color: _selectedFiles.isNotEmpty ? Colors.black87 : Colors.blueGrey,
                           ),
                           textAlign: TextAlign.center,
                         ),
-                        if (_selectedFile != null)
+                        if (_selectedFiles.length == 1)
                           Text(
-                            '${(_selectedFile!.size / 1024).toStringAsFixed(1)} KB',
+                            '${(_selectedFiles.first.size / 1024).toStringAsFixed(1)} KB',
+                            style: const TextStyle(color: Colors.grey, fontSize: 12),
+                          )
+                        else if (_selectedFiles.length > 1)
+                          Text(
+                            '${(_selectedFiles.fold(0, (sum, f) => sum + f.size) / 1024).toStringAsFixed(1)} KB en total',
                             style: const TextStyle(color: Colors.grey, fontSize: 12),
                           ),
-                        if (isFirma && _selectedFile == null)
+                        if (isFirma && _selectedFiles.isEmpty)
                           Padding(
                             padding: const EdgeInsets.only(top: 4),
                             child: Text(
@@ -300,19 +319,47 @@ class _DocumentUploadDialogState extends State<DocumentUploadDialog> {
                 TextFormField(
                   controller: _notasController,
                   maxLines: (widget.carpeta.id == 'firmas' || widget.carpeta.id == 'consentimientos') ? 2 : 4,
+                  onChanged: (_) {
+                     if (_globalError != null && _globalError!.startsWith('❌')) setState(() => _globalError = null);
+                  },
                   decoration: InputDecoration(
                     hintText: _getHintForNotes(),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                   ),
                   validator: (val) {
-                    // Obligatorio en Imágenes e Informes
                     bool obligatorio = widget.carpeta.id == 'imagenes' || widget.carpeta.id == 'informes';
                     if (obligatorio && (val == null || val.trim().isEmpty)) {
-                      return 'Debe especificarse el contexto de este documento.';
+                      return 'Especifica el contexto de este documento.';
                     }
                     return null;
                   },
                 ),
+
+                // ── Cajón de Error Global (Archivo o Backend) ──
+                if (_globalError != null) ...[
+                  const SizedBox(height: 24),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade50,
+                      border: Border.all(color: Colors.red.shade200),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.error_outline, color: Colors.red, size: 20),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            _globalError!,
+                            style: TextStyle(color: Colors.red.shade800, fontSize: 13),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -320,52 +367,80 @@ class _DocumentUploadDialogState extends State<DocumentUploadDialog> {
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Cancelar', style: TextStyle(color: Colors.grey)),
+          onPressed: _isSubmitting ? null : () => Navigator.pop(context),
+          child: Text('Cancelar', style: TextStyle(color: _isSubmitting ? Colors.grey.shade400 : Colors.grey)),
         ),
         ElevatedButton.icon(
           style: ElevatedButton.styleFrom(backgroundColor: widget.carpeta.color),
-          onPressed: () {
-            final formOk = _formKey.currentState!.validate();
-            if (_selectedFile == null) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Debes seleccionar un archivo primero.', style: TextStyle(color: Colors.white)),
-                  backgroundColor: Colors.red,
-                ),
-              );
-              return;
-            }
-            if (formOk) {
-              // Preparar datos de salida
-              String? finalNotes = _notasController.text;
-              String? finalTipo = widget.carpeta.tiposIncluidos.first;
-
-              if (widget.carpeta.id == 'consentimientos') {
-                 finalNotes = "Tipo: ${_selectedConsentType == 'OTRO' ? _customConsentController.text : _selectedConsentType}. $finalNotes";
-                 // Mapear al enum correcto del backend
-                 if (_selectedConsentType == 'LOPD') finalTipo = 'CONSENTIMIENTO_LOPD';
-                 if (_selectedConsentType == 'TRATAMIENTO') finalTipo = 'CONSENTIMIENTO_TRATAMIENTO';
-              }
-              if (widget.carpeta.id == 'otros') {
-                 finalNotes = "Título: ${_customTitleController.text}. $finalNotes";
-              }
-
-              Navigator.pop(context, {
-                'file': _selectedFile,
-                'notas': finalNotes,
-                'tipo': finalTipo,
-                'idCita': _selectedCita?.idCita,
-                'idPago': _selectedPago?.idPago,
-                'customName': widget.carpeta.id == 'otros' ? _customTitleController.text : null,
-              });
-            }
-          },
-          icon: const Icon(Icons.cloud_upload_rounded),
-          label: Text(_getLabelForSubmit()),
+          onPressed: _isSubmitting ? null : _submitDialog,
+          icon: _isSubmitting 
+              ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+              : const Icon(Icons.cloud_upload_rounded),
+          label: Text(_isSubmitting ? 'Guardando...' : _getLabelForSubmit()),
         ),
       ],
     );
+  }
+
+  Future<void> _submitDialog() async {
+    setState(() => _autoValidate = true);
+    
+    final formOk = _formKey.currentState!.validate();
+    
+    if (_selectedFiles.isEmpty) {
+      setState(() => _globalError = 'Adjunta al menos un archivo antes de guardar.');
+      return;
+    }
+
+    if (!formOk) return;
+
+    // Preparar datos de salida
+    String? finalNotes = _notasController.text;
+    String? finalTipo = widget.carpeta.tiposIncluidos.first;
+
+    if (widget.carpeta.id == 'consentimientos') {
+       finalNotes = "Tipo: ${_selectedConsentType == 'OTRO' ? _customConsentController.text : _selectedConsentType}. $finalNotes";
+       if (_selectedConsentType == 'LOPD') finalTipo = 'CONSENTIMIENTO_LOPD';
+       if (_selectedConsentType == 'TRATAMIENTO') finalTipo = 'CONSENTIMIENTO_TRATAMIENTO';
+    }
+    if (widget.carpeta.id == 'otros') {
+       finalNotes = "Título: ${_customTitleController.text}. $finalNotes";
+    }
+
+    setState(() {
+      _isSubmitting = true;
+      _globalError = null;
+    });
+
+    final provider = Provider.of<DocumentosProvider>(context, listen: false);
+    
+    int errorsCount = 0;
+    String lastError = '';
+
+    for (var file in _selectedFiles) {
+      final error = await provider.subirDocumento(
+        idCliente: widget.cliente.idCliente,
+        bytes: file.bytes!,
+        filename: file.name,
+        tipoDocumento: finalTipo,
+        idCita: _selectedCita?.idCita,
+        idPago: _selectedPago?.idPago,
+        notas: finalNotes,
+      );
+      if (error != null) {
+        errorsCount++;
+        lastError = error;
+      }
+    }
+
+    if (mounted) {
+      setState(() => _isSubmitting = false);
+      if (errorsCount == 0) {
+        Navigator.pop(context, true); // true = exito
+      } else {
+        setState(() => _globalError = '❌ Fallaron $errorsCount archivo(s). Detalle: $lastError');
+      }
+    }
   }
 
   String _getLabelForNotes() {
@@ -429,6 +504,9 @@ class _DocumentUploadDialogState extends State<DocumentUploadDialog> {
         return TextFormField(
           controller: controller,
           focusNode: focusNode,
+          onChanged: (_) {
+            if (_globalError != null && _globalError!.startsWith('❌')) setState(() => _globalError = null);
+          },
           decoration: InputDecoration(
             labelText: required
                 ? 'Buscar cita a vincular (obligatorio)'
@@ -440,11 +518,23 @@ class _DocumentUploadDialogState extends State<DocumentUploadDialog> {
                   icon: const Icon(Icons.clear, size: 18), 
                   onPressed: () {
                     controller.clear();
-                    setState(() => _selectedCita = null);
+                    setState(() {
+                       _selectedCita = null;
+                       _globalError = null;
+                    });
                   }
                 ) 
               : null,
           ),
+          validator: (val) {
+             if (required && _selectedCita == null) {
+               return 'Vincula una sesión';
+             }
+             if (val != null && val.trim().isNotEmpty && _selectedCita == null) {
+               return 'Sesión no válida. Selecciona una de la lista.';
+             }
+             return null;
+          },
         );
       },
       optionsViewBuilder: (context, onSelected, options) {
@@ -522,6 +612,9 @@ class _DocumentUploadDialogState extends State<DocumentUploadDialog> {
         return TextFormField(
           controller: controller,
           focusNode: focusNode,
+          onChanged: (_) {
+            if (_globalError != null && _globalError!.startsWith('❌')) setState(() => _globalError = null);
+          },
           decoration: InputDecoration(
             labelText: 'Buscar por concepto, monto o fecha',
             prefixIcon: const Icon(Icons.payment_rounded, size: 20),
@@ -531,14 +624,20 @@ class _DocumentUploadDialogState extends State<DocumentUploadDialog> {
                   icon: const Icon(Icons.clear, size: 18), 
                   onPressed: () {
                     controller.clear();
-                    setState(() => _selectedPago = null);
+                    setState(() {
+                       _selectedPago = null;
+                       _globalError = null;
+                    });
                   }
                 ) 
               : null,
           ),
           validator: (val) {
              if (widget.carpeta.id == 'facturacion' && _selectedPago == null) {
-               return 'Debes vincular un pago específico';
+               return 'Vincula un pago específico';
+             }
+             if (val != null && val.trim().isNotEmpty && _selectedPago == null) {
+               return 'Pago no encontrado. Selecciona uno de la lista.';
              }
              return null;
           },

@@ -73,7 +73,7 @@ class _BonoDetalleModalState extends State<BonoDetalleModal> {
       (c) => c.idCita == widget.resaltarCitaId,
     );
 
-    print(
+    debugPrint(
       "DEBUG Modal - Cita Target: ${widget.resaltarCitaId} | Encontrado en Index: $targetIndex",
     );
 

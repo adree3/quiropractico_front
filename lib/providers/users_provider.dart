@@ -59,7 +59,7 @@ class UsersProvider extends ChangeNotifier {
       usuarios = data.map((e) => Usuario.fromJson(e)).toList();
       await _checkNotifications();
     } catch (e) {
-      print('Error cargando usuarios: ${ErrorHandler.extractMessage(e)}');
+      debugPrint('Error cargando usuarios: ${ErrorHandler.extractMessage(e)}');
     } finally {
       isLoading = false;
       notifyListeners();
@@ -82,7 +82,7 @@ class UsersProvider extends ChangeNotifier {
       }
       notifyListeners();
     } catch (e) {
-      print(e);
+      debugPrint(e as String?);
     }
   }
 
@@ -94,7 +94,7 @@ class UsersProvider extends ChangeNotifier {
       blockedCount = response.data;
       notifyListeners();
     } catch (e) {
-      print(e);
+      debugPrint(e as String?);
     }
   }
 
@@ -265,7 +265,7 @@ class UsersProvider extends ChangeNotifier {
       final response = await ApiService.dio.get('$_baseUrl/usuarios/me');
       currentUser = Usuario.fromJson(response.data);
     } catch (e) {
-      print('Error al cargar perfil: ${ErrorHandler.extractMessage(e)}');
+      debugPrint('Error al cargar perfil: ${ErrorHandler.extractMessage(e)}');
     } finally {
       isLoading = false;
       _isFetchingMe = false;

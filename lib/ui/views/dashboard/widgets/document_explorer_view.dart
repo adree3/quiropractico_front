@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:quiropractico_front/models/documento.dart';
 import 'package:quiropractico_front/models/cliente.dart';
 import 'package:quiropractico_front/providers/documentos_provider.dart';
@@ -11,6 +10,7 @@ import 'package:quiropractico_front/ui/views/dashboard/widgets/document_folder_g
 import 'package:quiropractico_front/ui/views/dashboard/widgets/document_upload_dialog.dart';
 import 'package:quiropractico_front/ui/views/dashboard/widgets/document_info_dialog.dart';
 import 'package:quiropractico_front/ui/widgets/document_thumbnail.dart';
+import 'package:quiropractico_front/ui/widgets/delete_confirm_dialog.dart';
 
 class DocumentExplorerView extends StatefulWidget {
   final Cliente cliente;
@@ -30,6 +30,41 @@ class DocumentExplorerView extends StatefulWidget {
 
 class _DocumentExplorerViewState extends State<DocumentExplorerView> {
   bool _isGrid = true;
+  List<Documento>? _papeleraDocs;
+  bool _isLoadingPapelera = false;
+  String? _errorPapelera;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.carpeta.id == 'papelera') {
+      _loadPapelera();
+    }
+  }
+
+  Future<void> _loadPapelera() async {
+    setState(() {
+      _isLoadingPapelera = true;
+      _errorPapelera = null;
+    });
+    final provider = Provider.of<DocumentosProvider>(context, listen: false);
+    try {
+      final docs = await provider.obtenerPapelera(widget.cliente.idCliente);
+      if (mounted) {
+        setState(() {
+          _papeleraDocs = docs;
+          _isLoadingPapelera = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorPapelera = 'No se pudo cargar la papelera. Comprueba tu conexión.';
+          _isLoadingPapelera = false;
+        });
+      }
+    }
+  }
 
   Future<void> _descargarDocumento(BuildContext context, Documento doc) async {
     final provider = Provider.of<DocumentosProvider>(context, listen: false);
@@ -45,18 +80,75 @@ class _DocumentExplorerViewState extends State<DocumentExplorerView> {
     }
   }
 
+  Future<void> _confirmarEliminacion(BuildContext context, Documento doc) async {
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => const DeleteConfirmDialog(
+        title: 'Eliminar',
+        content: 'Este archivo se movera a la papelera .',
+        confirmText: 'Eliminar',
+        confirmColor: Colors.deepOrange,
+        icon: Icons.delete_outline_rounded,
+      ),
+    );
+
+    if (confirmar == true && mounted) {
+      final provider = Provider.of<DocumentosProvider>(context, listen: false);
+      final error = await provider.eliminarDocumento(doc.idDocumento);
+      if (mounted) {
+        if (error == null) {
+          CustomSnackBar.show(context, message: 'Movido a la papelera', type: SnackBarType.success);
+        } else {
+          CustomSnackBar.show(context, message: error, type: SnackBarType.error);
+        }
+      }
+    }
+  }
+
+  Future<void> _restaurarDocumento(BuildContext context, Documento doc) async {
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => const DeleteConfirmDialog(
+        title: 'Restaurar documento',
+        content: 'El archivo volverá a su ubicación original y será visible de nuevo en el historial clínico.',
+        confirmText: 'Restaurar',
+        confirmColor: Colors.green,
+        icon: Icons.restore_rounded,
+      ),
+    );
+
+    if (confirmar == true && mounted) {
+      final provider = Provider.of<DocumentosProvider>(context, listen: false);
+      final error = await provider.restaurarDocumento(doc.idDocumento);
+      if (mounted) {
+        if (error == null) {
+          CustomSnackBar.show(context, message: 'Documento restaurado', type: SnackBarType.success);
+          _loadPapelera();
+        } else {
+          CustomSnackBar.show(context, message: error, type: SnackBarType.error);
+        }
+      }
+    }
+  }
+
   void _mostrarFichaDocumento(BuildContext context, Documento doc) {
     showDialog(
       context: context,
       builder: (context) => DocumentInfoDialog(
         doc: doc,
+        isPapelera: widget.carpeta.id == 'papelera',
         onOpenFull: () => _verDocumento(context, doc),
       )
-    );
+    ).then((changed) {
+      // If it changed, refresh lists if needed
+      if (changed == true && widget.carpeta.id == 'papelera') {
+        _loadPapelera();
+      }
+    });
   }
 
   Future<void> _subirDocumento(BuildContext context) async {
-    final result = await showDialog<Map<String, dynamic>>(
+    final result = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
       builder: (context) => DocumentUploadDialog(
@@ -65,41 +157,25 @@ class _DocumentExplorerViewState extends State<DocumentExplorerView> {
       ),
     );
 
-    if (result == null) return;
-
-    final PlatformFile file = result['file'];
-    final String notas = result['notas'];
-    final int? idCita = result['idCita'];
-    final int? idPago = result['idPago'];
-    final String tipoSeleccionado = result['tipo'] ?? widget.carpeta.tiposIncluidos.first;
-
-    if (!context.mounted) return;
-    final provider = Provider.of<DocumentosProvider>(context, listen: false);
-    
-    final error = await provider.subirDocumento(
-      idCliente: widget.cliente.idCliente,
-      bytes: file.bytes!,
-      filename: file.name,
-      tipoDocumento: tipoSeleccionado,
-      idCita: idCita,
-      idPago: idPago,
-      notas: notas,
-    );
-
     if (!context.mounted) return;
     
-    if (error == null) {
+    if (result == true) {
       CustomSnackBar.show(context, message: 'Documento subido con éxito', type: SnackBarType.success);
-    } else {
-      CustomSnackBar.show(context, message: error, type: SnackBarType.error);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final isPapelera = widget.carpeta.id == 'papelera';
+    
     return Consumer<DocumentosProvider>(
       builder: (context, provider, child) {
-        final liveDocs = provider.documentos.where((d) => widget.carpeta.matches(d, systemFolders)).toList();
+        final liveDocs = isPapelera 
+          ? (_papeleraDocs ?? []) 
+          : provider.documentos.where((d) => widget.carpeta.matches(d, systemFolders)).toList();
+        
+        final isLoading = isPapelera ? _isLoadingPapelera : provider.isLoading;
+        final isUploading = !isPapelera && provider.isUploading;
 
         return Scaffold(
           backgroundColor: Colors.grey.shade50,
@@ -130,7 +206,10 @@ class _DocumentExplorerViewState extends State<DocumentExplorerView> {
               IconButton(
                 tooltip: 'Recargar documentos',
                 icon: const Icon(Icons.sync_rounded, color: Colors.blueGrey),
-                onPressed: () => provider.loadDocumentos(widget.cliente.idCliente),
+                onPressed: () {
+                  if (isPapelera) _loadPapelera();
+                  else provider.loadDocumentos(widget.cliente.idCliente);
+                },
               ),
               IconButton(
                 tooltip: _isGrid ? 'Cambiar a lista' : 'Cambiar a cuadrícula',
@@ -140,26 +219,46 @@ class _DocumentExplorerViewState extends State<DocumentExplorerView> {
               const SizedBox(width: 8),
             ],
           ),
-          body: provider.isLoading 
+          body: isLoading
               ? _buildSkeletonGrid()
-              : liveDocs.isEmpty
+              : _errorPapelera != null
                   ? Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.snippet_folder_rounded, size: 64, color: Colors.grey.shade300),
+                          Icon(Icons.cloud_off_rounded, size: 56, color: Colors.grey.shade300),
                           const SizedBox(height: 16),
                           Text(
-                            "Ningún documento encontrado", 
-                            style: TextStyle(color: Colors.grey.shade500, fontSize: 16)
+                            _errorPapelera!,
+                            style: TextStyle(color: Colors.grey.shade500, fontSize: 15),
+                          ),
+                          const SizedBox(height: 20),
+                          OutlinedButton.icon(
+                            onPressed: _loadPapelera,
+                            icon: const Icon(Icons.refresh_rounded),
+                            label: const Text('Reintentar'),
                           ),
                         ],
                       ),
                     )
-                  : (_isGrid 
-                      ? _buildGrid(liveDocs, provider.isUploading) 
-                      : _buildList(liveDocs, provider.isUploading)),
-          floatingActionButton: provider.isUploading ? null : FloatingActionButton.extended(
+                  : liveDocs.isEmpty
+                      ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.snippet_folder_rounded, size: 64, color: Colors.grey.shade300),
+                              const SizedBox(height: 16),
+                              Text(
+                                isPapelera ? "La papelera está vacía" : "Ningún documento encontrado",
+                                style: TextStyle(color: Colors.grey.shade500, fontSize: 16),
+                              ),
+                            ],
+                          ),
+                        )
+                      : (_isGrid
+                          ? _buildGrid(liveDocs, isUploading)
+                          : _buildList(liveDocs, isUploading)),
+          floatingActionButton: (isUploading || isPapelera) ? null : FloatingActionButton.extended(
             onPressed: () => _subirDocumento(context),
             icon: const Icon(Icons.upload_file_rounded),
             label: const Text("Subir Archivo"),
@@ -171,9 +270,14 @@ class _DocumentExplorerViewState extends State<DocumentExplorerView> {
   }
 
   Widget _buildSkeletonGrid() {
+    final isPapelera = widget.carpeta.id == 'papelera';
+    final length = widget.documentos.isNotEmpty ? widget.documentos.length : 0;
+    final countList = (isPapelera || length == 0) ? 8 : length;
+    final countGrid = (isPapelera || length == 0) ? 12 : length;
+
     return !_isGrid 
       ? ListView.builder(
-          itemCount: 8,
+          itemCount: countList,
           itemBuilder: (context, _) => const SkeletonListTile(),
         )
       : GridView.builder(
@@ -184,7 +288,7 @@ class _DocumentExplorerViewState extends State<DocumentExplorerView> {
             mainAxisSpacing: 16,
             childAspectRatio: 0.85,
           ),
-          itemCount: 12,
+          itemCount: countGrid,
           itemBuilder: (context, _) => const SkeletonDocumentCard(),
         );
   }
@@ -205,13 +309,25 @@ class _DocumentExplorerViewState extends State<DocumentExplorerView> {
           return const SkeletonDocumentCard(label: "Subiendo...");
         }
         final doc = docs[isUploading ? index - 1 : index];
-        return Tooltip(
-          message: 'Ver detalles',
-          child: _SmartMetaIcon(
-            doc: doc, 
-            color: widget.carpeta.color,
-            onTap: () => _mostrarFichaDocumento(context, doc),
-            onDownload: () => _descargarDocumento(context, doc),
+        return TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0.0, end: 1.0),
+          duration: Duration(milliseconds: 200 + index * 40),
+          curve: Curves.easeOut,
+          builder: (context, value, child) => Opacity(
+            opacity: value,
+            child: Transform.translate(
+              offset: Offset(0, 14 * (1 - value)),
+              child: child,
+            ),
+          ),
+          child: Tooltip(
+            message: 'Ver detalles',
+            child: _SmartMetaIcon(
+              doc: doc,
+              color: widget.carpeta.color,
+              onTap: () => _mostrarFichaDocumento(context, doc),
+              onDownload: () => _descargarDocumento(context, doc),
+            ),
           ),
         );
       },
@@ -228,29 +344,53 @@ class _DocumentExplorerViewState extends State<DocumentExplorerView> {
           return const SkeletonListTile();
         }
         final doc = docs[isUploading ? index - 1 : index];
-        return ListTile(
-          leading: Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: widget.carpeta.color.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
+        return TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0.0, end: 1.0),
+          duration: Duration(milliseconds: 180 + index * 35),
+          curve: Curves.easeOut,
+          builder: (context, value, child) => Opacity(
+            opacity: value,
+            child: Transform.translate(
+              offset: Offset(0, 10 * (1 - value)),
+              child: child,
             ),
-            child: Icon(_getIconForMime(doc.mimeType), color: widget.carpeta.color),
           ),
-          title: Text(doc.nombreOriginal, style: const TextStyle(fontWeight: FontWeight.w600)),
-          subtitle: Text("Subido el ${_formatDate(doc.fechaSubida)} • ${_formatBytes(doc.tamanyoBytes)}"),
-          trailing: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              IconButton(
-                icon: const Icon(Icons.download_rounded, color: Colors.blueGrey),
-                tooltip: 'Descargar imagen',
-                onPressed: () => _descargarDocumento(context, doc),
+          child: ListTile(
+            leading: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: widget.carpeta.color.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
               ),
-              const Icon(Icons.info_outline_rounded, color: Colors.blueGrey),
-            ],
+              child: Icon(_getIconForMime(doc.mimeType), color: widget.carpeta.color),
+            ),
+            title: Text(doc.nombreOriginal, style: const TextStyle(fontWeight: FontWeight.w600)),
+            subtitle: Text("Subido el ${_formatDate(doc.fechaSubida)} • ${_formatBytes(doc.tamanyoBytes)}"),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.download_rounded, color: Colors.blueGrey),
+                  tooltip: 'Descargar imagen',
+                  onPressed: () => _descargarDocumento(context, doc),
+                ),
+                if (widget.carpeta.id != 'papelera')
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                    tooltip: 'Eliminar',
+                    onPressed: () => _confirmarEliminacion(context, doc),
+                  )
+                else
+                  IconButton(
+                    icon: const Icon(Icons.restore_rounded, color: Colors.green),
+                    tooltip: 'Restaurar documento',
+                    onPressed: () => _restaurarDocumento(context, doc),
+                  ),
+                const Icon(Icons.info_outline_rounded, color: Colors.blueGrey),
+              ],
+            ),
+            onTap: () => _mostrarFichaDocumento(context, doc),
           ),
-          onTap: () => _mostrarFichaDocumento(context, doc),
         );
       },
     );

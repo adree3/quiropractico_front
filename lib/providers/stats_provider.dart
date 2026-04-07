@@ -24,7 +24,7 @@ class StatsProvider extends ChangeNotifier {
 
       stats = DashboardStats.fromJson(response.data);
     } catch (e) {
-      print('Error cargando stats: ${ErrorHandler.extractMessage(e)}');
+      debugPrint('Error cargando stats: ${ErrorHandler.extractMessage(e)}');
     } finally {
       isLoading = false;
       notifyListeners();

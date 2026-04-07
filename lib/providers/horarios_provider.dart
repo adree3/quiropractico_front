@@ -33,7 +33,7 @@ class HorariosProvider extends ChangeNotifier {
         notifyListeners();
       }
     } catch (e) {
-      print('Error cargando doctores: ${ErrorHandler.extractMessage(e)}');
+      debugPrint('Error cargando doctores: ${ErrorHandler.extractMessage(e)}');
     }
   }
 
@@ -47,7 +47,7 @@ class HorariosProvider extends ChangeNotifier {
 
       notifyListeners();
     } catch (e) {
-      print(
+      debugPrint(
         'Error cargando horarios globales: ${ErrorHandler.extractMessage(e)}',
       );
     }
@@ -72,7 +72,7 @@ class HorariosProvider extends ChangeNotifier {
       }
       notifyListeners();
     } catch (e) {
-      print(
+      debugPrint(
         'Error cargando quiroprácticos activos: ${ErrorHandler.extractMessage(e)}',
       );
     }
@@ -96,7 +96,7 @@ class HorariosProvider extends ChangeNotifier {
       final List<dynamic> data = response.data;
       horarios = data.map((e) => Horario.fromJson(e)).toList();
     } catch (e) {
-      print('Error cargando horarios: ${ErrorHandler.extractMessage(e)}');
+      debugPrint('Error cargando horarios: ${ErrorHandler.extractMessage(e)}');
     } finally {
       if (notifyLoading) {
         isLoading = false;

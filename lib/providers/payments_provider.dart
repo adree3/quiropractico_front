@@ -79,7 +79,7 @@ class PaymentsProvider extends ChangeNotifier {
         getPagosHistorial(page: 0),
       ]);
     } catch (e) {
-      print("Error cargando dashboard pagos: $e");
+      debugPrint("Error cargando dashboard pagos: $e");
     } finally {
       isLoading = false;
       notifyListeners();
@@ -102,7 +102,7 @@ class PaymentsProvider extends ChangeNotifier {
         totalPendiente = (response.data['totalPendiente'] ?? 0).toDouble();
       }
     } catch (e) {
-      print("Error cargando KPIs: $e");
+      debugPrint("Error cargando KPIs: $e");
       totalCobrado = 0;
       totalPendiente = 0;
     }
@@ -151,7 +151,7 @@ class PaymentsProvider extends ChangeNotifier {
       totalPendientesCount = data['totalElements'];
       hasMorePendientes = (page + 1) < totalPages;
     } catch (e) {
-      print("Error pendientes: ${ErrorHandler.extractMessage(e)}");
+      debugPrint("Error pendientes: ${ErrorHandler.extractMessage(e)}");
     } finally {
       isLoadingPendientes = false;
       isLoadingMorePendientes = false;
@@ -208,7 +208,7 @@ class PaymentsProvider extends ChangeNotifier {
       totalHistorialCount = data['totalElements'];
       hasMoreHistorial = (page + 1) < totalPages;
     } catch (e) {
-      print("Error historial: ${ErrorHandler.extractMessage(e)}");
+      debugPrint("Error historial: ${ErrorHandler.extractMessage(e)}");
     } finally {
       isLoadingHistorial = false;
       isLoadingMoreHistorial = false;
@@ -233,7 +233,7 @@ class PaymentsProvider extends ChangeNotifier {
         notifyListeners();
       }
     } catch (e) {
-      print("Error comprobando badge pagos: $e");
+      debugPrint("Error comprobando badge pagos: $e");
     }
   }
 
@@ -301,7 +301,7 @@ class PaymentsProvider extends ChangeNotifier {
       final List<dynamic> data = response.data;
       return data.map((e) => Pago.fromJson(e)).toList();
     } catch (e) {
-      print("Error buscando pagos del cliente: $e");
+      debugPrint("Error buscando pagos del cliente: $e");
       return [];
     }
   }

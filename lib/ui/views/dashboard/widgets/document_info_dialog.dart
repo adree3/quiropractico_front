@@ -8,12 +8,19 @@ import 'package:quiropractico_front/providers/documentos_provider.dart';
 import 'package:quiropractico_front/providers/citas_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:quiropractico_front/utils/download_helper.dart';
+import 'package:quiropractico_front/ui/widgets/delete_confirm_dialog.dart';
 
 class DocumentInfoDialog extends StatefulWidget {
   final Documento doc;
   final VoidCallback onOpenFull;
+  final bool isPapelera;
 
-  const DocumentInfoDialog({super.key, required this.doc, required this.onOpenFull});
+  const DocumentInfoDialog({
+    super.key, 
+    required this.doc, 
+    required this.onOpenFull,
+    this.isPapelera = false,
+  });
 
   @override
   State<DocumentInfoDialog> createState() => _DocumentInfoDialogState();
@@ -22,6 +29,8 @@ class DocumentInfoDialog extends StatefulWidget {
 class _DocumentInfoDialogState extends State<DocumentInfoDialog> {
   bool _isEditing = false;
   bool _isDownloaded = false;
+  bool _autoValidate = false;
+  final _formKey = GlobalKey<FormState>();
   late TextEditingController _notasController;
   int? _idCitaTemporal;
 
@@ -39,6 +48,9 @@ class _DocumentInfoDialogState extends State<DocumentInfoDialog> {
   }
 
   Future<void> _guardarCambios() async {
+    setState(() => _autoValidate = true);
+    if (!_formKey.currentState!.validate()) return;
+
     final provider = Provider.of<DocumentosProvider>(context, listen: false);
     final error = await provider.actualizarMetadatos(
       widget.doc.idDocumento,
@@ -52,6 +64,58 @@ class _DocumentInfoDialogState extends State<DocumentInfoDialog> {
       setState(() => _isEditing = false);
     } else {
       CustomSnackBar.show(context, message: error, type: SnackBarType.error);
+    }
+  }
+
+  Future<void> _confirmarEliminacion(BuildContext context) async {
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => const DeleteConfirmDialog(
+        title: 'Eliminar',
+        content: 'Este archivo se moverá a la papelera.',
+        confirmText: 'Eliminar',
+        confirmColor: Colors.deepOrange,
+        icon: Icons.delete_outline_rounded,
+      ),
+    );
+
+    if (confirmar == true && mounted) {
+      final provider = Provider.of<DocumentosProvider>(context, listen: false);
+      final error = await provider.eliminarDocumento(widget.doc.idDocumento);
+      if (mounted) {
+        if (error == null) {
+          CustomSnackBar.show(context, message: 'Documento movido a la papelera', type: SnackBarType.success);
+          Navigator.pop(context, true); // Se retorna true para recargar
+        } else {
+          CustomSnackBar.show(context, message: error, type: SnackBarType.error);
+        }
+      }
+    }
+  }
+
+  Future<void> _restaurarDocumento(BuildContext context) async {
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => const DeleteConfirmDialog(
+        title: 'Restaurar documento',
+        content: 'El archivo volverá a su ubicación original y será visible de nuevo en el historial clínico.',
+        confirmText: 'Restaurar',
+        confirmColor: Colors.green,
+        icon: Icons.restore_rounded,
+      ),
+    );
+
+    if (confirmar == true && mounted) {
+      final provider = Provider.of<DocumentosProvider>(context, listen: false);
+      final error = await provider.restaurarDocumento(widget.doc.idDocumento);
+      if (mounted) {
+        if (error == null) {
+          CustomSnackBar.show(context, message: 'Documento restaurado al historial', type: SnackBarType.success);
+          Navigator.pop(context, true); // Se retorna true para recargar
+        } else {
+          CustomSnackBar.show(context, message: error, type: SnackBarType.error);
+        }
+      }
     }
   }
 
@@ -209,88 +273,159 @@ class _DocumentInfoDialogState extends State<DocumentInfoDialog> {
                   Text('${widget.doc.fechaSubida.day.toString().padLeft(2,'0')}/${widget.doc.fechaSubida.month.toString().padLeft(2,'0')}/${widget.doc.fechaSubida.year}'),
                 ],
               ),
-              const Divider(height: 24),
-              
-              const Text('Sesión vinculada:', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blueGrey)),
-              const SizedBox(height: 8),
-              if (widget.doc.idCita != null)
+              if (widget.isPapelera && widget.doc.fechaEliminacionLogica != null) ...[
+                const SizedBox(height: 8),
                 Container(
-                  width: double.infinity,
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
-                    color: Colors.teal.withOpacity(0.1),
+                    color: Colors.red.shade50,
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.teal.withOpacity(0.2)),
+                    border: Border.all(color: Colors.red.shade100),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.event_available_rounded, size: 18, color: Colors.teal),
+                      Icon(Icons.delete_forever_rounded, size: 16, color: Colors.red.shade400),
                       const SizedBox(width: 8),
-                      Text('Cita asociada: #${widget.doc.idCita}', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.teal)),
+                      const Text('Eliminado el:', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.redAccent)),
+                      const Spacer(),
+                      Text(
+                        () {
+                          final d = widget.doc.fechaEliminacionLogica!;
+                          final fecha = '${d.day.toString().padLeft(2,'0')}/${d.month.toString().padLeft(2,'0')}/${d.year}';
+                          final hora = '${d.hour.toString().padLeft(2,'0')}:${d.minute.toString().padLeft(2,'0')}';
+                          return '$fecha a las $hora';
+                        }(),
+                        style: TextStyle(color: Colors.red.shade700, fontSize: 13, fontWeight: FontWeight.w500),
+                      ),
                     ],
                   ),
-                )
-              else if (_isEditing)
-                _buildAppointmentSelector()
-              else
-                const Text('Sin cita asociada', style: TextStyle(fontStyle: FontStyle.italic, color: Colors.grey)),
-
-              const SizedBox(height: 16),
-
-              const Text('Diagnóstico / Notas Clínicas', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blueGrey)),
-              const SizedBox(height: 8),
-              if (_isEditing)
-                TextField(
-                  controller: _notasController,
-                  maxLines: 4,
-                  decoration: InputDecoration(
-                    hintText: 'Añade observaciones críticas...',
-                    filled: true,
-                    fillColor: Colors.amber.shade50,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                  ),
-                )
-              else
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.amber.shade50,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.amber.shade200),
-                  ),
-                  child: Text(
-                    (widget.doc.notasMedicas != null && widget.doc.notasMedicas!.isNotEmpty) ? widget.doc.notasMedicas! : 'Sin notas registradas.',
-                    style: const TextStyle(fontStyle: FontStyle.italic, color: Colors.black87),
-                  ),
                 ),
+              ],
+              const Divider(height: 24),
+              
+              Form(
+                key: _formKey,
+                autovalidateMode: _autoValidate ? AutovalidateMode.onUserInteraction : AutovalidateMode.disabled,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Sesión vinculada:', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blueGrey)),
+                    const SizedBox(height: 8),
+                    if (widget.doc.idCita != null)
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.teal.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.teal.withOpacity(0.2)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.event_available_rounded, size: 18, color: Colors.teal),
+                            const SizedBox(width: 8),
+                            Text('Cita asociada: #${widget.doc.idCita}', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.teal)),
+                          ],
+                        ),
+                      )
+                    else if (_isEditing)
+                      _buildAppointmentSelector()
+                    else
+                      const Text('Sin cita asociada', style: TextStyle(fontStyle: FontStyle.italic, color: Colors.grey)),
+
+                    const SizedBox(height: 16),
+
+                    const Text('Diagnóstico / Notas Clínicas', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blueGrey)),
+                    const SizedBox(height: 8),
+                    if (_isEditing)
+                      TextFormField(
+                        controller: _notasController,
+                        maxLines: 4,
+                        decoration: InputDecoration(
+                          hintText: 'Añade observaciones críticas...',
+                          filled: true,
+                          fillColor: Colors.amber.shade50,
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                        validator: (val) {
+                          bool obligatorio = widget.doc.tipoDocumento == 'IMAGEN_MEDICA' || widget.doc.tipoDocumento == 'INFORME_CLINICO';
+                          if (obligatorio && (val == null || val.trim().isEmpty)) {
+                            return 'Especifica el contexto de este documento.';
+                          }
+                          return null;
+                        },
+                      )
+                    else
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.amber.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.amber.shade200),
+                        ),
+                        child: Text(
+                          (widget.doc.notasMedicas != null && widget.doc.notasMedicas!.isNotEmpty) ? widget.doc.notasMedicas! : 'Sin notas registradas.',
+                          style: const TextStyle(fontStyle: FontStyle.italic, color: Colors.black87),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
             ],
           ),
         ),
       ),
+      actionsAlignment: MainAxisAlignment.spaceBetween,
       actions: [
         if (_isEditing) ...[
-          TextButton(
-            onPressed: () => setState(() => _isEditing = false),
-            child: const Text('Cancelar', style: TextStyle(color: Colors.grey)),
-          ),
-          ElevatedButton.icon(
-            onPressed: _guardarCambios,
-            icon: const Icon(Icons.save_rounded),
-            label: const Text('Aplicar'),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.teal),
+          const SizedBox.shrink(),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextButton(
+                onPressed: () => setState(() => _isEditing = false),
+                child: const Text('Cancelar', style: TextStyle(color: Colors.grey)),
+              ),
+              const SizedBox(width: 8),
+              ElevatedButton.icon(
+                onPressed: _guardarCambios,
+                icon: const Icon(Icons.save_rounded),
+                label: const Text('Aplicar'),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.teal),
+              )
+            ]
           )
         ] else ...[
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cerrar', style: TextStyle(color: Colors.grey)),
-          ),
-          ElevatedButton.icon(
-            onPressed: () => setState(() => _isEditing = true),
-            icon: const Icon(Icons.edit_rounded),
-            label: const Text('Editar'),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.blueGrey),
-          ),
+          if (!widget.isPapelera)
+            TextButton.icon(
+              onPressed: () => _confirmarEliminacion(context),
+              icon: const Icon(Icons.delete_outline, color: Colors.deepOrange),
+              label: const Text('Eliminar', style: TextStyle(color: Colors.deepOrange)),
+            )
+          else
+            TextButton.icon(
+              onPressed: () => _restaurarDocumento(context),
+              icon: const Icon(Icons.restore_rounded, color: Colors.green),
+              label: const Text('Restaurar Archivo', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
+            ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cerrar', style: TextStyle(color: Colors.grey)),
+              ),
+              const SizedBox(width: 8),
+              if (!widget.isPapelera)
+                ElevatedButton.icon(
+                  onPressed: () => setState(() => _isEditing = true),
+                  icon: const Icon(Icons.edit_rounded),
+                  label: const Text('Editar'),
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.blueGrey),
+                ),
+            ]
+          )
         ]
       ],
     );
@@ -360,6 +495,13 @@ class _DocumentInfoDialogState extends State<DocumentInfoDialog> {
                         ) 
                       : null,
                   ),
+                  validator: (val) {
+                    // Validar que si han escrito algo, obligatoriamente hayan seleccionado una cita válida
+                    if (val != null && val.trim().isNotEmpty && _idCitaTemporal == null) {
+                      return 'Sesión no válida. Selecciona una de la lista.';
+                    }
+                    return null;
+                  },
                 );
               },
               optionsViewBuilder: (context, onSelected, options) {

@@ -63,7 +63,7 @@ class AuditoriaProvider extends ChangeNotifier {
       logs = content.map((json) => AuditoriaLog.fromJson(json)).toList();
       totalElements = data['totalElements'];
     } catch (e) {
-      print("Error cargando auditoría: $e");
+      debugPrint("Error cargando auditoría: $e");
       logs = [];
       totalElements = 0;
     } finally {

@@ -97,7 +97,7 @@ class CitasProvider extends ChangeNotifier {
       kpis = CitasKpi.fromJson(response.data);
       notifyListeners();
     } catch (e) {
-      print('Error cargando KPIs de Citas: $e');
+      debugPrint('Error cargando KPIs de Citas: $e');
     }
   }
 
@@ -148,7 +148,7 @@ class CitasProvider extends ChangeNotifier {
       final List<dynamic> data = response.data['content'];
       return data.map((json) => Cita.fromJson(json)).toList();
     } catch (e) {
-      print('Error loading client citas: $e');
+      debugPrint('Error loading client citas: $e');
       return [];
     }
   }

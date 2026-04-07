@@ -325,7 +325,7 @@ class _ContentState extends State<_Content>
 
                                   // Si hubo cambios en la cita próxima
                                   if (result == true || result == 'edit') {
-                                    print(
+                                    debugPrint(
                                       "DEBUG: StatChip interaction returned changed. Reloading...",
                                     );
                                     provider.loadFullData(cliente.idCliente);

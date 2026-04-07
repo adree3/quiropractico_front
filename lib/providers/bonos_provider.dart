@@ -54,7 +54,7 @@ class BonosProvider extends ChangeNotifier {
       if (hasMore) currentPage++;
 
     } catch (e) {
-      print('Error cargando historial de bonos: ${ErrorHandler.extractMessage(e)}');
+      debugPrint('Error cargando historial de bonos: ${ErrorHandler.extractMessage(e)}');
     } finally {
       isLoading = false;
       isLoadingMore = false;

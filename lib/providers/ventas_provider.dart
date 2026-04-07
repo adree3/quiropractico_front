@@ -23,7 +23,7 @@ class VentasProvider extends ChangeNotifier {
       bonosDisponibles = data.map((e) => Servicio.fromJson(e)).toList();
       notifyListeners();
     } catch (e) {
-      print('Error cargando bonos: ${ErrorHandler.extractMessage(e)}');
+      debugPrint('Error cargando bonos: ${ErrorHandler.extractMessage(e)}');
     }
   }
 
@@ -40,7 +40,7 @@ class VentasProvider extends ChangeNotifier {
 
       notifyListeners();
     } catch (e) {
-      print(
+      debugPrint(
         'Error cargando servicios dropdown: ${ErrorHandler.extractMessage(e)}',
       );
     }
@@ -82,7 +82,7 @@ class VentasProvider extends ChangeNotifier {
       bonosUsables = data.map((e) => BonoSeleccion.fromJson(e)).toList();
       notifyListeners();
     } catch (e) {
-      print('Error cargando bonos usables: ${ErrorHandler.extractMessage(e)}');
+      debugPrint('Error cargando bonos usables: ${ErrorHandler.extractMessage(e)}');
     }
   }
 }

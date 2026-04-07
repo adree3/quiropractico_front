@@ -26,7 +26,7 @@ class DocumentosProvider extends ChangeNotifier {
       documentos = data.map((e) => Documento.fromJson(e)).toList();
     } catch (e) {
       errorMessage = ErrorHandler.extractMessage(e);
-      print('Error cargando documentos: $errorMessage');
+      debugPrint('Error cargando documentos: $errorMessage');
     } finally {
       isLoading = false;
       notifyListeners();
@@ -85,7 +85,7 @@ class DocumentosProvider extends ChangeNotifier {
       // Aseguramos que se devuelve como un String limpio
       return response.data.toString();
     } catch (e) {
-      print('Error obteniendo URL JIT: ${ErrorHandler.extractMessage(e)}');
+      debugPrint('Error obteniendo URL JIT: ${ErrorHandler.extractMessage(e)}');
       return null;
     }
   }
@@ -139,5 +139,30 @@ class DocumentosProvider extends ChangeNotifier {
     } catch (e) {
       return ErrorHandler.extractMessage(e);
     }
+  }
+
+  /// RESTAURA un documento eliminado lógicamente devolviéndolo a activo=true
+  Future<String?> restaurarDocumento(int idDocumento) async {
+    try {
+      String url = '$_baseUrl/documentos/$idDocumento/restaurar';
+      final response = await ApiService.dio.patch(url);
+
+      if (response.statusCode == 200) {
+        final docActualizado = Documento.fromJson(response.data);
+        documentos.insert(0, docActualizado);
+        notifyListeners();
+        return null;
+      }
+      return 'Error al restaurar el documento.';
+    } catch (e) {
+      return ErrorHandler.extractMessage(e);
+    }
+  }
+
+  /// Obtiene de forma asíncrona todos los documentos en papelera (activo=false)
+  Future<List<Documento>> obtenerPapelera(int idCliente) async {
+    final response = await ApiService.dio.get('$_baseUrl/documentos/clientes/$idCliente/papelera');
+    final data = response.data as List;
+    return data.map((e) => Documento.fromJson(e)).toList();
   }
 }

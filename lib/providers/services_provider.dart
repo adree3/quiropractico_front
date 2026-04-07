@@ -52,7 +52,7 @@ class ServicesProvider extends ChangeNotifier {
 
       servicios = data.map((e) => Servicio.fromJson(e)).toList();
     } catch (e) {
-      print('Error cargando servicios: ${ErrorHandler.extractMessage(e)}');
+      debugPrint('Error cargando servicios: ${ErrorHandler.extractMessage(e)}');
     } finally {
       isLoading = false;
       notifyListeners();

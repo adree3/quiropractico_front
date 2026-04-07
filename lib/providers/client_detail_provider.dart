@@ -92,7 +92,7 @@ class ClientDetailProvider extends ChangeNotifier {
       // Familia
       await _recargarFamiliares(notify: false);
     } catch (e) {
-      print('Error cargando detalle: ${ErrorHandler.extractMessage(e)}');
+      debugPrint('Error cargando detalle: ${ErrorHandler.extractMessage(e)}');
     } finally {
       isLoading = false;
       notifyListeners();
@@ -108,7 +108,7 @@ class ClientDetailProvider extends ChangeNotifier {
     try {
       await _fetchCliente(cliente!.idCliente);
     } catch (e) {
-      print("Error refrescando cliente: $e");
+      debugPrint("Error refrescando cliente: $e");
     } finally {
       isReloadingCliente = false;
       notifyListeners();
@@ -120,9 +120,9 @@ class ClientDetailProvider extends ChangeNotifier {
     cliente = Cliente.fromJson(respCliente.data);
   }
 
-  /// Carga/Recarga la lista de citas
-  /// [resetPage] true para volver a la página 0
-  /// [notify] false si queremos evitar rebuilds intermedios
+  /// Carga/Recarga la lista de citas.
+  /// [resetPage] true para volver a la página 0.
+  /// [notify] false si queremos evitar rebuilds intermedios.
   Future<void> loadCitas({bool resetPage = true, bool notify = true}) async {
     if (cliente == null) return;
 
@@ -138,36 +138,7 @@ class ClientDetailProvider extends ChangeNotifier {
         historialCitas = [];
       }
 
-      final Map<String, dynamic> queryParams = {
-        'page': citasPage,
-        'size': citasPageSize,
-        'sort': 'fechaHoraInicio,desc',
-      };
-
-      if (filtroEstado != null && filtroEstado!.isNotEmpty) {
-        queryParams['estado'] = filtroEstado;
-      }
-
-      if (fechaInicio != null) {
-        queryParams['fechaInicio'] = DateFormat(
-          'yyyy-MM-dd',
-        ).format(fechaInicio!);
-      }
-      if (fechaFin != null) {
-        queryParams['fechaFin'] = DateFormat('yyyy-MM-dd').format(fechaFin!);
-      }
-
-      final respCitas = await ApiService.dio.get(
-        '$_baseUrl/citas/cliente/${cliente!.idCliente}',
-        queryParameters: queryParams,
-      );
-
-      final List<dynamic> datosCitas =
-          (respCitas.data is Map && respCitas.data.containsKey('content'))
-              ? respCitas.data['content']
-              : (respCitas.data is List ? respCitas.data : []);
-
-      final nuevas = datosCitas.map((e) => Cita.fromJson(e)).toList();
+      final nuevas = await _fetchCitasPage(citasPage);
 
       if (resetPage) {
         historialCitas = nuevas;
@@ -175,17 +146,47 @@ class ClientDetailProvider extends ChangeNotifier {
         historialCitas.addAll(nuevas);
       }
 
-      if (nuevas.length < citasPageSize) {
-        hasMoreCitas = false;
-      }
+      if (nuevas.length < citasPageSize) hasMoreCitas = false;
     } catch (e) {
-      print("Error cargando citas: $e");
+      debugPrint('Error cargando citas: $e');
     } finally {
       if (notify) {
         isLoadingCitas = false;
         notifyListeners();
       }
     }
+  }
+
+  /// Realiza la llamada HTTP para obtener una página de citas del cliente.
+  /// Aplica los filtros activos (estado y rango de fechas).
+  Future<List<Cita>> _fetchCitasPage(int page) async {
+    final Map<String, dynamic> queryParams = {
+      'page': page,
+      'size': citasPageSize,
+      'sort': 'fechaHoraInicio,desc',
+    };
+
+    if (filtroEstado != null && filtroEstado!.isNotEmpty) {
+      queryParams['estado'] = filtroEstado;
+    }
+    if (fechaInicio != null) {
+      queryParams['fechaInicio'] = DateFormat('yyyy-MM-dd').format(fechaInicio!);
+    }
+    if (fechaFin != null) {
+      queryParams['fechaFin'] = DateFormat('yyyy-MM-dd').format(fechaFin!);
+    }
+
+    final resp = await ApiService.dio.get(
+      '$_baseUrl/citas/cliente/${cliente!.idCliente}',
+      queryParameters: queryParams,
+    );
+
+    final List<dynamic> datos =
+        (resp.data is Map && resp.data.containsKey('content'))
+            ? resp.data['content']
+            : (resp.data is List ? resp.data : []);
+
+    return datos.map((e) => Cita.fromJson(e)).toList();
   }
 
   // Obitiene una lista de las citas pagadas por el grupo familiar que puedan entrar en conflicto
@@ -199,7 +200,7 @@ class ClientDetailProvider extends ChangeNotifier {
           .map((e) => CitaConflicto.fromJson(e))
           .toList();
     } catch (e) {
-      print('Error obteniendo conflictos: $e');
+      debugPrint('Error obteniendo conflictos: $e');
       rethrow;
     }
   }
@@ -267,7 +268,7 @@ class ClientDetailProvider extends ChangeNotifier {
           (respFamilia.data as List).map((e) => Familiar.fromJson(e)).toList();
       if (notify) notifyListeners();
     } catch (e) {
-      print("Error recargando familiares: $e");
+      debugPrint("Error recargando familiares: $e");
     }
   }
 
@@ -279,48 +280,16 @@ class ClientDetailProvider extends ChangeNotifier {
 
     try {
       final nextPage = citasPage + 1;
-
-      final Map<String, dynamic> queryParams = {
-        'page': nextPage,
-        'size': citasPageSize,
-        'sort': 'fechaHoraInicio,desc',
-      };
-
-      if (filtroEstado != null && filtroEstado!.isNotEmpty) {
-        queryParams['estado'] = filtroEstado;
-      }
-
-      if (fechaInicio != null) {
-        queryParams['fechaInicio'] = DateFormat(
-          'yyyy-MM-dd',
-        ).format(fechaInicio!);
-      }
-      if (fechaFin != null) {
-        queryParams['fechaFin'] = DateFormat('yyyy-MM-dd').format(fechaFin!);
-      }
-
-      final respCitas = await ApiService.dio.get(
-        '$_baseUrl/citas/cliente/${cliente!.idCliente}',
-        queryParameters: queryParams,
-      );
-
-      final List<dynamic> nuevosDatos =
-          (respCitas.data is Map && respCitas.data.containsKey('content'))
-              ? respCitas.data['content']
-              : (respCitas.data is List ? respCitas.data : []);
-
-      final nuevasCitas = nuevosDatos.map((e) => Cita.fromJson(e)).toList();
+      final nuevasCitas = await _fetchCitasPage(nextPage);
 
       if (nuevasCitas.isNotEmpty) {
         historialCitas.addAll(nuevasCitas);
         citasPage = nextPage;
       }
 
-      if (nuevasCitas.length < citasPageSize) {
-        hasMoreCitas = false;
-      }
+      if (nuevasCitas.length < citasPageSize) hasMoreCitas = false;
     } catch (e) {
-      print('Error cargando más citas: $e');
+      debugPrint('Error cargando más citas: $e');
     } finally {
       isLoadingMoreCitas = false;
       notifyListeners();

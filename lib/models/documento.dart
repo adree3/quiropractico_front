@@ -9,6 +9,7 @@ class Documento {
   final String estadoSubida;
   final int tamanyoBytes;
   final DateTime fechaSubida;
+  final DateTime? fechaEliminacionLogica;
 
   Documento({
     required this.idDocumento,
@@ -21,6 +22,7 @@ class Documento {
     required this.estadoSubida,
     required this.tamanyoBytes,
     required this.fechaSubida,
+    this.fechaEliminacionLogica,
   });
 
   factory Documento.fromJson(Map<String, dynamic> json) {
@@ -37,6 +39,9 @@ class Documento {
       fechaSubida: json['fechaSubida'] != null
           ? DateTime.parse(json['fechaSubida'])
           : DateTime.now(),
+      fechaEliminacionLogica: json['fechaEliminacionLogica'] != null
+          ? DateTime.parse(json['fechaEliminacionLogica'])
+          : null,
     );
   }
 }

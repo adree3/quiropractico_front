@@ -160,7 +160,7 @@ class _CitaModalState extends State<CitaModal> {
               selectedHueco = huecoEncontrado;
               _actualizarHorasDesdeHueco(huecoEncontrado);
             } catch (e) {
-              print("No se pudo pre-seleccionar el hueco: $targetTimeStr");
+              debugPrint("No se pudo pre-seleccionar el hueco: $targetTimeStr");
             }
           }
         });

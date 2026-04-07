@@ -113,17 +113,6 @@ class ClientsProvider extends ChangeNotifier {
     }
   }
 
-  List<Cliente> filterClients(String query) {
-    if (query.isEmpty) return clients;
-    return clients
-        .where(
-          (c) =>
-              c.nombre.toLowerCase().contains(query.toLowerCase()) ||
-              c.apellidos.toLowerCase().contains(query.toLowerCase()) ||
-              c.telefono.contains(query),
-        )
-        .toList();
-  }
 
   Future<List<Cliente>> searchClientesByName(String query) async {
     if (query.isEmpty) return [];
@@ -138,7 +127,7 @@ class ClientsProvider extends ChangeNotifier {
 
       return data.map((json) => Cliente.fromJson(json)).toList();
     } catch (e) {
-      print('Error buscando clientes: $e');
+      debugPrint('Error buscando clientes: $e');
       return [];
     }
   }
@@ -235,7 +224,6 @@ class ClientsProvider extends ChangeNotifier {
   // Método específico para UNDO UPDATE
   Future<String?> undoUpdateClient(Cliente clienteAntiguo) async {
     try {
-      final data = clienteAntiguo.toJson();
       // Aseguramos que solo enviamos los campos necesarios o el objeto entero si el backend lo soporta.
       // El backend espera ClienteRequestDto, asi que extraemos los campos.
       final requestData = {
@@ -301,21 +289,21 @@ class ClientsProvider extends ChangeNotifier {
 
       return Cliente.fromJson(response.data);
     } catch (e) {
-      print('Error cargando cliente individual: $e');
+      debugPrint('Error cargando cliente individual: $e');
       return null;
     }
   }
 
   Future<void> reloadClient(int id) async {
-    print("DEBUG: reloadClient($id) called. CurrentPage: $currentPage");
+    debugPrint("DEBUG: reloadClient($id) called. CurrentPage: $currentPage");
     try {
       // Recargamos la página actual en segundo plano (sin mostrar loading)
       // Esto asegura que se actualicen todos los contadores y fechas calculadas (como citasPendientes)
       // que solo vienen en el endpoint de listado, no en el de detalle.
       await loadClients(page: currentPage, notifyLoading: false);
-      print("DEBUG: reloadClient($id) finished.");
+      debugPrint("DEBUG: reloadClient($id) finished.");
     } catch (e) {
-      print("Error recargando clientes: $e");
+      debugPrint("Error recargando clientes: $e");
     }
   }
 }
