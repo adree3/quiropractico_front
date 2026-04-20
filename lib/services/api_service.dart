@@ -39,4 +39,9 @@ class ApiService {
   }
 
   static Dio get dio => _dio;
+
+  static Map<String, String> getAuthHeaders() {
+    final token = LocalStorage.getToken();
+    return token != null ? {'Authorization': 'Bearer $token'} : {};
+  }
 }

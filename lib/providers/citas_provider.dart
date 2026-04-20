@@ -4,15 +4,22 @@ import 'package:quiropractico_front/services/api_service.dart';
 import 'package:quiropractico_front/models/cita.dart';
 import 'package:quiropractico_front/models/citas_kpi.dart';
 import 'package:quiropractico_front/utils/error_handler.dart';
+import 'package:stomp_dart_client/stomp_dart_client.dart';
+import 'dart:convert';
+import 'package:quiropractico_front/services/local_storage.dart';
 
 class CitasProvider extends ChangeNotifier {
   final String _baseUrl = ApiConfig.baseUrl;
 
   List<Cita> citas = [];
   CitasKpi? kpis;
+  StompClient? _stompClient;
 
   bool isLoading = true;
   String? errorMessage;
+  
+  // Rastreo de firmas recibidas por WebSocket para evitar problemas de paginación
+  final Set<int> _idCitasFirmadasRecientemente = {};
 
   String currentSearchTerm = '';
   String?
@@ -27,6 +34,66 @@ class CitasProvider extends ChangeNotifier {
 
   CitasProvider() {
     loadCitas(page: 0);
+    _initWebSocket();
+  }
+
+  void _initWebSocket() {
+    final String wsUrl = ApiConfig.baseUrl
+        .replaceFirst('http', 'ws')
+        .replaceAll('/api', '/ws-kiosk');
+
+    final String? token = LocalStorage.getToken();
+
+    _stompClient = StompClient(
+      config: StompConfig(
+        url: wsUrl,
+        onConnect: (frame) {
+          _stompClient?.subscribe(
+            destination: '/topic/citas',
+            callback: (frame) {
+              if (frame.body != null) {
+                final data = json.decode(frame.body!);
+                
+                if (data['action'] == 'CITA_FIRMADA') {
+                  final idFirma = data['idCita'] is int ? data['idCita'] : int.tryParse(data['idCita'].toString());
+                  if (idFirma != null) {
+                    _idCitasFirmadasRecientemente.add(idFirma);
+                    
+                    // Actualización local en la lista si existe
+                    final index = citas.indexWhere((c) => c.idCita == idFirma);
+                    if (index != -1) {
+                      citas[index] = citas[index].copyWith(firmada: true);
+                    }
+                    
+                    notifyListeners();
+                    // Refrescar la lista del servidor silenciosamente
+                    loadCitas(page: currentPage, notifyLoading: false);
+                  }
+                }
+              }
+            },
+          );
+        },
+        reconnectDelay: const Duration(seconds: 5),
+        heartbeatIncoming: const Duration(milliseconds: 10000),
+        heartbeatOutgoing: const Duration(milliseconds: 10000),
+        stompConnectHeaders: {
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+        onWebSocketError: (error) => print('WS Error en CitasProvider: $error'),
+      ),
+    );
+    _stompClient?.activate();
+  }
+
+  bool isCitaFirmadaRecientemente(int idCita) {
+    return _idCitasFirmadasRecientemente.contains(idCita);
+  }
+
+  @override
+  void dispose() {
+    _stompClient?.deactivate();
+    super.dispose();
   }
 
   Future<void> loadCitas({
@@ -135,6 +202,28 @@ class CitasProvider extends ChangeNotifier {
       errorMessage = ErrorHandler.extractMessage(e);
       notifyListeners();
       return false;
+    }
+  }
+
+  Future<bool> solicitarFirma(int idCita) async {
+    try {
+      await ApiService.dio.post('$_baseUrl/citas/$idCita/solicitar-firma');
+      return true;
+    } catch (e) {
+      errorMessage = ErrorHandler.extractMessage(e);
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Recupera la URL pre-firmada del justificante de una cita
+  Future<String?> obtenerUrlJustificante(int idCita) async {
+    try {
+      final response = await ApiService.dio.get('$_baseUrl/citas/$idCita/justificante');
+      return response.data['url'];
+    } catch (e) {
+      debugPrint('Error obteniendo URL justificante: $e');
+      return null;
     }
   }
 

@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:quiropractico_front/config/api_config.dart';
 import 'package:quiropractico_front/config/theme/app_theme.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:quiropractico_front/models/documento.dart';
+import 'package:quiropractico_front/providers/documentos_provider.dart';
 import 'package:quiropractico_front/models/cita.dart';
 import 'package:quiropractico_front/models/cliente.dart';
 import 'package:quiropractico_front/models/usuario.dart';
@@ -9,6 +13,7 @@ import 'package:quiropractico_front/providers/agenda_bloqueo_provider.dart';
 import 'package:quiropractico_front/providers/agenda_provider.dart';
 import 'package:quiropractico_front/providers/clients_provider.dart';
 import 'package:quiropractico_front/providers/horarios_provider.dart';
+import 'package:quiropractico_front/services/api_service.dart';
 import 'package:quiropractico_front/ui/modals/payment_selection_modal.dart';
 import 'package:quiropractico_front/ui/modals/venta_bono_modal.dart';
 import 'package:quiropractico_front/ui/widgets/custom_snackbar.dart';
@@ -16,6 +21,7 @@ import 'package:quiropractico_front/ui/widgets/avatar_widget.dart';
 import 'package:quiropractico_front/ui/widgets/fecha_picker_dialog.dart';
 import 'package:quiropractico_front/ui/widgets/horario_picker_dialog.dart';
 import 'package:quiropractico_front/ui/widgets/user_avatar_widget.dart';
+import 'package:quiropractico_front/ui/modals/cita_completar_dialog.dart';
 
 class CitaModal extends StatefulWidget {
   final DateTime? selectedDate;
@@ -43,6 +49,10 @@ class _CitaModalState extends State<CitaModal> {
   final _clientSearchController = TextEditingController();
   final _clientFocusNode = FocusNode();
   bool _isLoading = false;
+  List<PlatformFile> _selectedFiles = [];
+  List<Documento> _existingImages = [];
+  List<int> _imagesToDelete = [];
+  String? _uploadError;
 
   // Selecciones
   Cliente? selectedCliente;
@@ -127,6 +137,17 @@ class _CitaModalState extends State<CitaModal> {
           idCitaExcluir: isEditing ? widget.citaExistente!.idCita : null,
         );
       }
+
+      // Cargar Imágenes Existentes si editamos
+      if (isEditing) {
+          final docProv = Provider.of<DocumentosProvider>(context, listen: false);
+          final docs = await docProv.getDocumentosCita(widget.citaExistente!.idCita);
+          if (mounted) {
+            setState(() {
+              _existingImages = docs.where((d) => d.mimeType?.startsWith('image/') ?? false).toList();
+            });
+          }
+      }
       Cliente? clienteEncontrado;
       if (isEditing) {
         final idClienteDeLaCita = widget.citaExistente!.idCliente;
@@ -210,13 +231,13 @@ class _CitaModalState extends State<CitaModal> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: ConstrainedBox(
         constraints: const BoxConstraints(minWidth: 520, maxWidth: 520),
-        child: IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Barra de acento izquierda
-              Container(
-                width: 7,
+        child: Stack(
+          children: [
+            // Barra de acento izquierda (Capa fondo)
+            Positioned.fill(
+              right: null, // Solo en la izquierda
+              left: 7,
+              child: Container(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [colorTema, colorTema.withOpacity(0.3)],
@@ -225,48 +246,52 @@ class _CitaModalState extends State<CitaModal> {
                   ),
                 ),
               ),
+            ),
 
-              // Contenido principal
-              Expanded(
-                child: Form(
-                  key: _formKey,
-                  child: SingleChildScrollView(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
+            // Contenido principal
+            Padding(
+              padding: const EdgeInsets.only(left: 7), // Espacio para la barra
+              child: Form(
+                key: _formKey,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
                         // CABECERA
                         _buildHeader(colorTema),
 
-                        SizedBox(height: 15),
+                        const SizedBox(height: 15),
                         // SECCIÓN: FECHA Y HORARIO
                         _buildDateAndTimeSelector(
                           context,
                           colorTema,
                           agendaProvider,
                         ),
-                        SizedBox(height: 10),
+                        const SizedBox(height: 10),
                         // SECCIÓN: PROFESIONAL
                         _buildProfessionalSelector(agendaProvider),
-                        SizedBox(height: 10),
+                        const SizedBox(height: 10),
                         // SECCIÓN: PACIENTE
                         _buildClientSelector(clientsProvider),
-                        SizedBox(height: 5),
+                        const SizedBox(height: 5),
                         // Notas
                         _buildNotas(),
+
+                        const SizedBox(height: 15),
+                        _buildImageSelector(),
 
                         // RESUMEN PREVIO
                         _buildResumenPrevio(colorTema),
 
                         // ── ACCIONES ───────────────────────────
                         _buildFooterActions(context, colorTema, agendaProvider),
-                      ],
-                    ),
+                    ],
                   ),
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -772,13 +797,64 @@ class _CitaModalState extends State<CitaModal> {
                               );
                             }
 
+                            // 1. Procesar borrados lógicos si los hay
+                            if (error == null && _imagesToDelete.isNotEmpty) {
+                                final docProv = Provider.of<DocumentosProvider>(context, listen: false);
+                                try {
+                                  final results = await Future.wait(
+                                    _imagesToDelete.map((id) => docProv.eliminarDocumento(id))
+                                  );
+                                  
+                                  // filter results that are not null (strings containing error messages)
+                                  if (results.any((r) => r != null) && context.mounted) {
+                                    CustomSnackBar.show(
+                                      context, 
+                                      message: 'Algunas imágenes antiguas no pudieron ser eliminadas temporalmente.', 
+                                      type: SnackBarType.info
+                                    );
+                                  }
+                                } catch (e) {
+                                  debugPrint("Excepción general borrando imágenes: $e");
+                                }
+                            }
+
+                            // 2. Subida de nuevas imágenes si se guardó la cita correctamente
+                            if (error == null && _selectedFiles.isNotEmpty) {
+                                final docProv = Provider.of<DocumentosProvider>(context, listen: false);
+                                
+                                int? idCitaActual = isEditing ? widget.citaExistente!.idCita : null;
+                                if (idCitaActual != null) {
+                                    await Future.wait(_selectedFiles.map((file) => docProv.subirDocumento(
+                                      idCliente: selectedCliente!.idCliente,
+                                      bytes: file.bytes!,
+                                      filename: file.name,
+                                      tipoDocumento: 'RADIOGRAFIA', 
+                                      idCita: idCitaActual,
+                                      notas: 'Imagen adjunta desde edición de cita',
+                                    )));
+                                }
+                            }
+
                             if (!context.mounted) return;
                             if (error == null) {
                               if (mounted)
                                 setState(() {
                                   _isLoading = false;
                                 });
+
+                              final wasNotCompletada = widget.citaExistente?.estado.toLowerCase() != 'completada';
+                              final isNowCompletada = _estadoSeleccionado.toLowerCase() == 'completada';
+
                               Navigator.pop(context, true);
+
+                              if (isNowCompletada && wasNotCompletada && isEditing) {
+                                final citaParaDialog = widget.citaExistente!.copyWith(estado: 'completada');
+                                showDialog(
+                                  context: context,
+                                  builder: (context) => CitaCompletarDialog(cita: citaParaDialog),
+                                );
+                              }
+
                               CustomSnackBar.show(
                                 context,
                                 message:
@@ -1001,6 +1077,224 @@ class _CitaModalState extends State<CitaModal> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildImageSelector() {
+    final bool hasFiles = _selectedFiles.isNotEmpty || _existingImages.isNotEmpty;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 22),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Imágenes / Adjuntos',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey[700],
+                ),
+              ),
+              Text(
+                'Máx. 15MB por archivo',
+                style: TextStyle(
+                  fontSize: 10,
+                  color: Colors.grey[400],
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Container(
+            width: double.infinity,
+            constraints: const BoxConstraints(minHeight: 100),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: hasFiles ? AppTheme.primaryColor.withOpacity(0.02) : Colors.grey.shade50,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: hasFiles ? AppTheme.primaryColor.withOpacity(0.3) : Colors.grey.shade200,
+                width: 1,
+              ),
+            ),
+            child: hasFiles 
+              ? GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 4,
+                    crossAxisSpacing: 10,
+                    mainAxisSpacing: 10,
+                  ),
+                  itemCount: _existingImages.length + _selectedFiles.length + 1,
+                  itemBuilder: (context, index) {
+                    if (index < _existingImages.length) {
+                      return _buildExistingImageThumbnail(_existingImages[index], index);
+                    } else if (index < _existingImages.length + _selectedFiles.length) {
+                      final fileIndex = index - _existingImages.length;
+                      return _buildGridThumbnail(_selectedFiles[fileIndex], fileIndex);
+                    } else {
+                      return _buildAddMoreButton();
+                    }
+                  },
+                )
+              : InkWell(
+                  onTap: _pickFiles,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 20),
+                    child: Column(
+                      children: [
+                        Icon(Icons.add_photo_alternate_outlined, size: 32, color: Colors.grey.shade400),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Añadir imágenes de la sesión',
+                          style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+          ),
+          if (_uploadError != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                _uploadError!,
+                style: const TextStyle(color: Colors.red, fontSize: 12),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _pickFiles() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.image,
+      allowMultiple: true,
+      withData: true,
+    );
+
+    if (result != null) {
+      if (result.files.any((f) => f.size > 15 * 1024 * 1024)) {
+        setState(() => _uploadError = 'Alguna imagen supera los 15MB');
+        return;
+      }
+      setState(() {
+        _selectedFiles = [..._selectedFiles, ...result.files];
+        _uploadError = null;
+      });
+    }
+  }
+
+  Widget _buildGridThumbnail(PlatformFile file, int index) {
+    return Stack(
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.grey.shade200),
+            image: DecorationImage(
+              image: MemoryImage(file.bytes!),
+              fit: BoxFit.cover,
+            ),
+          ),
+        ),
+        Positioned(
+          top: 0,
+          right: 0,
+          child: Tooltip(
+            message: 'Quitar',
+            child: InkWell(
+              onTap: () => setState(() => _selectedFiles.removeAt(index)),
+              child: Container(
+                padding: const EdgeInsets.all(2),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.8),
+                  borderRadius: const BorderRadius.only(
+                    bottomLeft: Radius.circular(8),
+                    topRight: Radius.circular(8),
+                  ),
+                ),
+                child: const Icon(Icons.close, size: 14, color: Colors.white),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildExistingImageThumbnail(Documento doc, int index) {
+    final thumbnailUrl = '${ApiConfig.baseUrl}/documentos/${doc.idDocumento}/thumbnail';
+    
+    return Stack(
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.grey.shade200),
+            image: DecorationImage(
+              image: NetworkImage(
+                thumbnailUrl,
+                headers: ApiService.getAuthHeaders(),
+              ),
+              fit: BoxFit.cover,
+            ),
+          ),
+        ),
+        Positioned(
+          top: 0,
+          right: 0,
+          child: Tooltip(
+            message: 'Quitar',
+            child: InkWell(
+              onTap: () {
+                setState(() {
+                  _imagesToDelete.add(doc.idDocumento);
+                  _existingImages.removeAt(index);
+                });
+              },
+              child: Container(
+                padding: const EdgeInsets.all(2),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.8),
+                  borderRadius: const BorderRadius.only(
+                    bottomLeft: Radius.circular(8),
+                    topRight: Radius.circular(8),
+                  ),
+                ),
+                child: const Icon(Icons.close, size: 14, color: Colors.white),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAddMoreButton() {
+    return Tooltip(
+      message: 'Añadir imágenes',
+      child: InkWell(
+        onTap: _pickFiles,
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: AppTheme.primaryColor.withOpacity(0.2),
+              style: BorderStyle.solid,
+            ),
+          ),
+          child: Icon(Icons.add_photo_alternate_outlined, color: AppTheme.primaryColor, size: 24),
+        ),
       ),
     );
   }

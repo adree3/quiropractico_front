@@ -8,6 +8,7 @@ import 'package:quiropractico_front/providers/citas_provider.dart';
 import 'package:quiropractico_front/config/theme/app_theme.dart';
 import 'package:quiropractico_front/ui/modals/cita_modal.dart';
 import 'package:quiropractico_front/ui/modals/cita_detalle_modal.dart';
+import 'package:quiropractico_front/ui/modals/cita_completar_dialog.dart';
 import 'package:go_router/go_router.dart';
 import 'package:quiropractico_front/ui/widgets/paginated_table.dart';
 import 'package:quiropractico_front/ui/widgets/avatar_widget.dart';
@@ -603,13 +604,36 @@ class _CitasViewState extends State<CitasView> {
                                             color: estadoColor,
                                           ),
                                         ),
-                                        child: Text(
-                                          cita.estado.toUpperCase(),
-                                          style: TextStyle(
-                                            color: estadoColor,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 11,
-                                          ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Text(
+                                              cita.estado.toUpperCase(),
+                                              style: TextStyle(
+                                                color: estadoColor,
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 11,
+                                              ),
+                                            ),
+                                            if (cita.estado.toLowerCase() == 'completada' && !cita.firmada) ...[
+                                              const SizedBox(width: 6),
+                                              const Tooltip(
+                                                message: "Pendiente de firma",
+                                                child: Icon(
+                                                  Icons.warning_amber_rounded,
+                                                  color: Colors.orange,
+                                                  size: 16,
+                                                ),
+                                              ),
+                                            ] else if (cita.firmada) ...[
+                                              const SizedBox(width: 6),
+                                              const Icon(
+                                                Icons.verified_user_outlined,
+                                                color: Colors.green,
+                                                size: 16,
+                                              ),
+                                            ]
+                                          ],
                                         ),
                                       ),
                                     ),
@@ -660,6 +684,44 @@ class _CitasViewState extends State<CitasView> {
                                             },
                                           ),
                                         ),
+                                        if (cita.estado.toLowerCase() == 'completada' && !cita.firmada)
+                                          Tooltip(
+                                            message: "Solicitar Firma en Tablet",
+                                            child: IconButton(
+                                              icon: const Icon(
+                                                Icons.draw_outlined,
+                                                color: Colors.indigo,
+                                                size: 20,
+                                              ),
+                                              onPressed: () async {
+                                                showDialog(
+                                                  context: context,
+                                                  builder: (context) => CitaCompletarDialog(cita: cita),
+                                                ).then((value) {
+                                                  if (value == true) {
+                                                    citasProvider.loadCitas(page: citasProvider.currentPage);
+                                                  }
+                                                });
+                                              },
+                                            ),
+                                          ),
+                                        if (cita.firmada && cita.rutaJustificante != null)
+                                          Tooltip(
+                                            message: "Ver Justificante (PDF)",
+                                            child: IconButton(
+                                              icon: const Icon(
+                                                Icons.picture_as_pdf_outlined,
+                                                color: Colors.red,
+                                                size: 20,
+                                              ),
+                                              onPressed: () async {
+                                                final url = await Provider.of<CitasProvider>(context, listen: false).obtenerUrlJustificante(cita.idCita);
+                                                if (url != null) {
+                                                  launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+                                                }
+                                              },
+                                            ),
+                                          ),
                                       ],
                                     ),
                                   ),

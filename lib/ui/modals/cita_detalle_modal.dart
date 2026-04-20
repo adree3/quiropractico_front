@@ -9,12 +9,17 @@ import 'package:quiropractico_front/ui/modals/cita_modal.dart';
 import 'package:quiropractico_front/ui/widgets/custom_snackbar.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:go_router/go_router.dart';
+import 'package:quiropractico_front/ui/modals/cita_completar_dialog.dart';
+import 'package:quiropractico_front/models/documento.dart';
+import 'package:quiropractico_front/providers/documentos_provider.dart';
+import 'package:quiropractico_front/services/api_service.dart';
+import 'package:quiropractico_front/config/api_config.dart';
 
 // ──────────────────────────────────────────────────────────
 // Helpers de estado
 // ──────────────────────────────────────────────────────────
 Color _colorForEstado(String estado) {
-  switch (estado) {
+  switch (estado.toLowerCase()) {
     case 'completada':
       return const Color(0xFF4CAF50);
     case 'cancelada':
@@ -27,7 +32,7 @@ Color _colorForEstado(String estado) {
 }
 
 IconData _iconForEstado(String estado) {
-  switch (estado) {
+  switch (estado.toLowerCase()) {
     case 'completada':
       return Icons.check_circle_outline;
     case 'cancelada':
@@ -40,7 +45,7 @@ IconData _iconForEstado(String estado) {
 }
 
 String _labelForEstado(String estado) {
-  switch (estado) {
+  switch (estado.toLowerCase()) {
     case 'completada':
       return 'Completada';
     case 'cancelada':
@@ -55,10 +60,23 @@ String _labelForEstado(String estado) {
 // ──────────────────────────────────────────────────────────
 // Modal principal
 // ──────────────────────────────────────────────────────────
-class CitaDetalleModal extends StatelessWidget {
+class CitaDetalleModal extends StatefulWidget {
   final Cita cita;
 
   const CitaDetalleModal({super.key, required this.cita});
+
+  @override
+  State<CitaDetalleModal> createState() => _CitaDetalleModalState();
+}
+
+class _CitaDetalleModalState extends State<CitaDetalleModal> {
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   void _mostrarError(BuildContext context, String mensaje) {
     CustomSnackBar.show(context, message: mensaje, type: SnackBarType.error);
@@ -69,7 +87,7 @@ class CitaDetalleModal extends StatelessWidget {
     AgendaProvider provider,
     String nuevoEstado,
   ) async {
-    final error = await provider.cambiarEstadoCita(cita.idCita, nuevoEstado);
+    final error = await provider.cambiarEstadoCita(widget.cita.idCita, nuevoEstado);
     if (context.mounted) {
       if (error == null) {
         Navigator.pop(context, true);
@@ -83,7 +101,7 @@ class CitaDetalleModal extends StatelessWidget {
     BuildContext context,
     AgendaProvider provider,
   ) async {
-    final error = await provider.cancelarCita(cita.idCita);
+    final error = await provider.cancelarCita(widget.cita.idCita);
     if (context.mounted) {
       if (error == null) {
         Navigator.pop(context, true);
@@ -120,7 +138,6 @@ class CitaDetalleModal extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Accent bar izquierda simulado con un contenedor superior
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(24),
@@ -149,7 +166,7 @@ class CitaDetalleModal extends StatelessWidget {
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          dateFormat.format(cita.fechaHoraInicio),
+                          dateFormat.format(widget.cita.fechaHoraInicio),
                           style: TextStyle(
                             fontSize: 13,
                             color: Colors.grey[600],
@@ -211,7 +228,7 @@ class CitaDetalleModal extends StatelessWidget {
     final currentUser = usersProvider.currentUser;
     final isAuthorized = currentUser?.rol == 'admin' || currentUser?.rol == 'quiropractico';
 
-    final color = _colorForEstado(cita.estado);
+    final color = _colorForEstado(widget.cita.estado);
     final dateFormat = DateFormat("EEEE, d 'de' MMMM · HH:mm", 'es');
     final timeFormat = DateFormat('HH:mm');
 
@@ -224,7 +241,6 @@ class CitaDetalleModal extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // ── Accent bar IZQUIERDA ────────────────────────────
               Container(
                 width: 8,
                 decoration: BoxDecoration(
@@ -236,13 +252,11 @@ class CitaDetalleModal extends StatelessWidget {
                 ),
               ),
 
-              // ── Contenido principal ────────────────────────────
               Expanded(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Header
                     Padding(
                       padding: const EdgeInsets.fromLTRB(22, 20, 20, 0),
                       child: Row(
@@ -263,7 +277,7 @@ class CitaDetalleModal extends StatelessWidget {
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  '${dateFormat.format(cita.fechaHoraInicio)} – ${timeFormat.format(cita.fechaHoraFin)}',
+                                  '${dateFormat.format(widget.cita.fechaHoraInicio)} – ${timeFormat.format(widget.cita.fechaHoraFin)}',
                                   style: TextStyle(
                                     color: Colors.grey[600],
                                     fontSize: 13,
@@ -273,7 +287,6 @@ class CitaDetalleModal extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(width: 12),
-                          // Badge estado
                           Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 11,
@@ -288,13 +301,13 @@ class CitaDetalleModal extends StatelessWidget {
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Icon(
-                                  _iconForEstado(cita.estado),
+                                  _iconForEstado(widget.cita.estado),
                                   color: color,
                                   size: 14,
                                 ),
                                 const SizedBox(width: 5),
                                 Text(
-                                  _labelForEstado(cita.estado),
+                                  _labelForEstado(widget.cita.estado),
                                   style: TextStyle(
                                     color: color,
                                     fontSize: 13,
@@ -313,7 +326,6 @@ class CitaDetalleModal extends StatelessWidget {
                       child: Divider(height: 26),
                     ),
 
-                    // Info rows
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 22),
                       child: Container(
@@ -327,21 +339,21 @@ class CitaDetalleModal extends StatelessWidget {
                             _InfoRow(
                               icon: Icons.person_outline,
                               label: 'Paciente',
-                              value: cita.nombreClienteCompleto,
+                              value: widget.cita.nombreClienteCompleto,
                               tooltip: 'Ver detalles del paciente',
                               onTap: () {
                                 Navigator.pop(context);
-                                context.push('/pacientes/${cita.idCliente}');
+                                context.push('/pacientes/${widget.cita.idCliente}');
                               },
                             ),
                             _RowDivider(),
                             _InfoRow(
                               icon: Icons.phone_outlined,
                               label: 'Teléfono',
-                              value: cita.telefonoCliente,
+                              value: widget.cita.telefonoCliente,
                               tooltip: 'Abrir Whatsapp',
                               onTap: () {
-                                final url = 'https://wa.me/34${cita.telefonoCliente.replaceAll(RegExp(r'[^\d]'), '')}';
+                                final url = 'https://wa.me/34${widget.cita.telefonoCliente.replaceAll(RegExp(r'[^\d]'), '')}';
                                 launchUrl(Uri.parse(url));
                               },
                             ),
@@ -349,11 +361,11 @@ class CitaDetalleModal extends StatelessWidget {
                             _InfoRow(
                               icon: Icons.medical_services_outlined,
                               label: 'Doctor',
-                              value: cita.nombreQuiropractico,
+                              value: widget.cita.nombreQuiropractico,
                               tooltip: isAuthorized ? 'Ver perfil doctor' : null,
                               onTap: isAuthorized 
                                 ? () {
-                                    context.push('/perfil/${cita.idQuiropractico}');
+                                    context.push('/perfil/${widget.cita.idQuiropractico}');
                                   }
                                 : null,
                             ),
@@ -361,15 +373,24 @@ class CitaDetalleModal extends StatelessWidget {
                             _InfoRow(
                               icon: Icons.payment_outlined,
                               label: 'Método de pago',
-                              value: cita.infoPago,
+                              value: widget.cita.infoPago,
                               tooltip: 'Ver pago',
                               onTap: () {
                                 Navigator.pop(context);
                                 context.push(
-                                  '/pacientes/${cita.idBonoCliente ?? cita.idCliente}?tabIndex=1&showBono=true&resaltarCitaId=${cita.idCita}',
+                                  '/pacientes/${widget.cita.idBonoCliente ?? widget.cita.idCliente}?tabIndex=1&showBono=true&resaltarCitaId=${widget.cita.idCita}',
                                 );
                               },
                             ),
+                            if (widget.cita.estado.toLowerCase() == 'completada') ...[
+                                _RowDivider(),
+                                _InfoRow(
+                                  icon: widget.cita.firmada ? Icons.verified_user_outlined : Icons.warning_amber_rounded,
+                                  label: 'Justificante firma',
+                                  value: widget.cita.firmada ? 'Firmado' : 'Pendiente de firma',
+                                  colorValue: widget.cita.firmada ? Colors.green : Colors.orange,
+                                ),
+                            ],
                           ],
                         ),
                       ),
@@ -377,7 +398,6 @@ class CitaDetalleModal extends StatelessWidget {
 
                     const SizedBox(height: 16),
 
-                    // Notas
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 22),
                       child: Column(
@@ -401,13 +421,13 @@ class CitaDetalleModal extends StatelessWidget {
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: Text(
-                              (cita.notas != null && cita.notas!.isNotEmpty)
-                                  ? cita.notas!
+                              (widget.cita.notas != null && widget.cita.notas!.isNotEmpty)
+                                  ? widget.cita.notas!
                                   : 'Sin notas adicionales.',
                               style: TextStyle(
                                 color:
-                                    (cita.notas != null &&
-                                            cita.notas!.isNotEmpty)
+                                    (widget.cita.notas != null &&
+                                            widget.cita.notas!.isNotEmpty)
                                         ? Colors.black87
                                         : Colors.grey[400],
                                 fontSize: 14,
@@ -418,7 +438,9 @@ class CitaDetalleModal extends StatelessWidget {
                       ),
                     ),
 
-                    // Acciones
+                    const SizedBox(height: 16),
+                    _buildImageGallery(context),
+
                     Padding(
                       padding: const EdgeInsets.fromLTRB(22, 12, 22, 20),
                       child: _buildActions(context, provider),
@@ -434,7 +456,6 @@ class CitaDetalleModal extends StatelessWidget {
   }
 
   Widget _buildActions(BuildContext context, AgendaProvider provider) {
-    // Botón Cerrar consistente con CitaModal
     final closeBtn = OutlinedButton(
       onPressed: () => Navigator.pop(context),
       style: OutlinedButton.styleFrom(
@@ -445,15 +466,12 @@ class CitaDetalleModal extends StatelessWidget {
       child: const Text('Cerrar'),
     );
 
-    switch (cita.estado) {
-      // ── PROGRAMADA ───────────────────────────────────────
+    switch (widget.cita.estado.toLowerCase()) {
       case 'programada':
         return Row(
           children: [
             closeBtn,
             const Spacer(),
-            
-            // Iconos de estado rápido (estética CitaModal)
             _buildActionIconButton(
               tooltip: 'Cancelar',
               iconOutlined: Icons.cancel_outlined,
@@ -469,15 +487,20 @@ class CitaDetalleModal extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             _buildActionIconButton(
-              tooltip: 'Completada',
+              tooltip: 'Completar Sesión',
               iconOutlined: Icons.check_circle_outline,
               color: Colors.green,
-              onPressed: () => _cambiarEstado(context, provider, 'completada'),
+              onPressed: () async {
+                final result = await showDialog(
+                  context: context,
+                  builder: (context) => CitaCompletarDialog(cita: widget.cita),
+                );
+                if (result == true && context.mounted) {
+                  Navigator.pop(context, true);
+                }
+              },
             ),
-            
             const Spacer(),
-            
-            // Botón Editar destacado y de tamaño generoso
             _buildPrimaryButton(
               context: context,
               label: 'Editar',
@@ -487,7 +510,6 @@ class CitaDetalleModal extends StatelessWidget {
           ],
         );
 
-      // ── COMPLETADA ───────────────────────────────────────
       case 'completada':
         return Row(
           children: [
@@ -499,10 +521,39 @@ class CitaDetalleModal extends StatelessWidget {
               icon: Icons.edit_outlined,
               onPressed: () => Navigator.pop(context, 'edit'),
             ),
+            if (!widget.cita.firmada) ...[
+              const SizedBox(width: 8),
+              _buildPrimaryButton(
+                context: context,
+                label: 'Solicitar Firma',
+                icon: Icons.draw_outlined,
+                backgroundColor: Colors.indigo,
+                onPressed: () async {
+                  final result = await showDialog(
+                    context: context,
+                    builder: (context) => CitaCompletarDialog(cita: widget.cita),
+                  );
+                  if (result == true && context.mounted) {
+                    Navigator.pop(context, true);
+                  }
+                },
+              ),
+            ],
+            if (widget.cita.firmada && widget.cita.rutaJustificante != null) ...[
+               const SizedBox(width: 8),
+               _buildPrimaryButton(
+                context: context,
+                label: 'Ver PDF',
+                icon: Icons.picture_as_pdf_outlined,
+                backgroundColor: Colors.red.shade700,
+                onPressed: () {
+                   debugPrint('Abriendo PDF: ${widget.cita.rutaJustificante}');
+                },
+              ),
+            ]
           ],
         );
 
-      // ── AUSENTE ──────────────────────────────────────────
       case 'ausente':
         return Row(
           children: [
@@ -517,7 +568,6 @@ class CitaDetalleModal extends StatelessWidget {
           ],
         );
 
-      // ── CANCELADA ────────────────────────────────────────
       case 'cancelada':
         return Row(
           children: [
@@ -541,7 +591,7 @@ class CitaDetalleModal extends StatelessWidget {
                   context: context,
                   builder:
                       (context) =>
-                          CitaModal(selectedDate: cita.fechaHoraInicio),
+                          CitaModal(selectedDate: widget.cita.fechaHoraInicio),
                 );
               },
             ),
@@ -558,6 +608,7 @@ class CitaDetalleModal extends StatelessWidget {
     required String label,
     required IconData icon,
     required VoidCallback onPressed,
+    Color? backgroundColor,
   }) {
     return ElevatedButton.icon(
       onPressed: onPressed,
@@ -567,7 +618,7 @@ class CitaDetalleModal extends StatelessWidget {
         style: const TextStyle(fontSize: 15),
       ),
       style: ElevatedButton.styleFrom(
-        backgroundColor: AppTheme.primaryColor,
+        backgroundColor: backgroundColor ?? AppTheme.primaryColor,
         foregroundColor: Colors.white,
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
         shape: RoundedRectangleBorder(
@@ -577,6 +628,147 @@ class CitaDetalleModal extends StatelessWidget {
       ),
     );
   }
+
+  Widget _buildImageGallery(BuildContext context) {
+    final docsProv = Provider.of<DocumentosProvider>(context, listen: false);
+
+    return FutureBuilder<List<Documento>>(
+      future: docsProv.getDocumentosCita(widget.cita.idCita),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 22),
+            child: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        final docs = snapshot.data ?? [];
+        final images = docs.where((d) => d.mimeType?.startsWith('image/') ?? false).toList();
+
+        if (images.isEmpty) return const SizedBox.shrink();
+
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 22),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Imágenes vinculadas (${images.length})',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey[700],
+                ),
+              ),
+              const SizedBox(height: 10),
+               SizedBox(
+                height: 112, // Un poco más para el scrollbar discreto
+                child: Theme(
+                  data: Theme.of(context).copyWith(
+                    scrollbarTheme: ScrollbarThemeData(
+                      thumbColor: WidgetStateProperty.all(Colors.grey.withOpacity(0.3)),
+                      thickness: WidgetStateProperty.all(3),
+                      radius: const Radius.circular(10),
+                    ),
+                  ),
+                  child: Scrollbar(
+                    controller: _scrollController,
+                    thumbVisibility: true,
+                    trackVisibility: false,
+                    child: ShaderMask(
+                      shaderCallback: (Rect bounds) {
+                        return LinearGradient(
+                          begin: Alignment.centerLeft,
+                          end: Alignment.centerRight,
+                          colors: [
+                            Colors.purple,
+                            Colors.purple.withOpacity(0.1),
+                          ],
+                          stops: const [0.9, 1.0],
+                        ).createShader(bounds);
+                      },
+                      blendMode: BlendMode.dstIn,
+                      child: ListView.separated(
+                        controller: _scrollController,
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.only(bottom: 12), // Espacio para el scrollbar
+                        itemCount: images.length,
+                        separatorBuilder: (_, __) => const SizedBox(width: 10),
+                        itemBuilder: (context, index) {
+                          final img = images[index];
+                          final thumbnailUrl = '${ApiConfig.baseUrl}/documentos/${img.idDocumento}/thumbnail';
+                          
+                          return Tooltip(
+                            message: 'Ver imagen',
+                            child: InkWell(
+                              onTap: () => _showFullScreenImage(context, img),
+                              borderRadius: BorderRadius.circular(8),
+                              child: Container(
+                                width: 100,
+                                height: 100,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: Colors.grey[200]!),
+                                  image: DecorationImage(
+                                    image: NetworkImage(
+                                      thumbnailUrl,
+                                      headers: ApiService.getAuthHeaders(),
+                                    ),
+                                    fit: BoxFit.cover,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showFullScreenImage(BuildContext context, Documento doc) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.all(10),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            InteractiveViewer(
+              child: Image.network(
+                Provider.of<DocumentosProvider>(context, listen: false).getViewUrl(doc.idDocumento),
+                loadingBuilder: (context, child, loadingProgress) {
+                  if (loadingProgress == null) return child;
+                  return const Center(child: CircularProgressIndicator());
+                },
+                errorBuilder: (context, error, stackTrace) => const Center(
+                  child: Text('Error al cargar imagen', style: TextStyle(color: Colors.white)),
+                ),
+              ),
+            ),
+            Positioned(
+              top: 10,
+              right: 10,
+              child: IconButton(
+                icon: const Icon(Icons.close, color: Colors.white, size: 30),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildActionIconButton({
     required String tooltip,
     required IconData iconOutlined,
@@ -606,6 +798,7 @@ class _InfoRow extends StatefulWidget {
   final String value;
   final VoidCallback? onTap;
   final String? tooltip;
+  final Color? colorValue;
 
   const _InfoRow({
     required this.icon,
@@ -613,6 +806,7 @@ class _InfoRow extends StatefulWidget {
     required this.value,
     this.onTap,
     this.tooltip,
+    this.colorValue,
   });
 
   @override
@@ -665,10 +859,10 @@ class _InfoRowState extends State<_InfoRow> {
                           const SizedBox(height: 1),
                           Text(
                             widget.value,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w600,
-                              color: Colors.black87,
+                              color: widget.colorValue ?? Colors.black87,
                             ),
                           ),
                         ],
@@ -692,7 +886,6 @@ class _RowDivider extends StatelessWidget {
   }
 }
 
-/// Botón de acción estandarizado para las acciones del modal
 class _ActionButton extends StatelessWidget {
   final String label;
   final IconData icon;

@@ -11,6 +11,8 @@ class Cita {
   final String? notas;
   final String infoPago;
   final int? idBonoCliente;
+  final bool firmada;
+  final String? rutaJustificante;
 
   Cita({
     required this.idCita,
@@ -25,6 +27,8 @@ class Cita {
     this.notas,
     required this.infoPago,
     this.idBonoCliente,
+    this.firmada = false,
+    this.rutaJustificante,
   });
 
   factory Cita.fromJson(Map<String, dynamic> json) {
@@ -41,6 +45,42 @@ class Cita {
       notas: json['notasRecepcion'],
       infoPago: json['infoPago'] ?? 'Desconocido',
       idBonoCliente: json['idBonoCliente'],
+      firmada: json['firmada'] ?? false,
+      rutaJustificante: json['rutaJustificante'],
+    );
+  }
+
+  Cita copyWith({
+    int? idCita,
+    int? idCliente,
+    String? nombreClienteCompleto,
+    String? telefonoCliente,
+    int? idQuiropractico,
+    String? nombreQuiropractico,
+    DateTime? fechaHoraInicio,
+    DateTime? fechaHoraFin,
+    String? estado,
+    String? notas,
+    String? infoPago,
+    int? idBonoCliente,
+    bool? firmada,
+    String? rutaJustificante,
+  }) {
+    return Cita(
+      idCita: idCita ?? this.idCita,
+      idCliente: idCliente ?? this.idCliente,
+      nombreClienteCompleto: nombreClienteCompleto ?? this.nombreClienteCompleto,
+      telefonoCliente: telefonoCliente ?? this.telefonoCliente,
+      idQuiropractico: idQuiropractico ?? this.idQuiropractico,
+      nombreQuiropractico: nombreQuiropractico ?? this.nombreQuiropractico,
+      fechaHoraInicio: fechaHoraInicio ?? this.fechaHoraInicio,
+      fechaHoraFin: fechaHoraFin ?? this.fechaHoraFin,
+      estado: estado ?? this.estado,
+      notas: notas ?? this.notas,
+      infoPago: infoPago ?? this.infoPago,
+      idBonoCliente: idBonoCliente ?? this.idBonoCliente,
+      firmada: firmada ?? this.firmada,
+      rutaJustificante: rutaJustificante ?? this.rutaJustificante,
     );
   }
 }
