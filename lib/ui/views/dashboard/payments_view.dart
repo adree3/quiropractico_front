@@ -1020,20 +1020,6 @@ class _CobrarButtonState extends State<_CobrarButton> {
               message:
                   "Pago de ${widget.pago.nombreCliente} del $fechaFormat cobrado",
               type: SnackBarType.success,
-              actionLabel: "DESHACER",
-              onAction: () async {
-                await Provider.of<PaymentsProvider>(
-                  context,
-                  listen: false,
-                ).deshacerPago(widget.pago.idPago);
-                if (context.mounted) {
-                  CustomSnackBar.show(
-                    context,
-                    message: "Cobro deshecho",
-                    type: SnackBarType.info,
-                  );
-                }
-              },
             );
           } else {
             CustomSnackBar.show(

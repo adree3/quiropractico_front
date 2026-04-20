@@ -33,28 +33,6 @@ class ClienteFamiliaresTab extends StatelessWidget {
             message:
                 "$familiarName vinculado a ${cliente.nombre} ${cliente.apellidos}",
             type: SnackBarType.success,
-            actionLabel: "DESHACER",
-            onAction: () async {
-              try {
-                final fam = provider.familiares.firstWhere(
-                  (f) => f.idFamiliar == familiar.idCliente,
-                  orElse: () => throw Exception("Familiar no encontrado"),
-                );
-
-                await provider.desvincularFamiliar(fam.idGrupo, [], undo: true);
-
-                if (context.mounted) {
-                  provider.loadFullData(cliente.idCliente);
-                  CustomSnackBar.show(
-                    context,
-                    message: "Vinculación deshecha",
-                    type: SnackBarType.info,
-                  );
-                }
-              } catch (e) {
-                debugPrint("Error deshaciendo: $e");
-              }
-            },
           );
         }
       }
@@ -190,9 +168,6 @@ class ClienteFamiliaresTab extends StatelessWidget {
 
                                   if (idsParaCancelar != null) {
                                     try {
-                                      final undoIdFamiliar =
-                                          familiar.idFamiliar;
-                                      final undoRelacion = familiar.relacion;
                                       final undoName = familiar.nombreCompleto;
 
                                       await provider.desvincularFamiliar(
@@ -218,27 +193,6 @@ class ClienteFamiliaresTab extends StatelessWidget {
                                           message:
                                               "$undoName desvinculado de ${cliente.nombre} ${cliente.apellidos}",
                                           type: SnackBarType.success,
-                                          actionLabel: "DESHACER",
-                                          onAction: () async {
-                                            await provider.vincularFamiliar(
-                                              undoIdFamiliar,
-                                              undoRelacion,
-                                              undo: true,
-                                              idsCitasARestaurar:
-                                                  idsParaCancelar,
-                                            );
-                                            if (context.mounted) {
-                                              provider.loadFullData(
-                                                cliente.idCliente,
-                                              );
-                                              CustomSnackBar.show(
-                                                context,
-                                                message:
-                                                    "Vinculación restaurada",
-                                                type: SnackBarType.info,
-                                              );
-                                            }
-                                          },
                                         );
                                       }
                                     } catch (e) {

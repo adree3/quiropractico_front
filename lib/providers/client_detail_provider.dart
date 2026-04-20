@@ -208,14 +208,13 @@ class ClientDetailProvider extends ChangeNotifier {
   // Desvincula al familiar indicado y cancela las citas cuyos IDs se pasen en la lista
   Future<String?> desvincularFamiliar(
     int idGrupo,
-    List<int> idsCitasACancelar, {
-    bool undo = false,
-  }) async {
+    List<int> idsCitasACancelar,
+  ) async {
     try {
       final data = {"idsCitasACancelar": idsCitasACancelar};
 
       await ApiService.dio.post(
-        '$_baseUrl/familiares/$idGrupo/desvincular?undo=$undo',
+        '$_baseUrl/familiares/$idGrupo/desvincular',
         data: data,
       );
 
@@ -229,22 +228,15 @@ class ClientDetailProvider extends ChangeNotifier {
   // Modificado: ahora acepta undo y devuelve String? error
   Future<String?> vincularFamiliar(
     int idFamiliar,
-    String relacion, {
-    bool undo = false,
-    List<int>? idsCitasARestaurar,
-  }) async {
+    String relacion,
+  ) async {
     try {
       if (cliente == null) throw Exception("Cliente no cargado");
 
       final Map<String, dynamic> queryParams = {
         "idBeneficiario": idFamiliar,
         "relacion": relacion,
-        "undo": undo,
       };
-
-      if (idsCitasARestaurar != null && idsCitasARestaurar.isNotEmpty) {
-        queryParams["idsCitasARestaurar"] = idsCitasARestaurar.join(",");
-      }
 
       await ApiService.dio.post(
         '$_baseUrl/clientes/${cliente!.idCliente}/familiares',
@@ -297,11 +289,10 @@ class ClientDetailProvider extends ChangeNotifier {
   }
 
   // Borrado Lógico
-  Future<String?> deleteClient(int idCliente, {bool undo = false}) async {
+  Future<String?> deleteClient(int idCliente) async {
     try {
       await ApiService.dio.delete(
         '$_baseUrl/clientes/$idCliente',
-        queryParameters: {'undo': undo},
       );
       if (cliente != null && cliente!.idCliente == idCliente) {
         cliente = cliente!.copyWith(activo: false);
@@ -313,11 +304,10 @@ class ClientDetailProvider extends ChangeNotifier {
     }
   }
 
-  Future<String?> recoverClient(int idCliente, {bool undo = false}) async {
+  Future<String?> recoverClient(int idCliente) async {
     try {
       await ApiService.dio.put(
         '$_baseUrl/clientes/$idCliente/recuperar',
-        queryParameters: {'undo': undo},
       );
       if (cliente != null && cliente!.idCliente == idCliente) {
         cliente = cliente!.copyWith(activo: true);

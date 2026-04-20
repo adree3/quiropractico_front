@@ -11,6 +11,7 @@ import 'package:quiropractico_front/ui/modals/horario_modal.dart';
 import 'package:quiropractico_front/ui/modals/bloqueo_modal.dart';
 import 'package:quiropractico_front/ui/widgets/hoverable_action_button.dart';
 import 'package:quiropractico_front/ui/widgets/dashboard_dropdown.dart';
+import 'package:quiropractico_front/ui/widgets/delete_confirm_dialog.dart';
 import 'package:quiropractico_front/ui/widgets/custom_snackbar.dart';
 import 'package:quiropractico_front/ui/widgets/user_avatar_widget.dart';
 
@@ -404,55 +405,25 @@ class _ScheduleViewState extends State<ScheduleView> {
                                                         color: Colors.red,
                                                       ),
                                                       onDeleted: () async {
-                                                        final backup = turno;
-                                                        final messenger =
-                                                            ScaffoldMessenger.of(
-                                                              context,
-                                                            );
-                                                        final err =
-                                                            await provider
-                                                                .deleteHorario(
-                                                                  turno
-                                                                      .idHorario,
-                                                                );
+                                                        final confirm = await showDialog<bool>(
+                                                          context: context,
+                                                          builder: (context) => DeleteConfirmDialog(
+                                                            title: '¿Eliminar Turno?',
+                                                            content: '¿Estás seguro de que deseas eliminar este turno de $nombreDia (${turno.formattedRange})?',
+                                                          ),
+                                                        );
+                                                        if (confirm != true) return;
+
+                                                        final messenger = ScaffoldMessenger.of(context);
+                                                        final err = await provider.deleteHorario(turno.idHorario);
 
                                                         if (err == null) {
                                                           if (context.mounted) {
                                                             CustomSnackBar.show(
                                                               context,
-                                                              messenger:
-                                                                  messenger,
-                                                              message:
-                                                                  "Turno borrado: $nombreDia ${turno.formattedRange}",
-                                                              type:
-                                                                  SnackBarType
-                                                                      .success,
-                                                              actionLabel:
-                                                                  "DESHACER",
-                                                              onAction: () async {
-                                                                messenger
-                                                                    .hideCurrentSnackBar();
-                                                                // Re-crear horario (Deshacer)
-                                                                await provider.createHorario(
-                                                                  backup
-                                                                      .diaSemana,
-                                                                  backup
-                                                                      .horaInicio,
-                                                                  backup
-                                                                      .horaFin,
-                                                                );
-                                                                if (context
-                                                                    .mounted) {
-                                                                  CustomSnackBar.show(
-                                                                    context,
-                                                                    message:
-                                                                        "Eliminación deshecha",
-                                                                    type:
-                                                                        SnackBarType
-                                                                            .info,
-                                                                  );
-                                                                }
-                                                              },
+                                                              messenger: messenger,
+                                                              message: "Turno borrado: $nombreDia ${turno.formattedRange}",
+                                                              type: SnackBarType.success,
                                                             );
                                                           }
                                                         } else {
@@ -460,9 +431,7 @@ class _ScheduleViewState extends State<ScheduleView> {
                                                             CustomSnackBar.show(
                                                               context,
                                                               message: err,
-                                                              type:
-                                                                  SnackBarType
-                                                                      .error,
+                                                              type: SnackBarType.error,
                                                             );
                                                           }
                                                         }
@@ -929,9 +898,19 @@ class _ScheduleViewState extends State<ScheduleView> {
                           context,
                           listen: false,
                         );
+
+                        final bool confirm = await showDialog<bool>(
+                          context: context,
+                          builder: (context) => DeleteConfirmDialog(
+                            title: '¿Eliminar Bloqueo?',
+                            content: '¿Estás seguro de que deseas eliminar este bloqueo del ${DateFormat('dd/MM').format(bloqueo.fechaInicio)}?',
+                          ),
+                        ) ?? false;
+
+                        if (!confirm) return;
+
                         final messenger = ScaffoldMessenger.of(context);
                         Navigator.pop(itemCtx);
-                        final backup = bloqueo;
 
                         try {
                           await provider.borrarBloqueo(bloqueo.idBloqueo);
@@ -945,24 +924,6 @@ class _ScheduleViewState extends State<ScheduleView> {
                               messenger: messenger,
                               message: "Bloqueo del $dateStr eliminado",
                               type: SnackBarType.success,
-                              actionLabel: "DESHACER",
-                              onAction: () async {
-                                // Restaurar bloqueo
-                                await provider.crearBloqueo(
-                                  backup.fechaInicio,
-                                  backup.fechaFin,
-                                  backup.motivo,
-                                  backup.idQuiropractico,
-                                  force: true,
-                                );
-                                messenger.hideCurrentSnackBar();
-                                CustomSnackBar.show(
-                                  context,
-                                  messenger: messenger,
-                                  message: "Eliminación deshecha",
-                                  type: SnackBarType.info,
-                                );
-                              },
                             );
                           }
                         } catch (e) {
@@ -1161,15 +1122,10 @@ class _ScheduleViewState extends State<ScheduleView> {
   void _handleBloqueoResult(Map result) {
     if (!mounted) return;
 
-    final provider = Provider.of<AgendaBloqueoProvider>(context, listen: false);
-    final messenger = ScaffoldMessenger.of(context);
-
     final action = result['action'];
-    final BloqueoAgenda? bloqueoObj = result['bloqueo'];
     final bool isGlobal = result['isGlobal'] ?? false;
     final String? nombreQuiro = result['nombreQuiro'];
     final String? fechasStr = result['fechasStr'];
-    final List<BloqueoAgenda>? conflicting = result['conflicting'];
 
     String mensaje = "";
     if (action == 'create_forced') {
@@ -1190,57 +1146,6 @@ class _ScheduleViewState extends State<ScheduleView> {
       context,
       message: mensaje,
       type: SnackBarType.success,
-      actionLabel: "DESHACER",
-      onAction: () async {
-        try {
-          if (action == 'update') {
-            if (bloqueoObj != null) {
-              await provider.editarBloqueo(
-                bloqueoObj.idBloqueo,
-                bloqueoObj.fechaInicio,
-                bloqueoObj.fechaFin,
-                bloqueoObj.motivo,
-                bloqueoObj.idQuiropractico,
-              );
-            }
-          } else if (action == 'create') {
-            if (bloqueoObj != null) {
-              await provider.borrarBloqueo(bloqueoObj.idBloqueo);
-            }
-          } else if (action == 'create_forced') {
-            if (bloqueoObj != null) {
-              await provider.borrarBloqueo(bloqueoObj.idBloqueo);
-            }
-            if (conflicting != null) {
-              for (final b in conflicting) {
-                await provider.crearBloqueo(
-                  b.fechaInicio,
-                  b.fechaFin,
-                  b.motivo,
-                  b.idQuiropractico,
-                  force: true,
-                );
-              }
-            }
-          }
-
-          messenger.hideCurrentSnackBar();
-          CustomSnackBar.show(
-            context,
-            messenger: messenger,
-            message: "Cambios cancelados",
-            type: SnackBarType.info,
-          );
-        } catch (e) {
-          messenger.hideCurrentSnackBar();
-          CustomSnackBar.show(
-            context,
-            messenger: messenger,
-            message: "Error restaurando: $e",
-            type: SnackBarType.error,
-          );
-        }
-      },
     );
   }
 
@@ -1248,68 +1153,24 @@ class _ScheduleViewState extends State<ScheduleView> {
     if (result == null || result is! Map || result['success'] != true) return;
 
     final action = result['action'];
-    final messenger = ScaffoldMessenger.of(context);
-    final provider = Provider.of<HorariosProvider>(context, listen: false);
 
     if (action == 'create') {
       final displayData = result['displayData'];
-      final createdId = result['createdId'];
-      final message =
-          'Turno creado: ${displayData['diaLabel']} ${displayData['timeRange']}';
+      final message = 'Turno creado: ${displayData['diaLabel']} ${displayData['timeRange']}';
 
       CustomSnackBar.show(
         context,
         message: message,
         type: SnackBarType.success,
-        actionLabel: "DESHACER",
-        onAction: () async {
-          messenger.hideCurrentSnackBar();
-          if (createdId != null) {
-            final deleteErr = await provider.deleteHorario(createdId);
-            if (deleteErr == null && context.mounted) {
-              CustomSnackBar.show(
-                context,
-                messenger: messenger,
-                message: "Creación deshecha",
-                type: SnackBarType.info,
-              );
-            }
-          }
-        },
       );
     } else if (action == 'update') {
       final displayData = result['displayData'];
-      final backup = result['backup'];
       final message = 'Turno editado: ${displayData?['timeRange'] ?? ''}';
 
       CustomSnackBar.show(
         context,
         message: message,
         type: SnackBarType.success,
-        actionLabel: "DESHACER",
-        onAction: () async {
-          messenger.hideCurrentSnackBar();
-          if (backup != null) {
-            try {
-              await provider.updateHorario(
-                backup['idHorario'],
-                backup['diaSemana'],
-                backup['horaInicio'],
-                backup['horaFin'],
-              );
-              if (context.mounted) {
-                CustomSnackBar.show(
-                  context,
-                  messenger: messenger,
-                  message: "Edición deshecha",
-                  type: SnackBarType.info,
-                );
-              }
-            } catch (e) {
-              // Log error
-            }
-          }
-        },
       );
     }
   }

@@ -256,7 +256,6 @@ class _AuditoriaViewState extends State<AuditoriaView> {
       "HISTORIAL_CLINICO",
       "SERVICIO",
       "GRUPO_FAMILIAR",
-      "DESHACER",
     ];
 
     final options = <DropdownOption<String?>>[
@@ -362,7 +361,6 @@ class _AuditoriaViewState extends State<AuditoriaView> {
       "CONSUMO",
       "NOTIFICACION",
       "ERROR",
-      "DESHACER",
     ];
 
     final options = <DropdownOption<String?>>[

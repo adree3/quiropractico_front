@@ -14,9 +14,9 @@ import 'package:quiropractico_front/ui/views/dashboard/bonos_history_view.dart';
 import 'package:quiropractico_front/ui/views/dashboard/citas_view.dart';
 import 'package:quiropractico_front/ui/views/dashboard/cliente_detalle_view.dart';
 import 'package:quiropractico_front/ui/views/dashboard/clients_view.dart';
-import 'package:quiropractico_front/ui/views/dashboard/home_view.dart';
 import 'package:quiropractico_front/ui/views/dashboard/payments_view.dart';
 import 'package:quiropractico_front/ui/views/config/profile_view.dart';
+import 'package:quiropractico_front/ui/views/dashboard/kiosk_view.dart';
 
 final GlobalKey<NavigatorState> _shellNavigatorKey =
     GlobalKey<NavigatorState>();
@@ -62,10 +62,6 @@ class AppRouter {
           return DashboardLayout(child: child);
         },
         routes: [
-          GoRoute(
-            path: '/dashboard',
-            builder: (context, state) => const HomeView(),
-          ),
           GoRoute(
             path: '/agenda',
             builder: (context, state) {
@@ -153,6 +149,10 @@ class AppRouter {
             },
           ),
         ],
+      ),
+      GoRoute(
+        path: '/kiosk',
+        builder: (context, state) => const KioskView(),
       ),
     ],
   );

@@ -12,6 +12,7 @@ import 'package:quiropractico_front/ui/widgets/hoverable_action_button.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:quiropractico_front/ui/widgets/avatar_widget.dart';
+import 'package:quiropractico_front/ui/widgets/delete_confirm_dialog.dart';
 
 class ClientsView extends StatefulWidget {
   const ClientsView({super.key});
@@ -680,6 +681,20 @@ class _ClientsViewState extends State<ClientsView> {
     final isDeleting = cliente.activo;
     final nombreCompleto = "${cliente.nombre} ${cliente.apellidos}";
 
+    // Si es borrado, pedir confirmación
+    if (isDeleting) {
+      final confirm = await showDialog<bool>(
+        context: context,
+        builder:
+            (context) => DeleteConfirmDialog(
+              title: 'Eliminar Paciente',
+              content: '¿Estás seguro de que deseas eliminar a $nombreCompleto?',
+              confirmText: 'Eliminar',
+            ),
+      );
+      if (confirm != true) return;
+    }
+
     String? error;
     if (isDeleting) {
       error = await provider.deleteClient(cliente.idCliente);
@@ -696,20 +711,6 @@ class _ClientsViewState extends State<ClientsView> {
                   ? "Cliente $nombreCompleto eliminado"
                   : "Cliente $nombreCompleto reactivado",
           type: SnackBarType.success,
-          actionLabel: isDeleting ? "DESHACER" : null,
-          onAction:
-              isDeleting
-                  ? () async {
-                    await provider.recoverClient(cliente.idCliente);
-                    if (context.mounted) {
-                      CustomSnackBar.show(
-                        context,
-                        message: "Borrado deshecho",
-                        type: SnackBarType.info,
-                      );
-                    }
-                  }
-                  : null,
         );
       } else {
         _mostrarSnack(error, Colors.red);

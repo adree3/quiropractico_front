@@ -220,6 +220,17 @@ class AgendaProvider extends ChangeNotifier {
     }
   }
 
+  Future<bool> solicitarFirma(int idCita) async {
+    try {
+      await ApiService.dio.post('$_baseUrl/citas/$idCita/solicitar-firma');
+      return true;
+    } catch (e) {
+      errorMessage = ErrorHandler.extractMessage(e);
+      notifyListeners();
+      return false;
+    }
+  }
+
   // Editar Cita
   Future<String?> editarCita(
     int idCita,

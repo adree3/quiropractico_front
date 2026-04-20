@@ -4,6 +4,7 @@ import 'package:quiropractico_front/config/theme/app_theme.dart';
 import 'package:quiropractico_front/models/servicio.dart';
 import 'package:quiropractico_front/providers/services_provider.dart';
 import 'package:quiropractico_front/ui/modals/service_modal.dart';
+import 'package:quiropractico_front/ui/widgets/delete_confirm_dialog.dart';
 import 'package:quiropractico_front/ui/widgets/custom_snackbar.dart';
 import 'package:quiropractico_front/ui/widgets/dashboard_dropdown.dart';
 import 'package:quiropractico_front/ui/widgets/paginated_table.dart';
@@ -358,6 +359,19 @@ class _ServicesViewState extends State<ServicesView> {
                   onPressed: () async {
                     final bool estabaActivo = servicio.activo;
                     final String nombreServicio = servicio.nombreServicio;
+
+                    if (estabaActivo) {
+                      final confirm = await showDialog<bool>(
+                        context: context,
+                        builder:
+                            (context) => DeleteConfirmDialog(
+                              title: '¿Eliminar Servicio?',
+                              content:'¿Estás seguro de que deseas eliminar el servicio "$nombreServicio"?',
+                            ),
+                      );
+                      if (confirm != true) return;
+                    }
+
                     final messenger = ScaffoldMessenger.of(context);
 
                     String? error;
@@ -379,30 +393,6 @@ class _ServicesViewState extends State<ServicesView> {
                                   ? "Servicio $nombreServicio eliminado"
                                   : "Servicio $nombreServicio reactivado",
                           type: SnackBarType.success,
-                          actionLabel: "DESHACER",
-                          onAction: () async {
-                            messenger.hideCurrentSnackBar();
-                            if (estabaActivo) {
-                              // Estaba activo, se eliminó -> Recuperar
-                              await provider.recoverService(
-                                servicio.idServicio,
-                              );
-                            } else {
-                              // Estaba inactivo, se recuperó -> Eliminar
-                              await provider.deleteService(servicio.idServicio);
-                            }
-
-                            if (context.mounted) {
-                              CustomSnackBar.show(
-                                context,
-                                message:
-                                    estabaActivo
-                                        ? "Eliminación deshecha"
-                                        : "Reactivación deshecha",
-                                type: SnackBarType.info,
-                              );
-                            }
-                          },
                         );
                       } else {
                         CustomSnackBar.show(
@@ -425,9 +415,7 @@ class _ServicesViewState extends State<ServicesView> {
   void _handleServiceFeedback(Map result) {
     final action = result['action'];
     final nombre = result['nombre'];
-    final Servicio? oldData = result['oldData'];
 
-    final provider = Provider.of<ServicesProvider>(context, listen: false);
     final messenger = ScaffoldMessenger.of(context);
 
     // Mensaje inicial
@@ -441,53 +429,6 @@ class _ServicesViewState extends State<ServicesView> {
       messenger: messenger,
       message: msg,
       type: SnackBarType.success,
-      actionLabel: "DESHACER",
-      onAction: () async {
-        messenger.hideCurrentSnackBar();
-
-        String? errorUndo;
-        if (action == 'create') {
-          // Deshacer creación = Borrar
-          try {
-            // Fallback: buscar por nombre si no tenemos ID (aunque idealmente deberiamos tenerlo)
-            final servicioCreado = provider.servicios.firstWhere(
-              (s) => s.nombreServicio == nombre && s.activo,
-              orElse: () => provider.servicios.first,
-            );
-            errorUndo = await provider.deleteService(servicioCreado.idServicio);
-          } catch (e) {
-            errorUndo = "No se pudo localizar el servicio para deshacer";
-          }
-        } else {
-          // Deshacer edición = Restaurar oldData
-          if (oldData != null) {
-            errorUndo = await provider.updateService(
-              oldData.idServicio,
-              oldData.nombreServicio,
-              oldData.precio,
-              oldData.tipo,
-              oldData.sesiones,
-            );
-          }
-        }
-
-        if (context.mounted) {
-          if (errorUndo == null) {
-            CustomSnackBar.show(
-              context,
-              message:
-                  action == 'create' ? "Creación deshecha" : "Edición deshecha",
-              type: SnackBarType.info,
-            );
-          } else {
-            CustomSnackBar.show(
-              context,
-              message: "Error al deshacer: $errorUndo",
-              type: SnackBarType.error,
-            );
-          }
-        }
-      },
     );
   }
 }

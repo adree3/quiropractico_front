@@ -9,6 +9,7 @@ import 'package:quiropractico_front/ui/widgets/dashboard_dropdown.dart';
 import 'package:quiropractico_front/ui/widgets/paginated_table.dart';
 import 'package:quiropractico_front/ui/widgets/hoverable_action_button.dart';
 import 'package:quiropractico_front/ui/widgets/user_avatar_widget.dart';
+import 'package:quiropractico_front/ui/widgets/delete_confirm_dialog.dart';
 
 class UsersView extends StatefulWidget {
   const UsersView({super.key});
@@ -400,6 +401,20 @@ class _UsersViewState extends State<UsersView> {
                   tooltip: usuario.activo ? 'Eliminar' : 'Reactivar',
                   onPressed: () async {
                     final isDeleting = usuario.activo;
+
+                    if (isDeleting) {
+                      final confirm = await showDialog<bool>(
+                        context: context,
+                        builder:
+                            (_) => DeleteConfirmDialog(
+                              title: 'Eliminar Empleado',
+                              content: '¿Estás seguro de eliminar a ${usuario.nombreCompleto}?',
+                              confirmText: 'Eliminar',
+                            ),
+                      );
+                      if (confirm != true) return;
+                    }
+
                     String? error;
                     if (isDeleting) {
                       error = await provider.deleteUser(usuario.idUsuario);
@@ -467,15 +482,15 @@ class _UsersViewState extends State<UsersView> {
         break;
       case 'delete':
         msg = "Usuario $nombre eliminado";
-        undoMsg = "Eliminación deshecha";
+        undoMsg = "";
         break;
       case 'recover':
         msg = "Usuario $nombre reactivado";
-        undoMsg = "Reactivación deshecha";
+        undoMsg = "";
         break;
       case 'unlock':
         msg = "Usuario $nombre desbloqueado";
-        undoMsg = "Desbloqueo deshecho";
+        undoMsg = "";
         break;
     }
 

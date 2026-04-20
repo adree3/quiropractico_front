@@ -15,6 +15,7 @@ import 'package:quiropractico_front/ui/views/dashboard/tabs/cliente_citas_tab.da
 import 'package:quiropractico_front/ui/views/dashboard/tabs/cliente_archivos_tab.dart';
 import 'package:quiropractico_front/ui/views/dashboard/tabs/cliente_familiares_tab.dart';
 import 'package:quiropractico_front/ui/widgets/avatar_widget.dart';
+import 'package:quiropractico_front/ui/widgets/delete_confirm_dialog.dart';
 import 'package:quiropractico_front/ui/widgets/custom_snackbar.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -388,7 +389,6 @@ class _ContentState extends State<_Content>
                   children: [
                     IconButton(
                       onPressed: () async {
-                        final clienteAnterior = cliente.copyWith();
                         final refresh = await showDialog(
                           context: context,
                           builder:
@@ -402,34 +402,6 @@ class _ContentState extends State<_Content>
                               context,
                               message: "Paciente actualizado",
                               type: SnackBarType.success,
-                              actionLabel: "DESHACER",
-                              onAction: () async {
-                                final clientsProvider =
-                                    Provider.of<ClientsProvider>(
-                                      context,
-                                      listen: false,
-                                    );
-                                final err = await clientsProvider
-                                    .undoUpdateClient(clienteAnterior);
-                                if (err == null) {
-                                  await provider.refreshClient();
-                                  if (context.mounted) {
-                                    CustomSnackBar.show(
-                                      context,
-                                      message: "Edición deshecha",
-                                      type: SnackBarType.info,
-                                    );
-                                  }
-                                } else {
-                                  if (context.mounted) {
-                                    CustomSnackBar.show(
-                                      context,
-                                      message: err,
-                                      type: SnackBarType.error,
-                                    );
-                                  }
-                                }
-                              },
                             );
                           }
                         }
@@ -446,9 +418,19 @@ class _ContentState extends State<_Content>
                     const SizedBox(width: 8),
                     IconButton(
                       onPressed: () async {
-                        final nombreCompleto =
-                            "${cliente.nombre} ${cliente.apellidos}";
-                        final eraBorrado = !isDeleted;
+                        final nombreCompleto = "${cliente.nombre} ${cliente.apellidos}";
+                        
+                        if (!isDeleted) {
+                          final confirm = await showDialog<bool>(
+                            context: context,
+                            builder: (context) => DeleteConfirmDialog(
+                              title: '¿Eliminar Paciente?',
+                              content: '¿Estás seguro de que deseas eliminar al paciente "$nombreCompleto"?',
+                            ),
+                          );
+                          if (confirm != true) return;
+                        }
+
                         String? err;
                         if (isDeleted) {
                           err = await provider.recoverClient(cliente.idCliente);
@@ -461,25 +443,10 @@ class _ContentState extends State<_Content>
                             CustomSnackBar.show(
                               context,
                               message:
-                                  eraBorrado
+                                  !isDeleted
                                       ? "Paciente $nombreCompleto eliminado"
                                       : "Paciente $nombreCompleto reactivado",
                               type: SnackBarType.success,
-                              actionLabel: "DESHACER",
-                              onAction: () async {
-                                if (eraBorrado) {
-                                  await provider.recoverClient(
-                                    cliente.idCliente,
-                                    undo: true,
-                                  );
-                                } else {
-                                  await provider.deleteClient(
-                                    cliente.idCliente,
-                                    undo: true,
-                                  );
-                                }
-                                await provider.refreshClient();
-                              },
                             );
                           }
                         } else {

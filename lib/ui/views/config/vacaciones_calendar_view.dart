@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:quiropractico_front/ui/widgets/delete_confirm_dialog.dart';
 import 'package:quiropractico_front/ui/widgets/custom_snackbar.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:quiropractico_front/config/theme/app_theme.dart';
@@ -1014,9 +1015,15 @@ class _VacacionesCalendarViewState extends State<VacacionesCalendarView> {
                           listen: false,
                         );
 
-                        final messenger = ScaffoldMessenger.of(context);
-                        // Guardar datos para deshacer
-                        final backup = bloqueo;
+                        final bool confirm = await showDialog<bool>(
+                          context: context,
+                          builder: (context) => DeleteConfirmDialog(
+                            title: '¿Eliminar Bloqueo?',
+                            content: '¿Estás seguro de que deseas eliminar este bloqueo?',
+                          ),
+                        ) ?? false;
+
+                        if (!confirm) return;
                         await provider.borrarBloqueo(bloqueo.idBloqueo);
 
                         if (context.mounted) {
@@ -1029,35 +1036,6 @@ class _VacacionesCalendarViewState extends State<VacacionesCalendarView> {
                             context,
                             message: mensaje,
                             type: SnackBarType.success,
-                            actionLabel: "DESHACER",
-                            onAction: () async {
-                              try {
-                                await provider.crearBloqueo(
-                                  backup.fechaInicio,
-                                  backup.fechaFin,
-                                  backup.motivo,
-                                  backup.idQuiropractico,
-                                  force: true,
-                                  isUndo: true,
-                                );
-
-                                messenger.hideCurrentSnackBar();
-                                CustomSnackBar.show(
-                                  context,
-                                  messenger: messenger,
-                                  message: "Eliminación deshecha",
-                                  type: SnackBarType.info,
-                                );
-                              } catch (e) {
-                                messenger.hideCurrentSnackBar();
-                                CustomSnackBar.show(
-                                  context,
-                                  messenger: messenger,
-                                  message: "Error al restaurar: ${e.toString()}",
-                                  type: SnackBarType.error,
-                                );
-                              }
-                            },
                           );
                         }
                       },
@@ -1250,9 +1228,6 @@ class _VacacionesCalendarViewState extends State<VacacionesCalendarView> {
 
     final action = result['action'];
     final success = result['success'] == true;
-    final BloqueoAgenda? bloqueo = result['bloqueo'];
-    final BloqueoAgenda? backup = result['backup'];
-    final conflicting = result['conflicting'] as List<BloqueoAgenda>?;
     final String? nombreQuiro = result['nombreQuiro'];
     final String? fechasStr = result['fechasStr'];
     final bool isGlobal = result['isGlobal'] ?? false;
@@ -1276,83 +1251,11 @@ class _VacacionesCalendarViewState extends State<VacacionesCalendarView> {
       }
     }
 
-    // Permitir Undo si se creó o si se editó (teniendo backup)
-    final canUndo =
-        ((action == 'create' || action == 'create_forced') &&
-            bloqueo != null) ||
-        (action == 'update' && backup != null);
-
     CustomSnackBar.show(
       context,
       messenger: messenger,
       message: msg,
       type: SnackBarType.success,
-      actionLabel: canUndo ? "DESHACER" : null,
-      onAction:
-          canUndo
-              ? () async {
-                messenger.hideCurrentSnackBar();
-                final provider = Provider.of<AgendaBloqueoProvider>(
-                  context,
-                  listen: false,
-                );
-
-                if (action == 'update') {
-                  // Restaurar backup
-                  try {
-                    await provider.editarBloqueo(
-                      backup!.idBloqueo,
-                      backup.fechaInicio,
-                      backup.fechaFin,
-                      backup.motivo,
-                      backup.idQuiropractico,
-                      isUndo: true,
-                    );
-                    if (context.mounted) {
-                      CustomSnackBar.show(
-                        context,
-                        message: "Edición deshecha",
-                        type: SnackBarType.info,
-                      );
-                    }
-                  } catch (e) {
-                    CustomSnackBar.show(
-                      context,
-                      message: "Error al deshacer: $e",
-                      type: SnackBarType.error,
-                    );
-                  }
-                } else {
-                  // Deshacer creación = Borrar
-                  await provider.borrarBloqueo(
-                    bloqueo!.idBloqueo,
-                    isUndo: true,
-                  );
-
-                  // Si fue forzado, restaurar los conflictos
-                  if (action == 'create_forced' && conflicting != null) {
-                    for (var c in conflicting) {
-                      await provider.crearBloqueo(
-                        c.fechaInicio,
-                        c.fechaFin,
-                        c.motivo,
-                        c.idQuiropractico,
-                        force: true,
-                        isUndo: true,
-                      );
-                    }
-                  }
-
-                  if (context.mounted) {
-                    CustomSnackBar.show(
-                      context,
-                      message: "Creación deshecha",
-                      type: SnackBarType.info,
-                    );
-                  }
-                }
-              }
-              : null,
     );
   }
 }

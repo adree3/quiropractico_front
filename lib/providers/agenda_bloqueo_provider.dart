@@ -39,7 +39,6 @@ class AgendaBloqueoProvider extends ChangeNotifier {
     String motivo,
     int? idQuiro, {
     bool force = false,
-    bool isUndo = false,
   }) async {
     try {
       final data = {
@@ -52,9 +51,6 @@ class AgendaBloqueoProvider extends ChangeNotifier {
       String url = '$_baseUrl/agenda/bloqueos';
       if (force) {
         url += url.contains('?') ? '&force=true' : '?force=true';
-      }
-      if (isUndo) {
-        url += url.contains('?') ? '&undo=true' : '?undo=true';
       }
 
       final response = await ApiService.dio.post(url, data: data);
@@ -81,12 +77,9 @@ class AgendaBloqueoProvider extends ChangeNotifier {
   }
 
   // BORRAR
-  Future<String?> borrarBloqueo(int id, {bool isUndo = false}) async {
+  Future<String?> borrarBloqueo(int id) async {
     try {
       String url = '$_baseUrl/agenda/bloqueos/$id';
-      if (isUndo) {
-        url += '?undo=true';
-      }
       await ApiService.dio.delete(url);
       await loadBloqueos();
       return null;
@@ -100,9 +93,8 @@ class AgendaBloqueoProvider extends ChangeNotifier {
     DateTime inicio,
     DateTime fin,
     String motivo,
-    int? idUsuario, {
-    bool isUndo = false,
-  }) async {
+    int? idUsuario,
+  ) async {
     try {
       final data = {
         "fechaInicio": inicio.toIso8601String(),
@@ -112,9 +104,6 @@ class AgendaBloqueoProvider extends ChangeNotifier {
       };
 
       String url = '$_baseUrl/agenda/bloqueos/$idBloqueo';
-      if (isUndo) {
-        url += '?undo=true';
-      }
 
       await ApiService.dio.put(url, data: data);
 

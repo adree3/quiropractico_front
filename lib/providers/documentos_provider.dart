@@ -32,6 +32,18 @@ class DocumentosProvider extends ChangeNotifier {
       notifyListeners();
     }
   }
+  
+  /// Obtiene los documentos vinculados a una cita específica
+  Future<List<Documento>> getDocumentosCita(int idCita) async {
+    try {
+      final response = await ApiService.dio.get('$_baseUrl/documentos/citas/$idCita');
+      final data = response.data as List;
+      return data.map((e) => Documento.fromJson(e)).toList();
+    } catch (e) {
+      debugPrint('Error obteniendo documentos de cita: ${ErrorHandler.extractMessage(e)}');
+      return [];
+    }
+  }
 
   /// Sube un documento a R2 utilizando la llamada Multipart. 
   /// Soporta envío de bytes directo para compatibilidad con Web y Desktop.
