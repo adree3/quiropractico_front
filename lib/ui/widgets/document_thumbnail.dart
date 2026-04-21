@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:quiropractico_front/models/documento.dart';
 import 'package:quiropractico_front/config/api_config.dart';
-import 'package:quiropractico_front/services/local_storage.dart';
 
 class DocumentThumbnail extends StatelessWidget {
   final Documento doc;
@@ -40,13 +39,14 @@ class DocumentThumbnail extends StatelessWidget {
       );
     }
 
-    final token = LocalStorage.prefs.getString('token') ?? '';
-    final thumbUrl = '${ApiConfig.baseUrl}/documentos/${doc.idDocumento}/thumbnail?token=$token';
+    final thumbUrl = doc.thumbnailUrl ?? '${ApiConfig.baseUrl}/documentos/${doc.idDocumento}/thumbnail';
 
     double placeholderSize = (width != null && width!.isFinite) ? width! * 0.6 : 48.0;
 
     return CachedNetworkImage(
       imageUrl: thumbUrl,
+      // Zero-Copy: No enviamos cabeceras para permitir acceso directo a R2 y evitar 'Canvas Tainting'
+      // El backend ya ha firmado esta URL en el DTO.
       width: width,
       height: height,
       fit: fit,

@@ -4,7 +4,6 @@ import 'package:quiropractico_front/config/api_config.dart';
 import 'package:quiropractico_front/models/documento.dart';
 import 'package:quiropractico_front/services/api_service.dart';
 import 'package:quiropractico_front/utils/error_handler.dart';
-import 'package:quiropractico_front/services/local_storage.dart';
 
 class DocumentosProvider extends ChangeNotifier {
   final String _baseUrl = ApiConfig.baseUrl;
@@ -113,18 +112,6 @@ class DocumentosProvider extends ChangeNotifier {
     } catch (e) {
       return ErrorHandler.extractMessage(e);
     }
-  }
-
-  /// Devuelve la URL de descarga directa (Proxy) para evitar CORS
-  String getDownloadUrl(int idDocumento) {
-    final token = LocalStorage.getToken();
-    return '$_baseUrl/documentos/$idDocumento/download?token=$token';
-  }
-
-  /// Devuelve la URL de visualización inline (sin descargar) — para PDFs en nueva pestaña
-  String getViewUrl(int idDocumento) {
-    final token = LocalStorage.getToken();
-    return '$_baseUrl/documentos/$idDocumento/view?token=$token';
   }
 
   /// Actualiza notas, cita y/o pago de un documento

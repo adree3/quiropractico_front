@@ -68,8 +68,10 @@ class _DocumentExplorerViewState extends State<DocumentExplorerView> {
 
   Future<void> _descargarDocumento(BuildContext context, Documento doc) async {
     final provider = Provider.of<DocumentosProvider>(context, listen: false);
-    final url = provider.getDownloadUrl(doc.idDocumento);
-    DownloadHelper.downloadFile(url, doc.nombreOriginal);
+    final url = await provider.obtenerUrlTemporal(doc.idDocumento, download: true);
+    if (url != null) {
+      DownloadHelper.downloadFile(url, doc.nombreOriginal);
+    }
   }
 
   Future<void> _verDocumento(BuildContext context, Documento doc) async {

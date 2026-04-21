@@ -12,7 +12,6 @@ import 'package:go_router/go_router.dart';
 import 'package:quiropractico_front/ui/modals/cita_completar_dialog.dart';
 import 'package:quiropractico_front/models/documento.dart';
 import 'package:quiropractico_front/providers/documentos_provider.dart';
-import 'package:quiropractico_front/services/api_service.dart';
 import 'package:quiropractico_front/config/api_config.dart';
 
 // ──────────────────────────────────────────────────────────
@@ -696,7 +695,7 @@ class _CitaDetalleModalState extends State<CitaDetalleModal> {
                         separatorBuilder: (_, __) => const SizedBox(width: 10),
                         itemBuilder: (context, index) {
                           final img = images[index];
-                          final thumbnailUrl = '${ApiConfig.baseUrl}/documentos/${img.idDocumento}/thumbnail';
+                          final thumbnailUrl = img.thumbnailUrl ?? '${ApiConfig.baseUrl}/documentos/${img.idDocumento}/thumbnail';
                           
                           return Tooltip(
                             message: 'Ver imagen',
@@ -710,10 +709,7 @@ class _CitaDetalleModalState extends State<CitaDetalleModal> {
                                   borderRadius: BorderRadius.circular(8),
                                   border: Border.all(color: Colors.grey[200]!),
                                   image: DecorationImage(
-                                    image: NetworkImage(
-                                      thumbnailUrl,
-                                      headers: ApiService.getAuthHeaders(),
-                                    ),
+                                    image: NetworkImage(thumbnailUrl),
                                     fit: BoxFit.cover,
                                   ),
                                 ),
@@ -734,7 +730,12 @@ class _CitaDetalleModalState extends State<CitaDetalleModal> {
     );
   }
 
-  void _showFullScreenImage(BuildContext context, Documento doc) {
+  void _showFullScreenImage(BuildContext context, Documento doc) async {
+    final provider = Provider.of<DocumentosProvider>(context, listen: false);
+    final url = await provider.obtenerUrlTemporal(doc.idDocumento);
+    
+    if (url == null || !context.mounted) return;
+
     showDialog(
       context: context,
       builder: (context) => Dialog(
@@ -745,7 +746,7 @@ class _CitaDetalleModalState extends State<CitaDetalleModal> {
           children: [
             InteractiveViewer(
               child: Image.network(
-                Provider.of<DocumentosProvider>(context, listen: false).getViewUrl(doc.idDocumento),
+                url,
                 loadingBuilder: (context, child, loadingProgress) {
                   if (loadingProgress == null) return child;
                   return const Center(child: CircularProgressIndicator());

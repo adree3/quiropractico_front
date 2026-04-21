@@ -172,13 +172,16 @@ class _DocumentInfoDialogState extends State<DocumentInfoDialog> {
                                 ? const Icon(Icons.check_circle_rounded, color: Colors.greenAccent, key: ValueKey('done'))
                                 : const Icon(Icons.download_rounded, color: Colors.white, key: ValueKey('dl')),
                           ),
-                          onPressed: () {
+                          onPressed: () async {
                             final provider = Provider.of<DocumentosProvider>(context, listen: false);
-                            DownloadHelper.downloadFile(provider.getDownloadUrl(widget.doc.idDocumento), widget.doc.nombreOriginal);
-                            setState(() => _isDownloaded = true);
-                            Future.delayed(const Duration(seconds: 2), () {
-                              if (mounted) setState(() => _isDownloaded = false);
-                            });
+                            final url = await provider.obtenerUrlTemporal(widget.doc.idDocumento, download: true);
+                            if (url != null) {
+                              DownloadHelper.downloadFile(url, widget.doc.nombreOriginal);
+                              setState(() => _isDownloaded = true);
+                              Future.delayed(const Duration(seconds: 2), () {
+                                if (mounted) setState(() => _isDownloaded = false);
+                              });
+                            }
                           },
                           tooltip: 'Descargar imagen',
                         ),
@@ -198,13 +201,16 @@ class _DocumentInfoDialogState extends State<DocumentInfoDialog> {
                 ),
                 const SizedBox(height: 16),
               ] else if (isPdf) ...[
-                // ─── Preview PDF ─────────────────────────────
+                // Preview PDF 
                 Stack(
                   children: [
                     InkWell(
-                      onTap: () {
+                      onTap: () async {
                         final provider = Provider.of<DocumentosProvider>(context, listen: false);
-                        DownloadHelper.viewFile(provider.getViewUrl(widget.doc.idDocumento));
+                        final url = await provider.obtenerUrlTemporal(widget.doc.idDocumento);
+                        if (url != null) {
+                          DownloadHelper.viewFile(url);
+                        }
                       },
                       child: Container(
                         width: double.infinity,
@@ -250,13 +256,16 @@ class _DocumentInfoDialogState extends State<DocumentInfoDialog> {
                                 ? const Icon(Icons.check_circle_rounded, color: Colors.greenAccent, key: ValueKey('done'))
                                 : const Icon(Icons.download_rounded, color: Colors.white, key: ValueKey('dl')),
                           ),
-                          onPressed: () {
+                          onPressed: () async {
                             final provider = Provider.of<DocumentosProvider>(context, listen: false);
-                            DownloadHelper.downloadFile(provider.getDownloadUrl(widget.doc.idDocumento), widget.doc.nombreOriginal);
-                            setState(() => _isDownloaded = true);
-                            Future.delayed(const Duration(seconds: 2), () {
-                              if (mounted) setState(() => _isDownloaded = false);
-                            });
+                            final url = await provider.obtenerUrlTemporal(widget.doc.idDocumento, download: true);
+                            if (url != null) {
+                              DownloadHelper.downloadFile(url, widget.doc.nombreOriginal);
+                              setState(() => _isDownloaded = true);
+                              Future.delayed(const Duration(seconds: 2), () {
+                                if (mounted) setState(() => _isDownloaded = false);
+                              });
+                            }
                           },
                           tooltip: 'Descargar archivo',
                         ),

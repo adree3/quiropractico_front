@@ -10,6 +10,8 @@ class Documento {
   final int tamanyoBytes;
   final DateTime fechaSubida;
   final DateTime? fechaEliminacionLogica;
+  final String? url;
+  final String? thumbnailUrl;
 
   Documento({
     required this.idDocumento,
@@ -23,6 +25,8 @@ class Documento {
     required this.tamanyoBytes,
     required this.fechaSubida,
     this.fechaEliminacionLogica,
+    this.url,
+    this.thumbnailUrl,
   });
 
   factory Documento.fromJson(Map<String, dynamic> json) {
@@ -42,6 +46,8 @@ class Documento {
       fechaEliminacionLogica: json['fechaEliminacionLogica'] != null
           ? DateTime.parse(json['fechaEliminacionLogica'])
           : null,
+      url: json['url'],
+      thumbnailUrl: json['thumbnailUrl'],
     );
   }
 }
