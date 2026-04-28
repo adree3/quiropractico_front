@@ -225,7 +225,7 @@ class _CitaDetalleModalState extends State<CitaDetalleModal> {
     final provider = Provider.of<AgendaProvider>(context, listen: false);
     final usersProvider = Provider.of<UsersProvider>(context, listen: false);
     final currentUser = usersProvider.currentUser;
-    final isAuthorized = currentUser?.rol == 'admin' || currentUser?.rol == 'quiropractico';
+    final isAuthorized = currentUser?.isGestor ?? false;
 
     final color = _colorForEstado(widget.cita.estado);
     final dateFormat = DateFormat("EEEE, d 'de' MMMM · HH:mm", 'es');

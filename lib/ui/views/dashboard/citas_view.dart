@@ -29,6 +29,17 @@ class _CitasViewState extends State<CitasView> {
   Timer? _debounce;
   final searchCtrl = TextEditingController();
   final ScrollController _headerScroll = ScrollController();
+  
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final provider = Provider.of<CitasProvider>(context, listen: false);
+      if (provider.citas.isEmpty && !provider.isLoading) {
+        provider.loadCitas();
+      }
+    });
+  }
 
   @override
   void dispose() {

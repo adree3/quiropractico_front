@@ -3,8 +3,11 @@ import 'package:go_router/go_router.dart';
 import 'package:quiropractico_front/services/navigation_service.dart';
 import 'package:quiropractico_front/providers/auth_provider.dart';
 import 'package:quiropractico_front/ui/layouts/dashboard_layout.dart';
+import 'package:quiropractico_front/ui/views/auth/auth_layout.dart';
 import 'package:quiropractico_front/ui/views/auth/login_view.dart';
+import 'package:quiropractico_front/ui/views/auth/workspace_finder_view.dart';
 import 'package:quiropractico_front/ui/views/config/auditoria_view.dart';
+import 'package:quiropractico_front/services/local_storage.dart';
 import 'package:quiropractico_front/ui/views/config/schedule_view.dart';
 import 'package:quiropractico_front/ui/views/config/services_view.dart';
 import 'package:quiropractico_front/ui/views/config/users_view.dart';
@@ -33,28 +36,33 @@ class AppRouter {
 
     redirect: (context, state) {
       final isGoingToLogin = state.matchedLocation == '/login';
+      final isGoingToFinder = state.matchedLocation == '/workspace-finder';
       final authStatus = authProvider.authStatus;
-      final role = authProvider.role;
+      final clinicaId = LocalStorage.getClinicaId();
 
-      if ((authStatus == AuthStatus.notAuthenticated ||
-              authStatus == AuthStatus.locked) &&
-          !isGoingToLogin) {
+      // 1. Si no hay clinicaId en caché y no estamos yendo al finder, redirigir al finder
+      if (clinicaId == null && !isGoingToFinder) {
+        return '/workspace-finder';
+      }
+
+      // 2. Si hay clinicaId, pero el usuario no está autenticado, y no estamos en login ni finder, redirigir a login
+      if (clinicaId != null &&
+          (authStatus == AuthStatus.notAuthenticated || authStatus == AuthStatus.locked) &&
+          !isGoingToLogin && !isGoingToFinder) {
         return '/login';
       }
 
-      if (authStatus == AuthStatus.authenticated && isGoingToLogin) {
-        if (role == 'admin' || role == 'quiropráctico') {
-          return '/agenda';
-        } else {
-          return '/agenda';
-        }
+      // 3. Si el usuario está autenticado y trata de ir a login o finder, redirigir a agenda
+      if (authStatus == AuthStatus.authenticated && (isGoingToLogin || isGoingToFinder)) {
+        return '/agenda';
       }
 
       return null;
     },
 
     routes: [
-      GoRoute(path: '/login', builder: (context, state) => const LoginView()),
+      GoRoute(path: '/workspace-finder', builder: (context, state) => const AuthLayout(child: WorkspaceFinderView())),
+      GoRoute(path: '/login', builder: (context, state) => const AuthLayout(child: LoginView())),
 
       ShellRoute(
         navigatorKey: _shellNavigatorKey,

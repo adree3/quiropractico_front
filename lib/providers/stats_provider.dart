@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:quiropractico_front/config/api_config.dart';
 import 'package:quiropractico_front/services/api_service.dart';
 import 'package:quiropractico_front/models/dashboard_stats.dart';
-
+import 'package:quiropractico_front/services/local_storage.dart';
 import 'package:quiropractico_front/utils/error_handler.dart';
 
 class StatsProvider extends ChangeNotifier {
@@ -11,11 +11,9 @@ class StatsProvider extends ChangeNotifier {
   DashboardStats? stats;
   bool isLoading = true;
 
-  StatsProvider() {
-    getStats();
-  }
-
   Future<void> getStats() async {
+    final token = LocalStorage.getToken();
+    if (token == null) return;
     isLoading = true;
     notifyListeners();
 
@@ -29,5 +27,11 @@ class StatsProvider extends ChangeNotifier {
       isLoading = false;
       notifyListeners();
     }
+  }
+
+  void clearAllData() {
+    stats = null;
+    isLoading = false;
+    notifyListeners();
   }
 }

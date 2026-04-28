@@ -29,7 +29,7 @@ class ApiService {
             final context = NavigationService.navigatorKey.currentContext;
             if (context != null) {
               // Usamos false en listen porque estamos fuera del arbol de widgets
-              Provider.of<AuthProvider>(context, listen: false).logout();
+              Provider.of<AuthProvider>(context, listen: false).logout(context);
             }
           }
           return handler.next(e);

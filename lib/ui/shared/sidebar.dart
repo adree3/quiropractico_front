@@ -6,6 +6,7 @@ import 'package:quiropractico_front/config/theme/app_theme.dart';
 import 'package:quiropractico_front/providers/auth_provider.dart';
 import 'package:quiropractico_front/providers/payments_provider.dart';
 import 'package:quiropractico_front/providers/users_provider.dart';
+import 'package:quiropractico_front/services/local_storage.dart';
 
 const double _kExpandedWidth = 230.0;
 const double _kCollapsedWidth = 68.0;
@@ -74,8 +75,7 @@ class _SidebarState extends State<Sidebar> with SingleTickerProviderStateMixin {
         Provider.of<PaymentsProvider>(context).globalPendingCount;
     final alertasEquipo =
         Provider.of<UsersProvider>(context).blockedCountDisplay;
-    final bool isAdminOrQuiro =
-        authProvider.role == 'admin' || authProvider.role == 'quiropráctico';
+    final bool isAdminOrQuiro = authProvider.isGestor;
 
     // ── Items precompilados ────────────────────────────────────────────────
     // Se construyen una sola vez por setState (toggle/hover),
@@ -206,7 +206,7 @@ class _SidebarState extends State<Sidebar> with SingleTickerProviderStateMixin {
     );
   }
 
-  // ── Drawer mode: sidebar estático sin toggle ──────────────────────────────
+  // Drawer mode: sidebar estático sin toggle
   Widget _buildDrawerContent(BuildContext context) {
     final String location = GoRouterState.of(context).uri.toString();
     final authProvider = Provider.of<AuthProvider>(context);
@@ -214,8 +214,7 @@ class _SidebarState extends State<Sidebar> with SingleTickerProviderStateMixin {
         Provider.of<PaymentsProvider>(context).globalPendingCount;
     final alertasEquipo =
         Provider.of<UsersProvider>(context).blockedCountDisplay;
-    final bool isAdminOrQuiro =
-        authProvider.role == 'admin' || authProvider.role == 'quiropráctico';
+    final bool isAdminOrQuiro = authProvider.isGestor;
 
     return Container(
       width: _kExpandedWidth,
@@ -236,7 +235,7 @@ class _SidebarState extends State<Sidebar> with SingleTickerProviderStateMixin {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'QUIROPRÁCTICA',
+                  LocalStorage.getClinicaNombre() ?? 'CLINICA',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
@@ -244,7 +243,7 @@ class _SidebarState extends State<Sidebar> with SingleTickerProviderStateMixin {
                   ),
                 ),
                 Text(
-                  'Valladolid',
+                  LocalStorage.getClinicaDireccion() ?? 'Ubicación no disponible',
                   style: Theme.of(
                     context,
                   ).textTheme.bodySmall?.copyWith(color: Colors.white70),
@@ -338,7 +337,7 @@ class _SidebarState extends State<Sidebar> with SingleTickerProviderStateMixin {
     );
   }
 
-  // ── Header ─────────────────────────────────────────────────────────────────
+  // Header
   Widget _buildHeader(BuildContext context, double t) {
     final showContent = t > 0.15;
 
@@ -400,7 +399,7 @@ class _SidebarState extends State<Sidebar> with SingleTickerProviderStateMixin {
               const SizedBox(height: 8),
               Center(
                 child: Text(
-                  'QUIROPRÁCTICA',
+                  LocalStorage.getClinicaNombre() ?? 'CLINICA',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
@@ -410,7 +409,7 @@ class _SidebarState extends State<Sidebar> with SingleTickerProviderStateMixin {
               ),
               Center(
                 child: Text(
-                  'Valladolid',
+                  LocalStorage.getClinicaDireccion() ?? 'Ubicación no disponible',
                   style: Theme.of(
                     context,
                   ).textTheme.bodySmall?.copyWith(color: Colors.white70),
@@ -425,12 +424,12 @@ class _SidebarState extends State<Sidebar> with SingleTickerProviderStateMixin {
     );
   }
 
-  // ── Logout ──────────────────────────────────────────────────────────────────
+  // Logout
   Widget _buildLogout(BuildContext context) {
     return Tooltip(
       message: _collapsed ? 'Cerrar Sesión' : '',
       child: InkWell(
-        onTap: () => Provider.of<AuthProvider>(context, listen: false).logout(),
+        onTap: () => Provider.of<AuthProvider>(context, listen: false).logout(context),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
           child: Row(
@@ -454,7 +453,7 @@ class _SidebarState extends State<Sidebar> with SingleTickerProviderStateMixin {
   }
 }
 
-// ── Sidebar Item ───────────────────────────────────────────────────────────────
+// Sidebar Item
 // Siempre renderiza el Row completo — el ClipRect del padre recorta visualmente.
 // Activo: borde izquierdo de acento (funciona en modos colapsado y expandido).
 class _SidebarItem extends StatelessWidget {

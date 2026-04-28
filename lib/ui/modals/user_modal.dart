@@ -214,21 +214,31 @@ class _UserModalState extends State<UserModal> {
                   labelText: 'Rol / Permisos',
                   prefixIcon: Icon(Icons.security),
                 ),
-                items: const [
-                  DropdownMenuItem(
+                items: [
+                  const DropdownMenuItem(
                     value: 'recepción',
                     child: Text("Recepción (Básico)"),
                   ),
-                  DropdownMenuItem(
+                  const DropdownMenuItem(
                     value: 'quiropráctico',
                     child: Text("Quiropráctico (Médico)"),
                   ),
-                  DropdownMenuItem(
+                  const DropdownMenuItem(
                     value: 'admin',
                     child: Text("Administrador (Total)"),
                   ),
+                  if (rolSeleccionado == 'super_admin')
+                    const DropdownMenuItem(
+                      value: 'super_admin',
+                      enabled: false,
+                      child: Text("Super Admin (Sistema)"),
+                    ),
                 ],
-                onChanged: (val) => setState(() => rolSeleccionado = val!),
+                onChanged: (val) {
+                  if (val != 'super_admin') {
+                    setState(() => rolSeleccionado = val!);
+                  }
+                },
               ),
             ],
           ),

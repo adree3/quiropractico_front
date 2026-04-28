@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:quiropractico_front/config/api_config.dart';
 import 'package:quiropractico_front/services/api_service.dart';
 import 'package:quiropractico_front/models/bloqueo_agenda.dart';
-
 import 'package:quiropractico_front/utils/error_handler.dart';
 import 'package:quiropractico_front/exceptions/bloqueo_conflict_exception.dart';
+import 'package:quiropractico_front/services/local_storage.dart';
 
 class AgendaBloqueoProvider extends ChangeNotifier {
   final String _baseUrl = ApiConfig.baseUrl;
@@ -13,11 +13,9 @@ class AgendaBloqueoProvider extends ChangeNotifier {
   List<BloqueoAgenda> bloqueos = [];
   bool isLoading = true;
 
-  AgendaBloqueoProvider() {
-    loadBloqueos();
-  }
-
   Future<void> loadBloqueos() async {
+    final token = LocalStorage.getToken();
+    if (token == null) return;
     isLoading = true;
     notifyListeners();
     try {

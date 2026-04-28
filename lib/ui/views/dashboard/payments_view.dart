@@ -123,8 +123,7 @@ class _PaymentsViewState extends State<PaymentsView> {
   Widget build(BuildContext context) {
     final provider = Provider.of<PaymentsProvider>(context);
     final authProvider = Provider.of<AuthProvider>(context);
-    final rol = authProvider.role ?? '';
-    final esJefe = rol == 'admin' || rol == 'quiropráctico';
+    final esJefe = authProvider.isGestor;
 
     // Datos KPis
     final int cantidadVentas = provider.totalHistorialCount;

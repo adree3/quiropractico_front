@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:quiropractico_front/config/theme/app_theme.dart';
+import 'package:quiropractico_front/providers/auth_provider.dart';
 import 'package:quiropractico_front/ui/shared/sidebar.dart';
 import 'package:provider/provider.dart';
 import 'package:quiropractico_front/providers/users_provider.dart';
@@ -73,7 +74,10 @@ class DashboardLayout extends StatelessWidget {
                         builder: (context, usersProvider, child) {
                           final user = usersProvider.currentUser;
                           if (user == null && !usersProvider.isLoading) {
-                            Future.microtask(() => usersProvider.getMe());
+                            Future.microtask(() {
+                              usersProvider.getMe();
+                              context.read<AuthProvider>().refreshGlobalData(context);
+                            });
                           }
                           return Container(
                             height: 56,

@@ -19,6 +19,17 @@ class ServicesView extends StatefulWidget {
 
 class _ServicesViewState extends State<ServicesView> {
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final provider = Provider.of<ServicesProvider>(context, listen: false);
+      if (provider.servicios.isEmpty && !provider.isLoading) {
+        provider.loadServices();
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final provider = Provider.of<ServicesProvider>(context);
     String mensajeVacio;

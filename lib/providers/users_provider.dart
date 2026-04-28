@@ -31,11 +31,9 @@ class UsersProvider extends ChangeNotifier {
 
   int get blockedCountDisplay => _showBadge ? _realBlockedCount : 0;
 
-  UsersProvider() {
-    getUsers();
-  }
-
   Future<void> getUsers({int page = 0, bool silent = false}) async {
+    final token = LocalStorage.getToken();
+    if (token == null) return;
     if (!silent) {
       isLoading = true;
       notifyListeners();
@@ -57,7 +55,7 @@ class UsersProvider extends ChangeNotifier {
       totalPages = response.data['totalPages'];
 
       usuarios = data.map((e) => Usuario.fromJson(e)).toList();
-      await _checkNotifications();
+      await checkBlockedCount();
     } catch (e) {
       debugPrint('Error cargando usuarios: ${ErrorHandler.extractMessage(e)}');
     } finally {
@@ -66,12 +64,16 @@ class UsersProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> _checkNotifications() async {
+
+  Future<void> checkBlockedCount() async {
+    final token = LocalStorage.getToken();
+    if (token == null) return;
     try {
       final response = await ApiService.dio.get(
         '$_baseUrl/usuarios/bloqueados/count',
       );
       _realBlockedCount = response.data;
+      blockedCount = _realBlockedCount;
 
       final int lastSeen = LocalStorage.getLastSeenBlockedCount();
 
@@ -80,21 +82,10 @@ class UsersProvider extends ChangeNotifier {
       } else {
         _showBadge = false;
       }
+      
       notifyListeners();
     } catch (e) {
-      debugPrint(e as String?);
-    }
-  }
-
-  Future<void> checkBlockedCount() async {
-    try {
-      final response = await ApiService.dio.get(
-        '$_baseUrl/usuarios/bloqueados/count',
-      );
-      blockedCount = response.data;
-      notifyListeners();
-    } catch (e) {
-      debugPrint(e as String?);
+      debugPrint('Error comprobando bloqueados: $e');
     }
   }
 
@@ -257,6 +248,8 @@ class UsersProvider extends ChangeNotifier {
   bool _isFetchingMe = false;
 
   Future<void> getMe() async {
+    final token = LocalStorage.getToken();
+    if (token == null) return;
     if (_isFetchingMe) return;
     _isFetchingMe = true;
     isLoading = true;
@@ -339,5 +332,18 @@ class UsersProvider extends ChangeNotifier {
     } catch (e) {
       return ErrorHandler.extractMessage(e);
     }
+  }
+
+  void clearAllData() {
+    usuarios = [];
+    currentUser = null;
+    isLoading = false;
+    _realBlockedCount = 0;
+    _showBadge = false;
+    blockedCount = 0;
+    currentPage = 0;
+    totalElements = 0;
+    totalPages = 0;
+    notifyListeners();
   }
 }

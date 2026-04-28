@@ -1,68 +1,27 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:quiropractico_front/config/theme/app_theme.dart';
 import 'package:quiropractico_front/providers/auth_provider.dart';
+import 'package:quiropractico_front/services/local_storage.dart';
 
 class LoginView extends StatelessWidget {
   const LoginView({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
-
-    return Scaffold(
-      body: Row(
-        children: [
-          if (size.width > 900)
-            Expanded(
-              flex: 2,
-              child: Container(
-                color: AppTheme.primaryColor, 
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.health_and_safety_outlined, size: 100, color: Colors.white),
-                    const SizedBox(height: 20),
-                    Text(
-                      'Quiropráctica Valladolid',
-                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      'Gestión Clínica y Citas',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: Colors.white70,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          // Formulario
-          Expanded(
-            flex: 2,
-            child: Container(
-              color: Colors.grey[50],
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 450),
-                  child: Card(
-                    elevation: 4,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                    margin: const EdgeInsets.all(24),
-                    child: const Padding(
-                      padding: EdgeInsets.all(40),
-                      child: _LoginForm(),
-                    ),
-                  ),
-                ),
-              ),
-            ),
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 450, minHeight: 600, maxHeight: 600),
+      child: Card(
+        elevation: 4,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        margin: const EdgeInsets.all(24),
+        child: const SingleChildScrollView(
+          child: Padding(
+            padding: EdgeInsets.all(40),
+            child: _LoginForm(),
           ),
-        ],
+        ),
       ),
     );
   }
@@ -95,13 +54,54 @@ class _LoginFormState extends State<_LoginForm> {
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
+    final clinicaNombre = LocalStorage.getClinicaNombre() ?? 'Desconocida';
+
     return Form(
       key: _formKey,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
+          // Banner de Espacio de Trabajo
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+            decoration: BoxDecoration(
+              color: AppTheme.primaryColor.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: AppTheme.primaryColor.withOpacity(0.2)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.business_outlined, size: 20, color: AppTheme.primaryColor),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Espacio de trabajo:', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                      Text(
+                        clinicaNombre,
+                        style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primaryColor),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+                TextButton(
+                  onPressed: () async {
+                    await LocalStorage.clearClinica();
+                    if (!context.mounted) return;
+                    context.go('/workspace-finder');
+                  },
+                  child: const Text('Cambiar', style: TextStyle(fontSize: 12)),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          const Text(
             'Bienvenido',
             style: TextStyle(
               fontSize: 28, 

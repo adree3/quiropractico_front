@@ -3,8 +3,8 @@ import 'package:quiropractico_front/config/api_config.dart';
 import 'package:quiropractico_front/services/api_service.dart';
 import 'package:quiropractico_front/models/horario.dart';
 import 'package:quiropractico_front/models/usuario.dart';
-
 import 'package:quiropractico_front/utils/error_handler.dart';
+import 'package:quiropractico_front/services/local_storage.dart';
 import 'package:dio/dio.dart';
 
 class HorariosProvider extends ChangeNotifier {
@@ -16,12 +16,10 @@ class HorariosProvider extends ChangeNotifier {
   Usuario? selectedDoctor;
   bool isLoading = false;
 
-  HorariosProvider() {
-    loadDoctores();
-  }
-
   // Cargar lista de Quiroprácticos
   Future<void> loadDoctores() async {
+    final token = LocalStorage.getToken();
+    if (token == null) return;
     try {
       final response = await ApiService.dio.get('$_baseUrl/usuarios/quiros');
       final List<dynamic> data = response.data;
@@ -39,6 +37,8 @@ class HorariosProvider extends ChangeNotifier {
 
   // Obtiene todos los horarios de los quiropracticos
   Future<void> loadAllHorariosGlobales() async {
+    final token = LocalStorage.getToken();
+    if (token == null) return;
     try {
       final response = await ApiService.dio.get('$_baseUrl/horarios/global');
 
@@ -55,6 +55,8 @@ class HorariosProvider extends ChangeNotifier {
 
   // Devuelve los quiropracticos activos
   Future<void> loadDoctoresActive() async {
+    final token = LocalStorage.getToken();
+    if (token == null) return;
     try {
       final response = await ApiService.dio.get(
         '$_baseUrl/usuarios/quiros-activos',
@@ -85,6 +87,8 @@ class HorariosProvider extends ChangeNotifier {
   }
 
   Future<void> loadHorarios(int idQuiro, {bool notifyLoading = true}) async {
+    final token = LocalStorage.getToken();
+    if (token == null) return;
     if (notifyLoading) {
       isLoading = true;
       notifyListeners();
@@ -287,5 +291,14 @@ class HorariosProvider extends ChangeNotifier {
     final listaDias = diasUnicos.toList();
     listaDias.sort();
     return listaDias;
+  }
+
+  void clearAllData() {
+    doctores = [];
+    horarios = [];
+    horariosGlobales = [];
+    selectedDoctor = null;
+    isLoading = false;
+    notifyListeners();
   }
 }

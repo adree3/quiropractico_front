@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:quiropractico_front/config/api_config.dart';
 import 'package:quiropractico_front/services/api_service.dart';
 import 'package:quiropractico_front/models/servicio.dart';
-
+import 'package:quiropractico_front/services/local_storage.dart';
 import 'package:quiropractico_front/utils/error_handler.dart';
 
 class ServicesProvider extends ChangeNotifier {
@@ -18,12 +18,10 @@ class ServicesProvider extends ChangeNotifier {
   int totalElements = 0;
   int totalPages = 0;
 
-  ServicesProvider() {
-    loadServices();
-  }
-
   // Cargar servicios ordenados
   Future<void> loadServices({int page = 0, bool notifyLoading = true}) async {
+    final token = LocalStorage.getToken();
+    if (token == null) return;
     if (notifyLoading) {
       isLoading = true;
       notifyListeners();
@@ -163,5 +161,14 @@ class ServicesProvider extends ChangeNotifier {
     } catch (e) {
       return ErrorHandler.extractMessage(e);
     }
+  }
+
+  void clearAllData() {
+    servicios = [];
+    isLoading = false;
+    currentPage = 0;
+    totalElements = 0;
+    totalPages = 0;
+    notifyListeners();
   }
 }

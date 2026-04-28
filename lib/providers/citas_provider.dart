@@ -14,6 +14,7 @@ class CitasProvider extends ChangeNotifier {
   List<Cita> citas = [];
   CitasKpi? kpis;
   StompClient? _stompClient;
+  bool _isWsInitialized = false;
 
   bool isLoading = true;
   String? errorMessage;
@@ -32,17 +33,13 @@ class CitasProvider extends ChangeNotifier {
   int totalPages = 0;
   int totalElements = 0;
 
-  CitasProvider() {
-    loadCitas(page: 0);
-    _initWebSocket();
-  }
-
   void _initWebSocket() {
+    if (_isWsInitialized) return;
+    final token = LocalStorage.getToken();
+    if (token == null) return;
     final String wsUrl = ApiConfig.baseUrl
         .replaceFirst('http', 'ws')
         .replaceAll('/api', '/ws-kiosk');
-
-    final String? token = LocalStorage.getToken();
 
     _stompClient = StompClient(
       config: StompConfig(
@@ -78,12 +75,13 @@ class CitasProvider extends ChangeNotifier {
         heartbeatIncoming: const Duration(milliseconds: 10000),
         heartbeatOutgoing: const Duration(milliseconds: 10000),
         stompConnectHeaders: {
-          if (token != null) 'Authorization': 'Bearer $token',
+          'Authorization': 'Bearer $token',
         },
         onWebSocketError: (error) => print('WS Error en CitasProvider: $error'),
       ),
     );
     _stompClient?.activate();
+    _isWsInitialized = true;
   }
 
   bool isCitaFirmadaRecientemente(int idCita) {
@@ -101,6 +99,12 @@ class CitasProvider extends ChangeNotifier {
     bool resetPage = false,
     bool notifyLoading = true,
   }) async {
+    final token = LocalStorage.getToken();
+    if (token == null) return;
+
+    // Inicializar WS si no lo está
+    _initWebSocket();
+
     if (resetPage) currentPage = 0;
     if (notifyLoading) {
       isLoading = true;
@@ -146,6 +150,8 @@ class CitasProvider extends ChangeNotifier {
   }
 
   Future<void> loadKpis() async {
+    final token = LocalStorage.getToken();
+    if (token == null) return;
     try {
       final Map<String, dynamic> params = {};
       if (currentSearchTerm.isNotEmpty) params['search'] = currentSearchTerm;
@@ -240,5 +246,26 @@ class CitasProvider extends ChangeNotifier {
       debugPrint('Error loading client citas: $e');
       return [];
     }
+  }
+
+  void clearAllData() {
+    citas = [];
+    kpis = null;
+    currentSearchTerm = '';
+    filterEstado = null;
+    filterFechaInicio = null;
+    filterFechaFin = null;
+    currentPage = 0;
+    totalPages = 0;
+    totalElements = 0;
+    _idCitasFirmadasRecientemente.clear();
+    
+    // Cerrar WebSocket
+    _stompClient?.deactivate();
+    _isWsInitialized = false;
+    _stompClient = null;
+
+    isLoading = false;
+    notifyListeners();
   }
 }

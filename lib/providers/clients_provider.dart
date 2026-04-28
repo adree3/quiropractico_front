@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:quiropractico_front/config/api_config.dart';
 import 'package:quiropractico_front/services/api_service.dart';
 import 'package:quiropractico_front/models/cliente.dart';
+import 'package:quiropractico_front/services/local_storage.dart';
 
 import 'package:quiropractico_front/utils/error_handler.dart';
 
@@ -19,10 +20,6 @@ class ClientsProvider extends ChangeNotifier {
   int totalPages = 0;
   int totalElements = 0;
   int? lastActivityDays;
-
-  ClientsProvider() {
-    loadClients();
-  }
 
   Future<String?> createClient(
     String nombre,
@@ -55,6 +52,8 @@ class ClientsProvider extends ChangeNotifier {
     bool resetPage = false,
     bool notifyLoading = true,
   }) async {
+    final token = LocalStorage.getToken();
+    if (token == null) return;
     if (resetPage) currentPage = 0;
     if (notifyLoading) {
       isLoading = true;
@@ -305,5 +304,17 @@ class ClientsProvider extends ChangeNotifier {
     } catch (e) {
       debugPrint("Error recargando clientes: $e");
     }
+  }
+
+  void clearAllData() {
+    clients = [];
+    isLoading = false;
+    currentSearchTerm = '';
+    currentPage = 0;
+    totalPages = 0;
+    totalElements = 0;
+    lastActivityDays = null;
+    errorMessage = null;
+    notifyListeners();
   }
 }

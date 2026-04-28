@@ -706,6 +706,10 @@ class _RolBadge extends StatelessWidget {
     Color c;
     String label;
     switch (rol.toLowerCase().replaceAll('á', 'a')) {
+      case 'super_admin':
+        c = Colors.red;
+        label = 'Super Admin';
+        break;
       case 'admin':
         c = Colors.purple;
         label = 'Administrador';

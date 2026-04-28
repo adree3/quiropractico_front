@@ -76,6 +76,8 @@ class AgendaProvider extends ChangeNotifier {
   }
 
   Future<void> getCitasDelDia(DateTime fecha) async {
+    final token = LocalStorage.getToken();
+    if (token == null) return;
     isLoading = true;
     errorMessage = null;
     notifyListeners();
@@ -106,6 +108,8 @@ class AgendaProvider extends ChangeNotifier {
   }
 
   Future<void> getCitasPorRango(DateTime desde, DateTime hasta) async {
+    final token = LocalStorage.getToken();
+    if (token == null) return;
     _rangeStartDate = desde;
     _rangeEndDate = hasta;
     
@@ -172,6 +176,8 @@ class AgendaProvider extends ChangeNotifier {
   }
 
   Future<void> loadQuiropracticos() async {
+    final token = LocalStorage.getToken();
+    if (token == null) return;
     try {
       final response = await ApiService.dio.get(
         '$_baseUrl/usuarios/quiros-activos',
@@ -269,6 +275,8 @@ class AgendaProvider extends ChangeNotifier {
     DateTime fecha, {
     int? idCitaExcluir,
   }) async {
+    final token = LocalStorage.getToken();
+    if (token == null) return;
     huecosDisponibles = [];
     isLoadingHuecos = true;
     notifyListeners();

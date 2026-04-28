@@ -8,6 +8,16 @@ class Usuario {
   final DateTime? ultimaConexion;
   final bool tieneFotoPerfil;
 
+  // Helpers de permisos por rol
+  /// true si el rol es super_admin
+  bool get isSuperAdmin => rol.toLowerCase() == 'super_admin';
+
+  /// true si el rol es admin O super_admin (permisos de administración completos)
+  bool get isAdmin => rol.toLowerCase() == 'admin' || isSuperAdmin;
+
+  /// true si tiene permisos de gestión (admin, super_admin, quiropráctico)
+  bool get isGestor => isAdmin || rol.toLowerCase() == 'quiropráctico';
+
   Usuario({
     required this.idUsuario,
     required this.nombreCompleto,

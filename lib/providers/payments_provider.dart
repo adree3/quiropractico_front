@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:quiropractico_front/config/api_config.dart';
 import 'package:quiropractico_front/services/api_service.dart';
 import 'package:quiropractico_front/models/pago.dart';
-
+import 'package:quiropractico_front/services/local_storage.dart';
 import 'package:quiropractico_front/utils/error_handler.dart';
 
 class PaymentsProvider extends ChangeNotifier {
@@ -40,10 +40,6 @@ class PaymentsProvider extends ChangeNotifier {
   String currentSearchTerm = '';
   final int pageSize = 15;
   Timer? _debounce;
-
-  PaymentsProvider() {
-    checkPendingCount();
-  }
 
   @override
   void dispose() {
@@ -88,6 +84,8 @@ class PaymentsProvider extends ChangeNotifier {
 
   // Carga las tarjetas KPIs
   Future<void> _fetchKpis() async {
+    final token = LocalStorage.getToken();
+    if (token == null) return;
     try {
       final response = await ApiService.dio.get(
         '$_baseUrl/pagos/balance',
@@ -115,6 +113,8 @@ class PaymentsProvider extends ChangeNotifier {
     bool notifyLoading = true,
     bool append = false,
   }) async {
+    final token = LocalStorage.getToken();
+    if (token == null) return;
     if (notifyLoading) {
       if (append) {
         isLoadingMorePendientes = true;
@@ -170,6 +170,8 @@ class PaymentsProvider extends ChangeNotifier {
     bool notifyLoading = true,
     bool append = false,
   }) async {
+    final token = LocalStorage.getToken();
+    if (token == null) return;
     if (notifyLoading) {
       if (append) {
         isLoadingMoreHistorial = true;
@@ -223,6 +225,8 @@ class PaymentsProvider extends ChangeNotifier {
 
   // Comprobación ligera para el Sidebar
   Future<void> checkPendingCount() async {
+    final token = LocalStorage.getToken();
+    if (token == null) return;
     try {
       final response = await ApiService.dio.get(
         '$_baseUrl/pagos',
@@ -304,5 +308,20 @@ class PaymentsProvider extends ChangeNotifier {
       debugPrint("Error buscando pagos del cliente: $e");
       return [];
     }
+  }
+
+  void clearAllData() {
+    totalCobrado = 0;
+    totalPendiente = 0;
+    globalPendingCount = 0;
+    listaPendientes = [];
+    listaHistorial = [];
+    pagePendientes = 0;
+    pageHistorial = 0;
+    totalPendientesCount = 0;
+    totalHistorialCount = 0;
+    currentSearchTerm = '';
+    isLoading = false;
+    notifyListeners();
   }
 }

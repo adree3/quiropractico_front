@@ -18,10 +18,39 @@ class LocalStorage {
     return prefs.getString('token');
   }
 
-  // Borrar Token (Logout)
+  // Borrar Token y Rol (Logout)
   static Future<void> deleteToken() async {
     await prefs.remove('token');
     await prefs.remove('role');
+  }
+
+  // Guardar ID, Nombre y Dirección de Clínica
+  static Future<void> saveClinica(int clinicaId, String clinicaNombre, String clinicaDireccion) async {
+    await prefs.setInt('clinicaId', clinicaId);
+    await prefs.setString('clinicaNombre', clinicaNombre);
+    await prefs.setString('clinicaDireccion', clinicaDireccion);
+  }
+
+  // Obtener ID de Clínica
+  static int? getClinicaId() {
+    return prefs.getInt('clinicaId');
+  }
+
+  // Obtener Nombre de Clínica
+  static String? getClinicaNombre() {
+    return prefs.getString('clinicaNombre');
+  }
+
+  // Obtener Dirección de Clínica
+  static String? getClinicaDireccion() {
+    return prefs.getString('clinicaDireccion');
+  }
+
+  // Borrar Clínica (Cambiar de Espacio)
+  static Future<void> clearClinica() async {
+    await prefs.remove('clinicaId');
+    await prefs.remove('clinicaNombre');
+    await prefs.remove('clinicaDireccion');
   }
 
   // Guardar Rol

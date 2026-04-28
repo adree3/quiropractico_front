@@ -25,6 +25,17 @@ class _ClientsViewState extends State<ClientsView> {
   Timer? _debounce;
   final searchCtrl = TextEditingController();
   final ScrollController _headerScroll = ScrollController();
+  
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final provider = Provider.of<ClientsProvider>(context, listen: false);
+      if (provider.clients.isEmpty && !provider.isLoading) {
+        provider.loadClients();
+      }
+    });
+  }
 
   @override
   void dispose() {

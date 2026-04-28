@@ -19,6 +19,17 @@ class UsersView extends StatefulWidget {
 }
 
 class _UsersViewState extends State<UsersView> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final provider = Provider.of<UsersProvider>(context, listen: false);
+      if (provider.usuarios.isEmpty && !provider.isLoading) {
+        provider.getUsers();
+      }
+    });
+  }
+
   // Metodo para ordenar los usuarios
   int _getRolPriority(String rol) {
     switch (rol.toLowerCase()) {
