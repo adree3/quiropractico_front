@@ -45,8 +45,11 @@ class DocumentThumbnail extends StatelessWidget {
 
     return CachedNetworkImage(
       imageUrl: thumbUrl,
-      // Zero-Copy: No enviamos cabeceras para permitir acceso directo a R2 y evitar 'Canvas Tainting'
-      // El backend ya ha firmado esta URL en el DTO.
+      // FUNDAMENTAL: No inyectar ningún header 'Authorization' aquí. 
+      // R2 valida la firma JIT en la propia URL (Query Params).
+      httpHeaders: const {
+        'Accept': 'image/jpeg, image/png, image/*;q=0.8',
+      },
       width: width,
       height: height,
       fit: fit,
