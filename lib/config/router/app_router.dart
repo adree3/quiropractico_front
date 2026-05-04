@@ -7,6 +7,7 @@ import 'package:quiropractico_front/ui/views/auth/auth_layout.dart';
 import 'package:quiropractico_front/ui/views/auth/login_view.dart';
 import 'package:quiropractico_front/ui/views/auth/workspace_finder_view.dart';
 import 'package:quiropractico_front/ui/views/config/auditoria_view.dart';
+import 'package:quiropractico_front/ui/views/settings/settings_view.dart';
 import 'package:quiropractico_front/services/local_storage.dart';
 import 'package:quiropractico_front/ui/views/config/schedule_view.dart';
 import 'package:quiropractico_front/ui/views/config/services_view.dart';
@@ -55,6 +56,13 @@ class AppRouter {
       // 3. Si el usuario está autenticado y trata de ir a login o finder, redirigir a agenda
       if (authStatus == AuthStatus.authenticated && (isGoingToLogin || isGoingToFinder)) {
         return '/agenda';
+      }
+
+      // 4. Proteger /configuracion solo para ADMIN / SUPER_ADMIN
+      if (state.matchedLocation.startsWith('/configuracion')) {
+        if (!authProvider.isAdmin) {
+          return '/agenda';
+        }
       }
 
       return null;
@@ -155,6 +163,10 @@ class AppRouter {
               final String id = state.pathParameters['id'] ?? '0';
               return ProfileView(targetUserId: int.tryParse(id));
             },
+          ),
+          GoRoute(
+            path: '/configuracion',
+            builder: (context, state) => const SettingsView(),
           ),
         ],
       ),

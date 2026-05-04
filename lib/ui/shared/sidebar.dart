@@ -163,6 +163,19 @@ class _SidebarState extends State<Sidebar> with SingleTickerProviderStateMixin {
             onTap: () => context.go('/logs'),
           ),
         ],
+        if (authProvider.isAdmin) ...[
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+            child: Divider(thickness: 0.5, height: 1),
+          ),
+          _SidebarItem(
+            icon: Icons.settings_outlined,
+            title: 'Configuración',
+            isActive: location.startsWith('/configuracion'),
+            isCollapsed: _collapsed,
+            onTap: () => context.go('/configuracion'),
+          ),
+        ],
       ],
     );
 
@@ -324,6 +337,18 @@ class _SidebarState extends State<Sidebar> with SingleTickerProviderStateMixin {
                     title: 'Logs',
                     isActive: location.startsWith('/logs'),
                     onTap: () => GoRouter.of(context).go('/logs'),
+                  ),
+                ],
+                if (authProvider.isAdmin) ...[
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+                    child: Divider(thickness: 0.5, height: 1),
+                  ),
+                  _SidebarItem(
+                    icon: Icons.settings_outlined,
+                    title: 'Configuración',
+                    isActive: location.startsWith('/configuracion'),
+                    onTap: () => GoRouter.of(context).go('/configuracion'),
                   ),
                 ],
               ],

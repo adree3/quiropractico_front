@@ -26,7 +26,7 @@ class DashboardLayout extends StatelessWidget {
           drawer:
               isMobile
                   ? const Drawer(
-                    width: 230, // Evita espacio blanco a la derecha
+                    width: 230,
                     backgroundColor: Colors.white,
                     surfaceTintColor: Colors.white,
                     child: Sidebar(inDrawerMode: true),
@@ -131,7 +131,9 @@ class DashboardLayout extends StatelessWidget {
 
                     Expanded(
                       child: Padding(
-                        padding: const EdgeInsets.all(20),
+                        padding: GoRouterState.of(context).uri.toString().startsWith('/configuracion')
+                            ? EdgeInsets.zero
+                            : const EdgeInsets.all(20),
                         child: child,
                       ),
                     ),
