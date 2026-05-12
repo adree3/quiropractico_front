@@ -75,10 +75,13 @@ class DocumentosProvider extends ChangeNotifier {
         final nuevoDoc = Documento.fromJson(response.data);
         // Insertamos el más reciente arriba
         documentos.insert(0, nuevoDoc);
-        return null; // OK
+        return null;
       }
       return 'Error desconocido al subir archivo.';
     } catch (e) {
+      if (e is DioException && e.response?.statusCode == 413) {
+        return 'Has superado el límite de almacenamiento de tu plan. No se puede subir el archivo.';
+      }
       final msg = ErrorHandler.extractMessage(e);
       return msg;
     } finally {

@@ -8,7 +8,8 @@ import 'package:quiropractico_front/providers/citas_provider.dart';
 import 'package:quiropractico_front/providers/payments_provider.dart';
 import 'package:quiropractico_front/ui/widgets/skeleton_widgets.dart';
 import 'package:quiropractico_front/providers/documentos_provider.dart';
-import 'package:quiropractico_front/ui/views/dashboard/widgets/document_folder_grid.dart'; // Para CarpetaLogica
+import 'package:quiropractico_front/ui/views/dashboard/widgets/document_folder_grid.dart';
+import 'package:quiropractico_front/ui/views/dashboard/widgets/quota_exceeded_dialog.dart';
 
 class DocumentUploadDialog extends StatefulWidget {
   final Cliente cliente;
@@ -438,7 +439,16 @@ class _DocumentUploadDialogState extends State<DocumentUploadDialog> {
       if (errorsCount == 0) {
         Navigator.pop(context, true); // true = exito
       } else {
-        setState(() => _globalError = '❌ Fallaron $errorsCount archivo(s). Detalle: $lastError');
+        if (lastError == 'Has superado el límite de almacenamiento de tu plan. No se puede subir el archivo.') {
+          showDialog(
+            context: context,
+            builder: (_) => const QuotaExceededDialog(),
+          );
+          // Ocultamos el error en rojo del modal para evitar redundancia
+          setState(() => _globalError = null);
+        } else {
+          setState(() => _globalError = '❌ Fallaron $errorsCount archivo(s). Detalle: $lastError');
+        }
       }
     }
   }
