@@ -155,13 +155,7 @@ class _SidebarState extends State<Sidebar> with SingleTickerProviderStateMixin {
             isCollapsed: _collapsed,
             onTap: () => context.go('/vacaciones'),
           ),
-          _SidebarItem(
-            icon: Icons.file_present_sharp,
-            title: 'Logs',
-            isActive: location.startsWith('/logs'),
-            isCollapsed: _collapsed,
-            onTap: () => context.go('/logs'),
-          ),
+
         ],
         if (authProvider.isAdmin) ...[
           const Padding(
@@ -331,12 +325,6 @@ class _SidebarState extends State<Sidebar> with SingleTickerProviderStateMixin {
                     title: 'Vacaciones',
                     isActive: location.startsWith('/vacaciones'),
                     onTap: () => GoRouter.of(context).go('/vacaciones'),
-                  ),
-                  _SidebarItem(
-                    icon: Icons.file_present_sharp,
-                    title: 'Logs',
-                    isActive: location.startsWith('/logs'),
-                    onTap: () => GoRouter.of(context).go('/logs'),
                   ),
                 ],
                 if (authProvider.isAdmin) ...[
