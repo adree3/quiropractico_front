@@ -1,20 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:quiropractico_front/config/api_config.dart';
 import 'package:intl/intl.dart';
 import 'package:quiropractico_front/models/auditoria_log.dart';
-
-import 'package:quiropractico_front/services/api_service.dart';
+import 'package:quiropractico_front/services/auditoria_service.dart';
 
 class AuditoriaProvider extends ChangeNotifier {
-  final String _baseUrl = '${ApiConfig.baseUrl}/auditoria';
 
   List<AuditoriaLog> logs = [];
   bool isLoading = true;
-
   int currentPage = 0;
   int pageSize = 20;
   int totalElements = 0;
-
   String? filtroEntidad;
   String? filtroAccion;
   String search = '';
@@ -52,12 +47,7 @@ class AuditoriaProvider extends ChangeNotifier {
         query['fechaHasta'] = DateFormat('yyyy-MM-dd').format(fechaFin!);
       }
 
-      final response = await ApiService.dio.get(
-        _baseUrl,
-        queryParameters: query,
-      );
-
-      final data = response.data;
+      final data = await AuditoriaService.getLogs(query);
       final List<dynamic> content = data['content'];
 
       logs = content.map((json) => AuditoriaLog.fromJson(json)).toList();
