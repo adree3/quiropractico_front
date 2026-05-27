@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
 import 'package:quiropractico_front/providers/settings_provider.dart';
 import 'package:quiropractico_front/ui/views/settings/widgets/settings_nav_item.dart';
 import 'package:quiropractico_front/ui/views/settings/tabs/profile_tab.dart';
@@ -14,13 +15,15 @@ import 'package:quiropractico_front/ui/views/settings/tabs/audit_tab.dart';
 /// - Renderiza el layout Master-Detail (sidebar + contenido).
 /// - Delega todo el contenido de cada pestaña a sus respectivos tab widgets.
 class SettingsView extends StatelessWidget {
-  const SettingsView({Key? key}) : super(key: key);
+  final String currentTab;
+
+  const SettingsView({Key? key, required this.currentTab}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
       create: (_) => SettingsProvider(),
-      child: const _SettingsShell(),
+      child: _SettingsShell(currentTab: currentTab),
     );
   }
 }
@@ -30,11 +33,13 @@ class _SettingsSection {
   final String title;
   final IconData icon;
   final Widget tab;
+  final String routePath;
 
   const _SettingsSection({
     required this.title,
     required this.icon,
     required this.tab,
+    required this.routePath,
   });
 }
 
@@ -43,37 +48,42 @@ const List<_SettingsSection> _sections = [
     title: 'Perfil de Clínica',
     icon: Icons.business,
     tab: ProfileTab(),
+    routePath: 'perfil',
   ),
   _SettingsSection(
     title: 'Almacenamiento',
     icon: Icons.cloud_outlined,
     tab: StorageTab(),
+    routePath: 'almacenamiento',
   ),
   _SettingsSection(
     title: 'Textos Legales',
     icon: Icons.gavel_outlined,
     tab: LegalTab(),
+    routePath: 'legal',
   ),
   _SettingsSection(
     title: 'Auditoría',
     icon: Icons.security_outlined,
     tab: AuditTab(),
+    routePath: 'auditoria',
   ),
 ];
 
 // Shell (Master-Detail layout)
-class _SettingsShell extends StatefulWidget {
-  const _SettingsShell({Key? key}) : super(key: key);
+class _SettingsShell extends StatelessWidget {
+  final String currentTab;
 
-  @override
-  State<_SettingsShell> createState() => _SettingsShellState();
-}
+  const _SettingsShell({Key? key, required this.currentTab}) : super(key: key);
 
-class _SettingsShellState extends State<_SettingsShell> {
-  int _selectedIndex = 0;
+  int get _selectedIndex {
+    final index = _sections.indexWhere((s) => s.routePath == currentTab);
+    return index != -1 ? index : 0;
+  }
 
   @override
   Widget build(BuildContext context) {
+    // El provider sigue estando disponible si los tabs lo necesitan
     final provider = context.watch<SettingsProvider>();
 
     return Scaffold(
@@ -115,7 +125,9 @@ class _SettingsShellState extends State<_SettingsShell> {
                         icon: _sections[index].icon,
                         title: _sections[index].title,
                         isSelected: _selectedIndex == index,
-                        onTap: () => setState(() => _selectedIndex = index),
+                        onTap: () {
+                          context.go('/configuracion/${_sections[index].routePath}');
+                        },
                       );
                     },
                   ),
@@ -159,9 +171,7 @@ class _SettingsShellState extends State<_SettingsShell> {
                         ],
                         border: Border.all(color: Colors.grey.shade200),
                       ),
-                      child: provider.isLoading
-                          ? const Center(child: CircularProgressIndicator())
-                          : _sections[_selectedIndex].tab,
+                      child: _sections[_selectedIndex].tab,
                     ),
                   ),
                 ],
@@ -173,3 +183,4 @@ class _SettingsShellState extends State<_SettingsShell> {
     );
   }
 }
+

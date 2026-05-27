@@ -161,7 +161,14 @@ class AppRouter {
           ),
           GoRoute(
             path: '/configuracion',
-            builder: (context, state) => const SettingsView(),
+            redirect: (context, state) => '/configuracion/perfil',
+          ),
+          GoRoute(
+            path: '/configuracion/:tab',
+            builder: (context, state) {
+              final tab = state.pathParameters['tab'] ?? 'perfil';
+              return SettingsView(currentTab: tab);
+            },
           ),
         ],
       ),
