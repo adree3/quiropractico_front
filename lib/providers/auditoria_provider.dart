@@ -1,15 +1,20 @@
+import 'package:quiropractico_front/services/api_service.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:quiropractico_front/config/api_config.dart';
 import 'package:quiropractico_front/models/auditoria_log.dart';
-import 'package:quiropractico_front/services/auditoria_service.dart';
 
 class AuditoriaProvider extends ChangeNotifier {
+  
+  final String _baseUrl = '${ApiConfig.baseUrl}/auditoria'; 
 
   List<AuditoriaLog> logs = [];
-  bool isLoading = true;
+  bool isLoading = false;
+
   int currentPage = 0;
-  int pageSize = 20;
+  int pageSize = 10;
   int totalElements = 0;
+
   String? filtroEntidad;
   String? filtroAccion;
   String search = '';
@@ -29,7 +34,7 @@ class AuditoriaProvider extends ChangeNotifier {
       Map<String, dynamic> query = {
         'page': currentPage,
         'size': pageSize,
-        'sort': 'fechaHora,desc',
+        'sort': 'fechaHora,desc'
       };
       if (filtroEntidad != null && filtroEntidad != "TODAS") {
         query['entidad'] = filtroEntidad;
@@ -41,19 +46,25 @@ class AuditoriaProvider extends ChangeNotifier {
         query['search'] = search;
       }
       if (fechaInicio != null) {
-        query['fechaDesde'] = DateFormat('yyyy-MM-dd').format(fechaInicio!);
+        query['fechaInicio'] = DateFormat('yyyy-MM-dd').format(fechaInicio!);
       }
       if (fechaFin != null) {
-        query['fechaHasta'] = DateFormat('yyyy-MM-dd').format(fechaFin!);
+        query['fechaFin'] = DateFormat('yyyy-MM-dd').format(fechaFin!);
       }
+      
+      final response = await ApiService.dio.get(
+        _baseUrl, 
+        queryParameters: query
+      );
 
-      final data = await AuditoriaService.getLogs(query);
+      final data = response.data;
       final List<dynamic> content = data['content'];
-
+      
       logs = content.map((json) => AuditoriaLog.fromJson(json)).toList();
       totalElements = data['totalElements'];
+
     } catch (e) {
-      debugPrint("Error cargando auditoría: $e");
+      print("Error cargando auditoría: $e");
       logs = [];
       totalElements = 0;
     } finally {
@@ -72,7 +83,7 @@ class AuditoriaProvider extends ChangeNotifier {
     fechaFin = fin;
     getLogs(page: 0);
   }
-
+  
   void limpiarFiltros() {
     filtroEntidad = null;
     filtroAccion = null;
@@ -81,10 +92,10 @@ class AuditoriaProvider extends ChangeNotifier {
     fechaFin = null;
     getLogs(page: 0);
   }
-
+  
   void setFiltroEntidad(String? entidad) {
     filtroEntidad = entidad;
-    getLogs(page: 0);
+    getLogs(page: 0); 
   }
 
   void setFiltroAccion(String? accion) {

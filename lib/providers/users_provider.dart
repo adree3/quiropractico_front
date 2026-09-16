@@ -1,79 +1,145 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import 'package:quiropractico_front/config/api_config.dart';
-import 'package:quiropractico_front/services/api_service.dart';
 import 'package:quiropractico_front/models/usuario.dart';
 import 'package:quiropractico_front/services/local_storage.dart';
 import 'package:quiropractico_front/utils/error_handler.dart';
-import 'package:file_picker/file_picker.dart';
+import 'package:quiropractico_front/services/api_service.dart';
+import 'package:quiropractico_front/config/api_config.dart';
 
 class UsersProvider extends ChangeNotifier {
   final String _baseUrl = ApiConfig.baseUrl;
 
   List<Usuario> usuarios = [];
+  bool isLoading = false;
+  bool hasError = false;
   Usuario? currentUser;
-  bool isLoading = true;
   bool? filterActive = true;
-  int avatarIndex = LocalStorage.getAvatarIndex();
 
   int _realBlockedCount = 0;
   bool _showBadge = false;
 
-  // Cache buster para la foto de perfil (hace que Flutter refresque la imagen al subir otra)
-  int profilePictureVersion = DateTime.now().millisecondsSinceEpoch;
-
   int blockedCount = 0;
+
+  int get blockedCountDisplay => _showBadge ? _realBlockedCount : 0;
 
   int currentPage = 0;
   int pageSize = 10;
   int totalElements = 0;
-  int totalPages = 0;
+  int profilePictureVersion = 0;
 
-  int get blockedCountDisplay => _showBadge ? _realBlockedCount : 0;
+  UsersProvider() {
+    getUsers();
+  }
 
-  Future<void> getUsers({int page = 0, bool silent = false}) async {
-    final token = LocalStorage.getToken();
-    if (token == null) return;
-    if (!silent) {
-      isLoading = true;
-      notifyListeners();
-    }
-    currentPage = page;
+  Future<String?> blockUser(int id) async {
     try {
-      final Map<String, dynamic> params = {'page': page, 'size': pageSize};
-      if (filterActive != null) {
-        params['activo'] = filterActive;
-      }
-
-      final response = await ApiService.dio.get(
-        '$_baseUrl/usuarios',
-        queryParameters: params,
-      );
-
-      final List<dynamic> data = response.data['content'];
-      totalElements = response.data['totalElements'];
-      totalPages = response.data['totalPages'];
-
-      usuarios = data.map((e) => Usuario.fromJson(e)).toList();
-      await checkBlockedCount();
+      await ApiService.dio.put('$_baseUrl/usuarios/$id/bloquear', );
+      await getUsers();
+      return null;
     } catch (e) {
-      debugPrint('Error cargando usuarios: ${ErrorHandler.extractMessage(e)}');
+      return ErrorHandler.extractMessage(e);
+    }
+  }
+
+  Future<String?> uploadProfilePicture(dynamic file, [int? userId]) async {
+    try {
+      int targetId = userId ?? currentUser?.idUsuario ?? 0;
+      if (targetId == 0) return "No hay usuario activo";
+      FormData formData = FormData.fromMap({
+        "file": await MultipartFile.fromFile(file.path, filename: file.name)
+      });
+      await ApiService.dio.put('$_baseUrl/usuarios/$targetId/foto-perfil', data: formData, );
+      return null;
+    } catch (e) {
+      return ErrorHandler.extractMessage(e);
+    }
+  }
+
+  Future<String?> updateMyProfile(String newName, [String? newApellidos, String? currentPassword]) async {
+    try {
+      int targetId = currentUser?.idUsuario ?? 0;
+      if (targetId == 0) return "No hay usuario activo";
+      
+      String fullName = newApellidos != null && newApellidos.isNotEmpty 
+          ? "$newName $newApellidos" 
+          : newName;
+
+      final data = {
+        "nombreCompleto": fullName,
+        "username": currentUser?.username ?? '',
+        "rol": currentUser?.rol ?? 'recepción',
+      };
+      
+      await ApiService.dio.put('$_baseUrl/usuarios/$targetId', data: data, );
+      await getMe();
+      return null;
+    } catch (e) {
+      return ErrorHandler.extractMessage(e);
+    }
+  }
+
+  Future<String?> updateMyPassword(String currentPassword, String newPassword) async {
+    try {
+      final data = {
+        "currentPassword": currentPassword,
+        "newPassword": newPassword
+      };
+      await ApiService.dio.put('$_baseUrl/usuarios/me/password', data: data, );
+      return null;
+    } catch (e) {
+      return ErrorHandler.extractMessage(e);
+    }
+  }
+
+  Future<void> getMe() async {
+    isLoading = true;
+    hasError = false;
+    notifyListeners();
+    try {
+      final response = await ApiService.dio.get('$_baseUrl/usuarios/me');
+      currentUser = Usuario.fromJson(response.data);
+    } catch (e) {
+      hasError = true;
+      debugPrint('Error en getMe: ${ErrorHandler.extractMessage(e)}');
     } finally {
       isLoading = false;
       notifyListeners();
     }
   }
 
-
-  Future<void> checkBlockedCount() async {
-    final token = LocalStorage.getToken();
-    if (token == null) return;
+  Future<void> getUsers({int page = 0}) async {
+    isLoading = true;
+    currentPage = page;
+    notifyListeners();
     try {
-      final response = await ApiService.dio.get(
-        '$_baseUrl/usuarios/bloqueados/count',
-      );
+      final Map<String, dynamic> params = {
+        'page': currentPage, 
+        'size': pageSize
+      };
+      if (filterActive != null) {
+        params['activo'] = filterActive;
+      }
+
+      final response = await ApiService.dio.get('$_baseUrl/usuarios',
+          queryParameters: params);
+
+      final List<dynamic> data = response.data['content'];
+      usuarios = data.map((e) => Usuario.fromJson(e)).toList();
+      totalElements = response.data['totalElements'] ?? 0;
+      await _checkNotifications();
+
+    } catch (e) {
+      print('Error cargando usuarios: ${ErrorHandler.extractMessage(e)}');
+    } finally {
+      isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> _checkNotifications() async {
+    try {
+      final response = await ApiService.dio.get('$_baseUrl/usuarios/bloqueados/count');
       _realBlockedCount = response.data;
-      blockedCount = _realBlockedCount;
 
       final int lastSeen = LocalStorage.getLastSeenBlockedCount();
 
@@ -82,17 +148,26 @@ class UsersProvider extends ChangeNotifier {
       } else {
         _showBadge = false;
       }
-      
       notifyListeners();
     } catch (e) {
-      debugPrint('Error comprobando bloqueados: $e');
+      print(e);
+    }
+  }
+
+  Future<void> checkBlockedCount() async {
+    try {
+      final response = await ApiService.dio.get('$_baseUrl/usuarios/bloqueados/count', );
+      blockedCount = response.data;
+      notifyListeners();
+    } catch (e) {
+      print(e);
     }
   }
 
   Future<void> markAsSeen() async {
     if (_showBadge) {
       _showBadge = false;
-      await LocalStorage.saveLastSeenBlockedCount(_realBlockedCount);
+      await LocalStorage.saveLastSeenBlockedCount(_realBlockedCount); 
       notifyListeners();
     }
   }
@@ -104,21 +179,20 @@ class UsersProvider extends ChangeNotifier {
   }
 
   // CREAR
-  Future<String?> createUser(
-    String nombre,
-    String username,
-    String password,
-    String rol,
-  ) async {
+  Future<String?> createUser(String nombre, String username, String password, String rol) async {
     isLoading = true;
     try {
       final data = {
         "nombreCompleto": nombre,
         "username": username,
         "password": password,
-        "rol": rol,
+        "rol": rol
       };
-      await ApiService.dio.post('$_baseUrl/usuarios', data: data);
+      await ApiService.dio.post(
+        '$_baseUrl/usuarios', 
+        data: data, 
+        
+      );
       await getUsers();
       return null;
     } on DioException catch (e) {
@@ -135,22 +209,21 @@ class UsersProvider extends ChangeNotifier {
   }
 
   // EDITAR
-  Future<String?> updateUser(
-    int id,
-    String nombre,
-    String? password,
-    String rol,
-  ) async {
+  Future<String?> updateUser(int id, String nombre, String? password, String rol) async {
     try {
       final data = {
         "nombreCompleto": nombre,
         "rol": rol,
-        if (password != null && password.isNotEmpty) "password": password,
+        if (password != null && password.isNotEmpty) "password": password
       };
-      await ApiService.dio.put('$_baseUrl/usuarios/$id', data: data);
+      await ApiService.dio.put(
+        '$_baseUrl/usuarios/$id', 
+        data: data, 
+        
+        );
       await getUsers();
       return null;
-    } catch (e) {
+    } catch (e) { 
       return ErrorHandler.extractMessage(e);
     }
   }
@@ -158,24 +231,13 @@ class UsersProvider extends ChangeNotifier {
   // DESACTIVAR
   Future<String?> deleteUser(int id) async {
     try {
-      // Optimistic Update
-      final index = usuarios.indexWhere((u) => u.idUsuario == id);
-      if (index != -1) {
-        if (filterActive == true) {
-          usuarios.removeAt(index);
-          totalElements--;
-        } else {
-          usuarios[index] = usuarios[index].copyWith(activo: false);
-        }
-        notifyListeners();
-      }
-
-      await ApiService.dio.delete('$_baseUrl/usuarios/$id');
-
-      // Silent Refresh
-      getUsers(page: currentPage, silent: true);
+      await ApiService.dio.delete(
+        '$_baseUrl/usuarios/$id', 
+        
+      );
+      await getUsers();
       return null;
-    } catch (e) {
+    } catch (e) { 
       return ErrorHandler.extractMessage(e);
     }
   }
@@ -183,24 +245,13 @@ class UsersProvider extends ChangeNotifier {
   // REACTIVAR
   Future<String?> recoverUser(int id) async {
     try {
-      // Optimistic Update
-      final index = usuarios.indexWhere((u) => u.idUsuario == id);
-      if (index != -1) {
-        if (filterActive == false) {
-          usuarios.removeAt(index);
-          totalElements--;
-        } else {
-          usuarios[index] = usuarios[index].copyWith(activo: true);
-        }
-        notifyListeners();
-      }
-
-      await ApiService.dio.put('$_baseUrl/usuarios/$id/recuperar');
-
-      // Silent Refresh
-      getUsers(page: currentPage, silent: true);
+      await ApiService.dio.put(
+        '$_baseUrl/usuarios/$id/recuperar',
+        
+        );
+      await getUsers();
       return null;
-    } catch (e) {
+    } catch (e) { 
       return ErrorHandler.extractMessage(e);
     }
   }
@@ -208,128 +259,10 @@ class UsersProvider extends ChangeNotifier {
   // DESBLOQUEAR
   Future<String?> unlockUser(int id) async {
     try {
-      // Optimistic Update
-      final index = usuarios.indexWhere((u) => u.idUsuario == id);
-      if (index != -1) {
-        usuarios[index] = usuarios[index].copyWith(cuentaBloqueada: false);
-        notifyListeners();
-      }
-
       await ApiService.dio.put('$_baseUrl/usuarios/$id/desbloquear');
-
-      // Silent Refresh
-      getUsers(page: currentPage, silent: true);
+      await getUsers();      
       return null;
-    } catch (e) {
-      return ErrorHandler.extractMessage(e);
-    }
-  }
-
-  // BLOQUEAR (Para deshacer desbloqueo)
-  Future<String?> blockUser(int id) async {
-    try {
-      // Optimistic Update
-      final index = usuarios.indexWhere((u) => u.idUsuario == id);
-      if (index != -1) {
-        usuarios[index] = usuarios[index].copyWith(cuentaBloqueada: true);
-        notifyListeners();
-      }
-
-      await ApiService.dio.put('$_baseUrl/usuarios/$id/bloquear');
-
-      // Silent Refresh
-      getUsers(page: currentPage, silent: true);
-      return null;
-    } catch (e) {
-      return ErrorHandler.extractMessage(e);
-    }
-  }
-
-  bool _isFetchingMe = false;
-
-  Future<void> getMe() async {
-    final token = LocalStorage.getToken();
-    if (token == null) return;
-    if (_isFetchingMe) return;
-    _isFetchingMe = true;
-    isLoading = true;
-    notifyListeners();
-    try {
-      final response = await ApiService.dio.get('$_baseUrl/usuarios/me');
-      currentUser = Usuario.fromJson(response.data);
-    } catch (e) {
-      debugPrint('Error al cargar perfil: ${ErrorHandler.extractMessage(e)}');
-    } finally {
-      isLoading = false;
-      _isFetchingMe = false;
-      notifyListeners();
-    }
-  }
-
-  Future<String?> updateMyPassword(
-    String currentPassword,
-    String newPassword,
-  ) async {
-    try {
-      await ApiService.dio.put(
-        '$_baseUrl/usuarios/me/password',
-        data: {'currentPassword': currentPassword, 'newPassword': newPassword},
-      );
-      return null;
-    } catch (e) {
-      return ErrorHandler.extractMessage(e);
-    }
-  }
-
-  // --- Subida de foto R2 (JIT Proxy) ---
-  Future<String?> uploadProfilePicture(PlatformFile file) async {
-    if (currentUser == null) return "No hay usuario activo";
-    isLoading = true;
-    notifyListeners();
-    try {
-      final formData = FormData.fromMap({
-        'file': MultipartFile.fromBytes(
-          file.bytes!, 
-          filename: file.name,
-        )
-      });
-      await ApiService.dio.put(
-        '$_baseUrl/usuarios/${currentUser!.idUsuario}/foto-perfil',
-        data: formData,
-      );
-      
-      // Actualizamos el flag local y rompemos la caché para que la recargue
-      currentUser = currentUser!.copyWith(tieneFotoPerfil: true);
-      profilePictureVersion = DateTime.now().millisecondsSinceEpoch;
-      return null;
-    } catch (e) {
-      return ErrorHandler.extractMessage(e);
-    } finally {
-      isLoading = false;
-      notifyListeners();
-    }
-  }
-
-  // Actualizar avatar (persiste en localStorage)
-  Future<void> updateAvatar(int index) async {
-    avatarIndex = index;
-    await LocalStorage.saveAvatarIndex(index);
-    notifyListeners();
-  }
-
-  // Actualizar nombre del usuario en el backend
-  Future<String?> updateMyProfile(String nombreCompleto) async {
-    try {
-      await ApiService.dio.put(
-        '$_baseUrl/usuarios/me',
-        data: {'nombreCompleto': nombreCompleto},
-      );
-      if (currentUser != null) {
-        currentUser = currentUser!.copyWith(nombreCompleto: nombreCompleto);
-        notifyListeners();
-      }
-      return null;
-    } catch (e) {
+    } catch (e) { 
       return ErrorHandler.extractMessage(e);
     }
   }
@@ -338,12 +271,12 @@ class UsersProvider extends ChangeNotifier {
     usuarios = [];
     currentUser = null;
     isLoading = false;
+    hasError = false;
     _realBlockedCount = 0;
     _showBadge = false;
     blockedCount = 0;
     currentPage = 0;
     totalElements = 0;
-    totalPages = 0;
     notifyListeners();
   }
 }

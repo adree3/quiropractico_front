@@ -1,12 +1,12 @@
+import 'package:quiropractico_front/services/api_service.dart';
 import 'package:flutter/material.dart';
 import 'package:quiropractico_front/config/api_config.dart';
-import 'package:quiropractico_front/services/api_service.dart';
 import 'package:quiropractico_front/models/servicio.dart';
 import 'package:quiropractico_front/models/bono_seleccion.dart';
-
 import 'package:quiropractico_front/utils/error_handler.dart';
 
 class VentasProvider extends ChangeNotifier {
+  
   final String _baseUrl = ApiConfig.baseUrl;
 
   List<BonoSeleccion> bonosUsables = [];
@@ -14,57 +14,72 @@ class VentasProvider extends ChangeNotifier {
   bool isLoading = false;
   List<Servicio> listaServicios = [];
 
+
   // Cargar la lista de bonos para el dropdown
   Future<void> loadBonos() async {
     try {
-      final response = await ApiService.dio.get('$_baseUrl/servicios/bonos');
-
+      final response = await ApiService.dio.get(
+        '$_baseUrl/servicios/bonos'
+      );
+      
       final List<dynamic> data = response.data;
       bonosDisponibles = data.map((e) => Servicio.fromJson(e)).toList();
       notifyListeners();
     } catch (e) {
-      debugPrint('Error cargando bonos: ${ErrorHandler.extractMessage(e)}');
+      print('Error cargando bonos: ${ErrorHandler.extractMessage(e)}');
     }
   }
 
-  // Cargar Servicios ACTIVOS (Dropdown)
   Future<void> loadServiciosDropdown() async {
     try {
       final response = await ApiService.dio.get(
-        '$_baseUrl/servicios/list',
-        queryParameters: {'activo': true},
+        '$_baseUrl/servicios/list'
       );
+      if (response.data is List) {
+        listaServicios = (response.data as List).map((e) => Servicio.fromJson(e)).toList();
+        notifyListeners();
+      }
+    } catch (e) {
+      print('Error cargando servicios dropdown: ${ErrorHandler.extractMessage(e)}');
+    }
+  }
 
+  // Cargar Servicios ACTIVOS
+  Future<void> loadServiciosDisponibles() async {
+    try {      
+      final response = await ApiService.dio.get(
+        '$_baseUrl/servicios',
+        queryParameters: {'activo': true}
+      );
+      
       final List<dynamic> data = response.data;
       listaServicios = data.map((e) => Servicio.fromJson(e)).toList();
-
+      
       notifyListeners();
     } catch (e) {
-      debugPrint(
-        'Error cargando servicios dropdown: ${ErrorHandler.extractMessage(e)}',
-      );
+      print('Error cargando servicios: ${ErrorHandler.extractMessage(e)}');
     }
   }
 
   // Realizar la venta
-  Future<String?> venderBono(
-    int idCliente,
-    int idServicio,
-    String metodoPago,
-  ) async {
+  Future<String?> venderBono(int idCliente, int idServicio, String metodoPago) async {
     isLoading = true;
     notifyListeners();
 
-    try {
+    try {      
       final data = {
         "idCliente": idCliente,
         "idServicio": idServicio,
-        "metodoPago": metodoPago,
+        "metodoPago": metodoPago
       };
 
-      await ApiService.dio.post('$_baseUrl/pagos/venta-bono', data: data);
+      await ApiService.dio.post(
+        '$_baseUrl/pagos/venta-bono',
+        data: data
+      );
 
       return null;
+
     } catch (e) {
       return ErrorHandler.extractMessage(e);
     } finally {
@@ -76,13 +91,13 @@ class VentasProvider extends ChangeNotifier {
   Future<void> cargarBonosUsables(int idCliente) async {
     try {
       final response = await ApiService.dio.get(
-        '$_baseUrl/bonos/disponibles/$idCliente',
+        '$_baseUrl/bonos/disponibles/$idCliente'
       );
       final List<dynamic> data = response.data;
       bonosUsables = data.map((e) => BonoSeleccion.fromJson(e)).toList();
       notifyListeners();
     } catch (e) {
-      debugPrint('Error cargando bonos usables: ${ErrorHandler.extractMessage(e)}');
+      print('Error cargando bonos usables: ${ErrorHandler.extractMessage(e)}');
     }
   }
 }

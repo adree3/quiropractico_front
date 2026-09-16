@@ -1,13 +1,13 @@
+import 'package:quiropractico_front/services/api_service.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:quiropractico_front/config/api_config.dart';
-import 'package:quiropractico_front/services/api_service.dart';
 import 'package:quiropractico_front/models/horario.dart';
 import 'package:quiropractico_front/models/usuario.dart';
 import 'package:quiropractico_front/utils/error_handler.dart';
-import 'package:quiropractico_front/services/local_storage.dart';
-import 'package:dio/dio.dart';
 
 class HorariosProvider extends ChangeNotifier {
+  
   final String _baseUrl = ApiConfig.baseUrl;
 
   List<Usuario> doctores = [];
@@ -16,57 +16,64 @@ class HorariosProvider extends ChangeNotifier {
   Usuario? selectedDoctor;
   bool isLoading = false;
 
+  List<int> get diasActivosSemana {
+    if (horariosGlobales.isEmpty) return [1, 2, 3, 4, 5];
+    final days = horariosGlobales.map((h) => h.diaSemana).toSet().toList();
+    days.sort();
+    return days.isNotEmpty ? days : [1, 2, 3, 4, 5];
+  }
+
+  HorariosProvider() {
+    loadDoctores();
+  }
+
+
   // Cargar lista de Quiroprácticos
   Future<void> loadDoctores() async {
-    final token = LocalStorage.getToken();
-    if (token == null) return;
     try {
-      final response = await ApiService.dio.get('$_baseUrl/usuarios/quiros');
+      final response = await ApiService.dio.get(
+        '$_baseUrl/usuarios/quiros'
+      );
       final List<dynamic> data = response.data;
       doctores = data.map((e) => Usuario.fromJson(e)).toList();
-
+      
       if (doctores.isNotEmpty && selectedDoctor == null) {
         selectDoctor(doctores.first);
       } else {
         notifyListeners();
       }
     } catch (e) {
-      debugPrint('Error cargando doctores: ${ErrorHandler.extractMessage(e)}');
+      print('Error cargando doctores: ${ErrorHandler.extractMessage(e)}');
     }
   }
 
   // Obtiene todos los horarios de los quiropracticos
   Future<void> loadAllHorariosGlobales() async {
-    final token = LocalStorage.getToken();
-    if (token == null) return;
     try {
-      final response = await ApiService.dio.get('$_baseUrl/horarios/global');
-
+      final response = await ApiService.dio.get(
+        '$_baseUrl/horarios/global'
+      );
+      
       final List<dynamic> data = response.data;
       horariosGlobales = data.map((e) => Horario.fromJson(e)).toList();
-
+      
       notifyListeners();
     } catch (e) {
-      debugPrint(
-        'Error cargando horarios globales: ${ErrorHandler.extractMessage(e)}',
-      );
+      print('Error cargando horarios globales: ${ErrorHandler.extractMessage(e)}');
     }
   }
 
   // Devuelve los quiropracticos activos
   Future<void> loadDoctoresActive() async {
-    final token = LocalStorage.getToken();
-    if (token == null) return;
     try {
       final response = await ApiService.dio.get(
-        '$_baseUrl/usuarios/quiros-activos',
+        '$_baseUrl/usuarios/quiros-activos'
       );
       final List<dynamic> data = response.data;
       doctores = data.map((e) => Usuario.fromJson(e)).toList();
-
+      
       if (doctores.isNotEmpty) {
-        if (selectedDoctor == null ||
-            !doctores.any((d) => d.idUsuario == selectedDoctor!.idUsuario)) {
+        if (selectedDoctor == null || !doctores.any((d) => d.idUsuario == selectedDoctor!.idUsuario)) {
           selectDoctor(doctores.first);
         }
       } else {
@@ -74,9 +81,7 @@ class HorariosProvider extends ChangeNotifier {
       }
       notifyListeners();
     } catch (e) {
-      debugPrint(
-        'Error cargando quiroprácticos activos: ${ErrorHandler.extractMessage(e)}',
-      );
+      print('Error cargando quiroprácticos activos: ${ErrorHandler.extractMessage(e)}');
     }
   }
 
@@ -86,211 +91,100 @@ class HorariosProvider extends ChangeNotifier {
     loadHorarios(doctor.idUsuario);
   }
 
-  Future<void> loadHorarios(int idQuiro, {bool notifyLoading = true}) async {
-    final token = LocalStorage.getToken();
-    if (token == null) return;
-    if (notifyLoading) {
-      isLoading = true;
-      notifyListeners();
-    }
+  Future<void> loadHorarios(int idQuiro) async {
+    isLoading = true;
+    notifyListeners();
     try {
       final response = await ApiService.dio.get(
-        '$_baseUrl/horarios/quiro/$idQuiro',
+        '$_baseUrl/horarios/quiro/$idQuiro'
       );
       final List<dynamic> data = response.data;
       horarios = data.map((e) => Horario.fromJson(e)).toList();
     } catch (e) {
-      debugPrint('Error cargando horarios: ${ErrorHandler.extractMessage(e)}');
+      print('Error cargando horarios: ${ErrorHandler.extractMessage(e)}');
     } finally {
-      if (notifyLoading) {
-        isLoading = false;
-      }
+      isLoading = false;
       notifyListeners();
     }
   }
 
   // Crear Horario
-  Future<Map<String, dynamic>> createHorario(
-    int diaSemana,
-    TimeOfDay inicio,
-    TimeOfDay fin,
-  ) async {
-    if (selectedDoctor == null) {
-      return {'success': false, 'message': "No hay doctor seleccionado"};
-    }
-
-    // 1. Optimistic Update
-    final tempId = -1 * DateTime.now().millisecondsSinceEpoch;
-    final nuevoHorario = Horario(
-      idHorario: tempId,
-      idQuiropractico: selectedDoctor!.idUsuario,
-      diaSemana: diaSemana,
-      horaInicio: inicio,
-      horaFin: fin,
-    );
-
-    horarios.add(nuevoHorario);
-    notifyListeners();
-
+  Future<Map<String, dynamic>> createHorario(int diaSemana, TimeOfDay inicio, TimeOfDay fin, [int? idQuiro]) async {
     try {
-      final inicioStr =
-          "${inicio.hour.toString().padLeft(2, '0')}:${inicio.minute.toString().padLeft(2, '0')}:00";
-      final finStr =
-          "${fin.hour.toString().padLeft(2, '0')}:${fin.minute.toString().padLeft(2, '0')}:00";
-
-      final data = {
-        "idQuiropractico": selectedDoctor!.idUsuario,
-        "diaSemana": diaSemana,
-        "horaInicio": inicioStr,
-        "horaFin": finStr,
-      };
+      String hInicioStr = '${inicio.hour.toString().padLeft(2, '0')}:${inicio.minute.toString().padLeft(2, '0')}:00';
+      String hFinStr = '${fin.hour.toString().padLeft(2, '0')}:${fin.minute.toString().padLeft(2, '0')}:00';
+      
+      final targetQuiro = idQuiro ?? selectedDoctor?.idUsuario;
 
       final response = await ApiService.dio.post(
         '$_baseUrl/horarios',
-        data: data,
+        data: {
+          "idQuiropractico": targetQuiro,
+          "diaSemana": diaSemana,
+          "horaInicio": hInicioStr,
+          "horaFin": hFinStr
+        }
       );
-
-      // Silent Refresh
-      await loadHorarios(selectedDoctor!.idUsuario, notifyLoading: false);
-
-      // Obtener el ID real para el retorno (por si se necesita para deshacer)
-      final createdData = response.data;
-      return {'success': true, 'data': createdData};
-    } on DioException catch (e) {
-      // Revertir
-      horarios.removeWhere((h) => h.idHorario == tempId);
-      notifyListeners();
-
-      if (e.response?.statusCode == 409) {
-        final data = e.response?.data;
-        return {
-          'success': false,
-          'message': data['message'] ?? 'Conflicto de horario',
-          'code': data['code'],
-        };
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        if (targetQuiro != null) {
+          await loadHorarios(targetQuiro);
+        }
+        await loadAllHorariosGlobales();
+        return {"success": true, "data": response.data};
       }
-      return {'success': false, 'message': ErrorHandler.extractMessage(e)};
+      return {"success": false, "error": "Error al crear horario"};
+    } on DioException catch (e) {
+      return {"success": false, "error": ErrorHandler.extractMessage(e)};
     } catch (e) {
-      // Revertir
-      horarios.removeWhere((h) => h.idHorario == tempId);
-      notifyListeners();
-      return {'success': false, 'message': ErrorHandler.extractMessage(e)};
+      return {"success": false, "error": e.toString()};
     }
   }
 
   // Borrar Horario
   Future<String?> deleteHorario(int idHorario) async {
-    // Backup local & Optimistic Remove
-    final index = horarios.indexWhere((h) => h.idHorario == idHorario);
-    Horario? backup;
-    if (index != -1) {
-      backup = horarios[index];
-      horarios.removeAt(index);
-      notifyListeners();
-    }
-
     try {
-      await ApiService.dio.delete('$_baseUrl/horarios/$idHorario');
-      // No necesitamos reload aqui si confiamos en el delete, pero por consistencia:
-      // await loadHorarios(selectedDoctor!.idUsuario, notifyLoading: false);
+      await ApiService.dio.delete(
+        '$_baseUrl/horarios/$idHorario'
+      );
+      
+      horarios.removeWhere((h) => h.idHorario == idHorario);
+      notifyListeners();
       return null;
     } catch (e) {
-      // Revertir
-      if (backup != null) {
-        horarios.insert(index, backup);
-        notifyListeners();
-      }
       return ErrorHandler.extractMessage(e);
     }
   }
 
-  // Actualizar Horario
-  Future<Map<String, dynamic>> updateHorario(
-    int idHorario,
-    int diaSemana,
-    TimeOfDay inicio,
-    TimeOfDay fin,
-  ) async {
-    if (selectedDoctor == null) {
-      return {'success': false, 'message': "No hay doctor seleccionado"};
-    }
-
-    // Backup & Optimistic Update
-    final index = horarios.indexWhere((h) => h.idHorario == idHorario);
-    Horario? backup;
-
-    if (index != -1) {
-      backup = horarios[index];
-      final updatedHorario = Horario(
-        idHorario: idHorario,
-        idQuiropractico: selectedDoctor!.idUsuario,
-        diaSemana: diaSemana,
-        horaInicio: inicio,
-        horaFin: fin,
-      );
-      horarios[index] = updatedHorario;
-      notifyListeners();
-    }
-
+  Future<Map<String, dynamic>> updateHorario(int idHorario, int diaSemana, TimeOfDay horaInicio, TimeOfDay horaFin, [int? idQuiro]) async {
     try {
-      final inicioStr =
-          "${inicio.hour.toString().padLeft(2, '0')}:${inicio.minute.toString().padLeft(2, '0')}:00";
-      final finStr =
-          "${fin.hour.toString().padLeft(2, '0')}:${fin.minute.toString().padLeft(2, '0')}:00";
+      String hInicioStr = '${horaInicio.hour.toString().padLeft(2, '0')}:${horaInicio.minute.toString().padLeft(2, '0')}:00';
+      String hFinStr = '${horaFin.hour.toString().padLeft(2, '0')}:${horaFin.minute.toString().padLeft(2, '0')}:00';
+      
+      final targetQuiro = idQuiro ?? selectedDoctor?.idUsuario;
 
-      final data = {
-        "idQuiropractico": selectedDoctor!.idUsuario,
-        "diaSemana": diaSemana,
-        "horaInicio": inicioStr,
-        "horaFin": finStr,
-      };
-
-      await ApiService.dio.put('$_baseUrl/horarios/$idHorario', data: data);
-      await loadHorarios(selectedDoctor!.idUsuario, notifyLoading: false);
-      return {'success': true};
+      final response = await ApiService.dio.put(
+        '$_baseUrl/horarios/$idHorario',
+        data: {
+          "idQuiropractico": targetQuiro,
+          "diaSemana": diaSemana,
+          "horaInicio": hInicioStr,
+          "horaFin": hFinStr
+        }
+      );
+      
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        if (targetQuiro != null) {
+          await loadHorarios(targetQuiro);
+        }
+        await loadAllHorariosGlobales();
+        return {"success": true};
+      }
+      return {"success": false, "error": "Error al actualizar"};
     } on DioException catch (e) {
-      // Revertir
-      if (backup != null && index != -1) {
-        horarios[index] = backup;
-        notifyListeners();
-      }
-
-      if (e.response?.statusCode == 409) {
-        final data = e.response?.data;
-        return {
-          'success': false,
-          'message': data['message'] ?? 'Conflicto de horario',
-          'code': data['code'],
-        };
-      }
-      return {'success': false, 'message': ErrorHandler.extractMessage(e)};
+      return {"success": false, "error": ErrorHandler.extractMessage(e)};
     } catch (e) {
-      // Revertir
-      if (backup != null && index != -1) {
-        horarios[index] = backup;
-        notifyListeners();
-      }
-      return {'success': false, 'message': ErrorHandler.extractMessage(e)};
+      return {"success": false, "error": e.toString()};
     }
-  }
-
-  // Getter para obtener los días de la semana activos (Lunes=1, Domingo=7)
-  List<int> get diasActivosSemana {
-    if (horariosGlobales.isEmpty) {
-      // Si no hay horarios cargados, devolvemos L-V por defecto
-      return [1, 2, 3, 4, 5];
-    }
-
-    final Set<int> diasUnicos = {};
-    for (var horario in horariosGlobales) {
-      diasUnicos.add(horario.diaSemana);
-    }
-
-    if (diasUnicos.isEmpty) return [1, 2, 3, 4, 5];
-
-    final listaDias = diasUnicos.toList();
-    listaDias.sort();
-    return listaDias;
   }
 
   void clearAllData() {

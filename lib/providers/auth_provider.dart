@@ -1,8 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:quiropractico_front/config/api_config.dart';
-import 'package:quiropractico_front/services/api_service.dart';
+import 'package:quiropractico_front/services/auth_service.dart';
 import 'package:quiropractico_front/models/api_error.dart';
 import 'package:quiropractico_front/services/local_storage.dart';
 import 'package:quiropractico_front/providers/citas_provider.dart';
@@ -16,14 +15,18 @@ import 'package:quiropractico_front/providers/stats_provider.dart';
 enum AuthStatus { checking, authenticated, notAuthenticated, locked }
 
 class AuthProvider extends ChangeNotifier {
+  
   AuthStatus authStatus = AuthStatus.checking;
-  final String _baseUrl = ApiConfig.baseUrl;
   String? role;
+  
+  bool get isSuperAdmin => role == 'super_admin';
+  bool get isAdmin => role == 'admin' || role == 'super_admin';
+  bool get isQuiropractico => role == 'quiropráctico' || isAdmin;
+  bool get isRecepcion => role == 'recepción' || isAdmin;
 
-  // Helpers de permisos
-  bool get isSuperAdmin => role?.toLowerCase() == 'super_admin';
-  bool get isAdmin => role?.toLowerCase() == 'admin' || isSuperAdmin;
-  bool get isGestor => isAdmin || role?.toLowerCase() == 'quiropráctico';
+  // Aliases for backwards compatibility with UI views that still use old names
+  bool get isGestor => isAdmin || isRecepcion;
+  bool get isQuiron => isQuiropractico || isAdmin;
 
   String? errorMessage;
   bool isLoginLoading = false;
@@ -41,28 +44,20 @@ class AuthProvider extends ChangeNotifier {
       final clinicaId = LocalStorage.getClinicaId();
       print('ClinicaId sacado de caché: $clinicaId');
       
-      final response = await ApiService.dio.post(
-        '$_baseUrl/auth/login',
-        data: {
-          'username': username, 
-          'password': password,
-          'clinicaId': clinicaId,
-        },
-        options: Options(validateStatus: (status) => status! < 500),
-      );
+      final response = await AuthService.login(username, password, clinicaId);
 
       if (response.statusCode == 200) {
         final String token = response.data['token'];
         final String userRole = response.data['rol'];
         await LocalStorage.saveToken(token);
         await LocalStorage.saveRole(userRole);
-
+        
         role = userRole;
         authStatus = AuthStatus.authenticated;
         isLoginLoading = false;
         notifyListeners();
         return true;
-      } else {
+      } else{
         final apiError = ApiError.fromJson(response.data);
         errorMessage = apiError.message;
         if (apiError.errorType == 'ACCOUNT_LOCKED') {
@@ -73,7 +68,7 @@ class AuthProvider extends ChangeNotifier {
       }
     } on DioException catch (e) {
       authStatus = AuthStatus.notAuthenticated;
-      if (e.type == DioExceptionType.connectionTimeout ||
+      if (e.type == DioExceptionType.connectionTimeout || 
           e.type == DioExceptionType.receiveTimeout ||
           e.type == DioExceptionType.connectionError) {
         errorMessage = 'Error de conexión. Verifica tu red.';
@@ -84,7 +79,7 @@ class AuthProvider extends ChangeNotifier {
       errorMessage = 'Error inesperado: $e';
       authStatus = AuthStatus.notAuthenticated;
     }
-
+    
     isLoginLoading = false;
     notifyListeners();
     return false;
@@ -103,12 +98,10 @@ class AuthProvider extends ChangeNotifier {
     authStatus = AuthStatus.authenticated;
     notifyListeners();
   }
-
+  
   // Cerrar sesión
   void logout(BuildContext context) {
     // 1. Cambiamos el estado y NOTIFICAMOS inmediatamente.
-    // Esto hace que el GoRouter redirija a /login y destruya el DashboardLayout/Sidebar
-    // ANTES de que borremos el token o purguemos la RAM.
     authStatus = AuthStatus.notAuthenticated;
     notifyListeners();
 
@@ -134,10 +127,7 @@ class AuthProvider extends ChangeNotifier {
     context.read<StatsProvider>().clearAllData();
   }
 
-  /// Refresca contadores globales (badges) que deben estar listos al entrar a la app
   void refreshGlobalData(BuildContext context) {
-    // Estas llamadas no bloquean la UI (corren en segundo plano)
-    context.read<PaymentsProvider>().checkPendingCount();
-    context.read<UsersProvider>().checkBlockedCount();
+    isAuthenticated();
   }
 }

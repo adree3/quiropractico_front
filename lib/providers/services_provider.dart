@@ -1,56 +1,62 @@
+import 'package:quiropractico_front/services/api_service.dart';
 import 'package:flutter/material.dart';
 import 'package:quiropractico_front/config/api_config.dart';
-import 'package:quiropractico_front/services/api_service.dart';
 import 'package:quiropractico_front/models/servicio.dart';
-import 'package:quiropractico_front/services/local_storage.dart';
 import 'package:quiropractico_front/utils/error_handler.dart';
 
 class ServicesProvider extends ChangeNotifier {
+  
   final String _baseUrl = ApiConfig.baseUrl;
 
   List<Servicio> servicios = [];
-  bool isLoading = true;
+  bool isLoading = false;
   bool? filterActive = true;
 
-  // Paginación
   int currentPage = 0;
-  int pageSize = 11;
+  int pageSize = 10;
   int totalElements = 0;
-  int totalPages = 0;
+
+  ServicesProvider() {
+    loadServices();
+  }
+
+
 
   // Cargar servicios ordenados
-  Future<void> loadServices({int page = 0, bool notifyLoading = true}) async {
-    final token = LocalStorage.getToken();
-    if (token == null) return;
-    if (notifyLoading) {
-      isLoading = true;
-      notifyListeners();
-    }
+  Future<void> loadServices({int page = 0}) async {
+    isLoading = true;
     currentPage = page;
+    notifyListeners();
 
     try {
-      final Map<String, dynamic> params = {
-        'page': page,
-        'size': pageSize,
-        'sortBy': 'idServicio',
-        'direction': 'desc',
-      };
+      final Map<String, dynamic> params = {};
       if (filterActive != null) {
         params['activo'] = filterActive;
       }
 
       final response = await ApiService.dio.get(
-        '$_baseUrl/servicios',
-        queryParameters: params,
+        '$_baseUrl/servicios', 
+        queryParameters: params
       );
 
-      final List<dynamic> data = response.data['content'];
-      totalElements = response.data['totalElements'];
-      totalPages = response.data['totalPages'];
+      dynamic rawData = response.data;
+      if (rawData is Map) {
+         rawData = rawData['content'] ?? rawData['data'] ?? rawData['servicios'] ?? [];
+      }
+      List<Servicio> tempList = (rawData as List).map((e) => Servicio.fromJson(e)).toList();
+      tempList.sort((a, b) {
+        bool aEsSesion = a.sesiones == null;
+        bool bEsSesion = b.sesiones == null;
+        
+        if (aEsSesion && !bEsSesion) return -1;
+        if (!aEsSesion && bEsSesion) return 1;
 
-      servicios = data.map((e) => Servicio.fromJson(e)).toList();
+        return b.idServicio.compareTo(a.idServicio);
+      });
+      servicios = tempList;
+      totalElements = servicios.length;
     } catch (e) {
-      debugPrint('Error cargando servicios: ${ErrorHandler.extractMessage(e)}');
+      print('Error cargando servicios: ${ErrorHandler.extractMessage(e)}');
     } finally {
       isLoading = false;
       notifyListeners();
@@ -64,22 +70,20 @@ class ServicesProvider extends ChangeNotifier {
   }
 
   // CREAR
-  Future<String?> createService(
-    String nombre,
-    double precio,
-    String tipo,
-    int? sesiones,
-  ) async {
+  Future<String?> createService(String nombre, double precio, String tipo, int? sesiones) async {
     try {
       final data = {
         "nombreServicio": nombre,
         "precio": precio,
         "tipo": tipo,
-        "sesionesIncluidas": sesiones,
+        "sesionesIncluidas": sesiones
       };
 
-      await ApiService.dio.post('$_baseUrl/servicios', data: data);
-
+      await ApiService.dio.post(
+        '$_baseUrl/servicios',
+        data: data
+      );
+      
       await loadServices();
       return null;
     } catch (e) {
@@ -88,23 +92,20 @@ class ServicesProvider extends ChangeNotifier {
   }
 
   // EDITAR
-  Future<String?> updateService(
-    int id,
-    String nombre,
-    double precio,
-    String tipo,
-    int? sesiones,
-  ) async {
+  Future<String?> updateService(int id, String nombre, double precio, String tipo, int? sesiones) async {
     try {
-      final data = {
+       final data = {
         "nombreServicio": nombre,
         "precio": precio,
         "tipo": tipo,
-        "sesionesIncluidas": sesiones,
+        "sesionesIncluidas": sesiones
       };
 
-      await ApiService.dio.put('$_baseUrl/servicios/$id', data: data);
-
+      await ApiService.dio.put(
+        '$_baseUrl/servicios/$id',
+        data: data
+      );
+      
       await loadServices();
       return null;
     } catch (e) {
@@ -115,25 +116,12 @@ class ServicesProvider extends ChangeNotifier {
   // BORRAR
   Future<String?> deleteService(int id) async {
     try {
-      // Optimistic Update
-      final index = servicios.indexWhere((s) => s.idServicio == id);
-      if (index != -1) {
-        if (filterActive == true) {
-          servicios.removeAt(index);
-          totalElements--;
-        } else {
-          servicios[index] = servicios[index].copyWith(activo: false);
-        }
-        notifyListeners();
-      }
-
-      await ApiService.dio.delete('$_baseUrl/servicios/$id');
-
-      // Silent Refresh
-      loadServices(page: currentPage, notifyLoading: false);
+      await ApiService.dio.delete(
+        '$_baseUrl/servicios/$id'
+      );
+      await loadServices();
       return null;
-    } catch (e) {
-      // Revert if needed, but for now just returning error
+    } catch (e) { 
       return ErrorHandler.extractMessage(e);
     }
   }
@@ -141,24 +129,12 @@ class ServicesProvider extends ChangeNotifier {
   // RECUPERAR
   Future<String?> recoverService(int id) async {
     try {
-      // Optimistic Update
-      final index = servicios.indexWhere((s) => s.idServicio == id);
-      if (index != -1) {
-        if (filterActive == false) {
-          servicios.removeAt(index);
-          totalElements--;
-        } else {
-          servicios[index] = servicios[index].copyWith(activo: true);
-        }
-        notifyListeners();
-      }
-
-      await ApiService.dio.put('$_baseUrl/servicios/$id/recuperar');
-
-      // Silent Refresh
-      loadServices(page: currentPage, notifyLoading: false);
+      await ApiService.dio.put(
+        '$_baseUrl/servicios/$id/recuperar'
+        );
+      await loadServices();
       return null;
-    } catch (e) {
+    } catch (e) { 
       return ErrorHandler.extractMessage(e);
     }
   }
@@ -168,7 +144,6 @@ class ServicesProvider extends ChangeNotifier {
     isLoading = false;
     currentPage = 0;
     totalElements = 0;
-    totalPages = 0;
     notifyListeners();
   }
 }
