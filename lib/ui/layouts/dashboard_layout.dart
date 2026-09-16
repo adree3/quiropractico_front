@@ -73,8 +73,8 @@ class DashboardLayout extends StatelessWidget {
                       Consumer<UsersProvider>(
                         builder: (context, usersProvider, child) {
                           final user = usersProvider.currentUser;
-                          if (user == null && !usersProvider.isLoading) {
-                            Future.microtask(() {
+                          if (user == null && !usersProvider.isLoading && !usersProvider.hasError) {
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
                               usersProvider.getMe();
                               context.read<AuthProvider>().refreshGlobalData(context);
                             });

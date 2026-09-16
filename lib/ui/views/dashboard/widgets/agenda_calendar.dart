@@ -10,6 +10,7 @@ import 'package:quiropractico_front/ui/modals/cita_modal.dart';
 import 'package:quiropractico_front/ui/views/dashboard/agenda_utils.dart';
 import 'package:quiropractico_front/ui/views/dashboard/agenda_view_datasource.dart';
 import 'package:quiropractico_front/ui/widgets/custom_snackbar.dart';
+import 'package:quiropractico_front/providers/settings_provider.dart';
 import 'package:syncfusion_flutter_calendar/calendar.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter/scheduler.dart';
@@ -37,6 +38,11 @@ class AgendaCalendar extends StatelessWidget {
     final agendaProvider = Provider.of<AgendaProvider>(context);
     final bloqueosProvider = Provider.of<AgendaBloqueoProvider>(context);
     final horariosProvider = Provider.of<HorariosProvider>(context);
+    final settingsProvider = Provider.of<SettingsProvider>(context);
+
+    // Escalado visual de los slots
+    final double dynamicHeight = (80.0 / 30.0) * settingsProvider.duracionCitaMinutos;
+    final double clampedHeight = dynamicHeight.clamp(50.0, 120.0);
 
     return SfCalendar(
       controller: controller,
@@ -86,8 +92,8 @@ class AgendaCalendar extends StatelessWidget {
         startHour: minHour,
         endHour: maxHour,
         nonWorkingDays: nonWorkingDays,
-        timeInterval: const Duration(minutes: 30),
-        timeIntervalHeight: 80,
+        timeInterval: Duration(minutes: settingsProvider.duracionCitaMinutos),
+        timeIntervalHeight: clampedHeight,
         timeFormat: 'HH:mm',
         timeRulerSize: 60,
       ),

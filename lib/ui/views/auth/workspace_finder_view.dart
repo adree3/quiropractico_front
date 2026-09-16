@@ -5,7 +5,6 @@ import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:quiropractico_front/config/theme/app_theme.dart';
 import 'package:quiropractico_front/providers/workspace_provider.dart';
-import 'package:quiropractico_front/providers/auth_provider.dart';
 import 'package:quiropractico_front/services/local_storage.dart';
 
 class WorkspaceFinderView extends StatefulWidget {
@@ -44,7 +43,6 @@ class _WorkspaceFinderViewState extends State<WorkspaceFinderView> {
   void _selectClinica(int id, String nombre, String direccion) async {
     // Purgar RAM de otros tenants antes de entrar al nuevo
     // (Útil para super_admin que cambia de clínica sin cerrar sesión)
-    context.read<AuthProvider>().importProviders(context);
     
     await LocalStorage.saveClinica(id, nombre, direccion);
     if (!mounted) return;

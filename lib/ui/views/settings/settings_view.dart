@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:quiropractico_front/providers/settings_provider.dart';
 import 'package:quiropractico_front/ui/views/settings/widgets/settings_nav_item.dart';
@@ -21,10 +20,7 @@ class SettingsView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => SettingsProvider(),
-      child: _SettingsShell(currentTab: currentTab),
-    );
+    return _SettingsShell(currentTab: currentTab);
   }
 }
 
@@ -83,9 +79,6 @@ class _SettingsShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // El provider sigue estando disponible si los tabs lo necesitan
-    final provider = context.watch<SettingsProvider>();
-
     return Scaffold(
       backgroundColor: const Color(0xFFF4F7FC),
       body: Row(

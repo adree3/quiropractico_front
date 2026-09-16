@@ -21,6 +21,7 @@ import 'package:quiropractico_front/providers/users_provider.dart';
 import 'package:quiropractico_front/providers/bonos_provider.dart';
 import 'package:quiropractico_front/providers/documentos_provider.dart';
 import 'package:quiropractico_front/providers/workspace_provider.dart';
+import 'package:quiropractico_front/providers/settings_provider.dart';
 import 'package:quiropractico_front/services/api_service.dart';
 import 'package:quiropractico_front/services/local_storage.dart';
 
@@ -49,19 +50,32 @@ void main() async {
         ChangeNotifierProvider(create: (_) => BonosProvider()),
         ChangeNotifierProvider(create: (_) => DocumentosProvider()),
         ChangeNotifierProvider(create: (_) => WorkspaceProvider()),
+        ChangeNotifierProvider(create: (_) => SettingsProvider()),
       ],
       child: const MyApp(),
     ),
   );
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
 
   @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  late final AppRouter _appRouter;
+
+  @override
+  void initState() {
+    super.initState();
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    _appRouter = AppRouter(authProvider);
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final authProvider = Provider.of<AuthProvider>(context);
-    final appRouter = AppRouter(authProvider);
     return MaterialApp.router(
       locale: const Locale('es', 'ES'),
       supportedLocales: const [Locale('es', 'ES')],
@@ -73,7 +87,7 @@ class MyApp extends StatelessWidget {
       title: 'Quiripráctico Valladolid',
       debugShowCheckedModeBanner: false,
       theme: AppTheme().getTheme(),
-      routerConfig: appRouter.router,
+      routerConfig: _appRouter.router,
     );
   }
 }

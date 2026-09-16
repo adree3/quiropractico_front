@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:quiropractico_front/providers/horarios_provider.dart';
 import 'package:quiropractico_front/providers/ui_provider.dart';
 import 'package:quiropractico_front/providers/agenda_bloqueo_provider.dart';
 import 'package:quiropractico_front/providers/agenda_provider.dart';
-import 'package:quiropractico_front/providers/horarios_provider.dart';
 import 'package:quiropractico_front/models/usuario.dart';
+import 'package:quiropractico_front/providers/settings_provider.dart';
 import 'package:quiropractico_front/ui/modals/cita_modal.dart';
 import 'package:quiropractico_front/ui/views/dashboard/agenda_utils.dart';
 import 'package:quiropractico_front/ui/views/dashboard/widgets/agenda_calendar.dart';
@@ -72,6 +73,7 @@ class _AgendaViewState extends State<AgendaView> {
     final agendaProvider = Provider.of<AgendaProvider>(context);
     final horariosProvider = Provider.of<HorariosProvider>(context);
     final bloqueosProvider = Provider.of<AgendaBloqueoProvider>(context);
+    final settingsProvider = Provider.of<SettingsProvider>(context);
 
     // Sincronización de fecha y VISTA
     if (_calendarController.displayDate != null &&
@@ -79,7 +81,9 @@ class _AgendaViewState extends State<AgendaView> {
           _calendarController.displayDate,
           agendaProvider.selectedDate,
         )) {
-      _calendarController.displayDate = agendaProvider.selectedDate;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _calendarController.displayDate = agendaProvider.selectedDate;
+      });
     }
 
     // Mapeo forzado a WorkWeek para la vista semanal si queremos filtrar días no laborales
@@ -90,7 +94,9 @@ class _AgendaViewState extends State<AgendaView> {
 
     // Sincronizar la vista del controlador con la vista mapeada (importante para workWeek)
     if (_calendarController.view != calendarView) {
-      _calendarController.view = calendarView;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _calendarController.view = calendarView;
+      });
     }
 
     final disabledRegions = AgendaUtils.getDisabledRegions(
@@ -135,9 +141,11 @@ class _AgendaViewState extends State<AgendaView> {
 
     return Container(
       padding: const EdgeInsets.fromLTRB(0, 0, 0, 10),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final bool isDesktop = constraints.maxWidth > 700;
+      child: settingsProvider.isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : LayoutBuilder(
+              builder: (context, constraints) {
+                final bool isDesktop = constraints.maxWidth > 700;
 
           String tituloAgenda = _getTituloAgenda(agendaProvider.currentView);
 

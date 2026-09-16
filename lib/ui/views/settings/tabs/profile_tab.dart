@@ -26,6 +26,7 @@ class _ProfileTabState extends State<ProfileTab> {
   late TextEditingController _emailCtrl;
   late TextEditingController _dirCtrl;
   String? _telefonoValue;
+  late int _duracionValue;
 
   @override
   void initState() {
@@ -36,6 +37,7 @@ class _ProfileTabState extends State<ProfileTab> {
     _emailCtrl = TextEditingController(text: provider.emailContacto);
     _dirCtrl = TextEditingController(text: provider.direccion);
     _telefonoValue = provider.telefono;
+    _duracionValue = provider.duracionCitaMinutos;
   }
 
   @override
@@ -235,6 +237,73 @@ class _ProfileTabState extends State<ProfileTab> {
                     }
                     return null;
                   },
+                ),
+
+          const SizedBox(height: 32),
+          const Divider(),
+          const SizedBox(height: 32),
+
+          // Sección: Configuración Operativa
+          const Text(
+            'Configuración Operativa',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF1E293B),
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          provider.isLoading
+              ? const SkeletonInput()
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Duración por defecto de las citas',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF475569),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    DropdownButtonFormField<int>(
+                      value: _duracionValue,
+                      decoration: InputDecoration(
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 16,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: const BorderSide(color: Color(0xFF0EA5E9)),
+                        ),
+                      ),
+                      items: const [
+                        DropdownMenuItem(value: 15, child: Text('15 minutos')),
+                        DropdownMenuItem(value: 30, child: Text('30 minutos')),
+                        DropdownMenuItem(value: 45, child: Text('45 minutos')),
+                        DropdownMenuItem(value: 60, child: Text('1 hora (60 min)')),
+                      ],
+                      onChanged: (int? newValue) {
+                        if (newValue != null) {
+                          setState(() {
+                            _duracionValue = newValue;
+                          });
+                          provider.duracionCitaMinutos = newValue;
+                        }
+                      },
+                    ),
+                  ],
                 ),
 
           const SizedBox(height: 32),

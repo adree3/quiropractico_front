@@ -13,6 +13,7 @@ import 'package:quiropractico_front/providers/agenda_bloqueo_provider.dart';
 import 'package:quiropractico_front/providers/agenda_provider.dart';
 import 'package:quiropractico_front/providers/clients_provider.dart';
 import 'package:quiropractico_front/providers/horarios_provider.dart';
+import 'package:quiropractico_front/providers/settings_provider.dart';
 import 'package:quiropractico_front/services/api_service.dart';
 import 'package:quiropractico_front/ui/modals/payment_selection_modal.dart';
 import 'package:quiropractico_front/ui/modals/venta_bono_modal.dart';
@@ -69,12 +70,16 @@ class _CitaModalState extends State<CitaModal> {
   void initState() {
     super.initState();
 
+    final settingsProv = Provider.of<SettingsProvider>(context, listen: false);
+
     // INICIALIZAR VARIABLES BÁSICAS
     if (isEditing) {
       final c = widget.citaExistente!;
       _estadoSeleccionado = c.estado;
       notasCtrl.text = c.notas ?? '';
       fechaSeleccionada = c.fechaHoraInicio;
+      horaInicio = TimeOfDay.fromDateTime(c.fechaHoraInicio);
+      horaFin = TimeOfDay.fromDateTime(c.fechaHoraFin);
     } else {
       var baseDate = widget.selectedDate ?? DateTime.now();
 
@@ -86,6 +91,8 @@ class _CitaModalState extends State<CitaModal> {
       }
 
       fechaSeleccionada = baseDate;
+      horaInicio = TimeOfDay.fromDateTime(baseDate);
+      horaFin = TimeOfDay.fromDateTime(baseDate.add(Duration(minutes: settingsProv.duracionCitaMinutos)));
     }
 
     fechaCtrl.text = DateFormat('dd/MM/yyyy').format(fechaSeleccionada);
