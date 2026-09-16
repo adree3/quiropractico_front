@@ -33,7 +33,7 @@ class CitasProvider extends ChangeNotifier {
   int totalPages = 0;
   int totalElements = 0;
 
-  void _initWebSocket() {
+  void initWebSocket() {
     if (_isWsInitialized) return;
     final token = LocalStorage.getToken();
     if (token == null) return;
@@ -103,7 +103,7 @@ class CitasProvider extends ChangeNotifier {
     if (token == null) return;
 
     // Inicializar WS si no lo está
-    _initWebSocket();
+    initWebSocket();
 
     if (resetPage) currentPage = 0;
     if (notifyLoading) {
@@ -213,6 +213,7 @@ class CitasProvider extends ChangeNotifier {
 
   Future<bool> solicitarFirma(int idCita) async {
     try {
+      initWebSocket();
       await ApiService.dio.post('$_baseUrl/citas/$idCita/solicitar-firma');
       return true;
     } catch (e) {
