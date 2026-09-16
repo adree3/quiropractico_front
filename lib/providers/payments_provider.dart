@@ -1,298 +1,132 @@
-import 'dart:async';
+import 'package:quiropractico_front/services/api_service.dart';
 import 'package:flutter/material.dart';
 import 'package:quiropractico_front/config/api_config.dart';
-import 'package:quiropractico_front/services/api_service.dart';
 import 'package:quiropractico_front/models/pago.dart';
-import 'package:quiropractico_front/services/local_storage.dart';
 import 'package:quiropractico_front/utils/error_handler.dart';
 
 class PaymentsProvider extends ChangeNotifier {
+  
   final String _baseUrl = ApiConfig.baseUrl;
 
-  bool isLoading = true;
+  List<Pago> historial = [];
+  List<Pago> pendientes = [];
+  
+  bool isLoading = false;
 
-  // KPIS
-  double totalCobrado = 0;
-  double totalPendiente = 0;
-
-  // Badge global (Sidebar)
+  double get totalCobrado => historial.where((p) => p.pagado).fold(0, (sum, p) => sum + p.monto);
+  double get totalPendiente => pendientes.fold(0, (sum, p) => sum + p.monto);
+  double ingresosTotales = 0.0;
+  String? errorMessage;
   int globalPendingCount = 0;
 
-  // Tabla de pendientes
-  List<Pago> listaPendientes = [];
-  int pagePendientes = 0;
+  Future<int> checkPendingCount([int? id]) async {
+    if (id == null) return 0;
+    try {
+      final response = await ApiService.dio.get('$_baseUrl/pagos/cliente/$id');
+      if (response.statusCode == 200) {
+        List data = response.data;
+        int count = data.where((p) => p['pagado'] == false).length;
+        globalPendingCount = count;
+        notifyListeners();
+        return count;
+      }
+    } catch (e) {
+      print("Error checkPendingCount: $e");
+    }
+    return 0;
+  }
+
+  int totalHistorialCount = 0;
   int totalPendientesCount = 0;
+  String currentSearchTerm = '';
+  
   bool isLoadingPendientes = false;
   bool isLoadingMorePendientes = false;
-  bool hasMorePendientes = true;
-
-  // Tabla de historial
-  List<Pago> listaHistorial = [];
-  int pageHistorial = 0;
-  int totalHistorialCount = 0;
+  bool hasMorePendientes = false;
+  List<dynamic> listaPendientes = [];
+  
   bool isLoadingHistorial = false;
   bool isLoadingMoreHistorial = false;
-  bool hasMoreHistorial = true;
+  bool hasMoreHistorial = false;
+  List<dynamic> listaHistorial = [];
 
-  // Filtros
-  DateTime fechaInicio = DateTime(2000);
-  DateTime fechaFin = DateTime(2100);
-  String currentSearchTerm = '';
-  final int pageSize = 15;
-  Timer? _debounce;
-
-  @override
-  void dispose() {
-    _debounce?.cancel();
-    super.dispose();
+  void onSearchChanged(String search) {
+    currentSearchTerm = search;
+    notifyListeners();
   }
 
-  // Buscador global
-  void onSearchChanged(String query) {
-    if (_debounce?.isActive ?? false) _debounce!.cancel();
-    _debounce = Timer(const Duration(milliseconds: 500), () {
-      currentSearchTerm = query;
-      loadAll(fechaInicio, fechaFin);
-    });
+  void loadAll([DateTime? inicio, DateTime? fin]) {
+    final now = DateTime.now();
+    loadData(inicio ?? now, fin ?? now);
+  }
+  
+  Future<void> loadMorePendientes() async {
+    isLoadingMorePendientes = false;
+    notifyListeners();
+  }
+  
+  Future<void> loadMoreHistorial() async {
+    isLoadingMoreHistorial = false;
+    notifyListeners();
   }
 
-  Future<void> loadAll(DateTime start, DateTime end) async {
-    fechaInicio = start;
-    fechaFin = end;
-    pagePendientes = 0;
-    pageHistorial = 0;
-    hasMorePendientes = true;
-    hasMoreHistorial = true;
+  PaymentsProvider() {
+    final now = DateTime.now();
+    loadData(now, now); 
+  }
 
+
+
+  Future<void> loadData(DateTime inicio, DateTime fin) async {
     isLoading = true;
     notifyListeners();
 
-    // Cargamos todo en paralelo
     try {
-      await Future.wait([
-        _fetchKpis(),
-        getPagosPendientes(page: 0),
-        getPagosHistorial(page: 0),
-      ]);
+      final startIso = DateTime(inicio.year, inicio.month, inicio.day, 0, 0, 0).toIso8601String();
+      final endIso = DateTime(fin.year, fin.month, fin.day, 23, 59, 59).toIso8601String();
+
+      final respHist = await ApiService.dio.get(
+        '$_baseUrl/pagos', 
+        queryParameters: {'inicio': startIso, 'fin': endIso}
+      );
+      
+      dynamic dataHist = respHist.data;
+      if (dataHist is Map) {
+        dataHist = dataHist['content'] ?? dataHist['data'] ?? dataHist['pagos'] ?? [];
+      }
+      historial = (dataHist as List).map((e) => Pago.fromJson(e)).toList();
+      listaHistorial = historial;
+      totalHistorialCount = historial.length;
+
+      final respPend = await ApiService.dio.get(
+        '$_baseUrl/pagos',
+        queryParameters: {'pagado': false, 'size': 500}
+      );
+      
+      dynamic dataPend = respPend.data;
+      if (dataPend is Map) {
+        dataPend = dataPend['content'] ?? dataPend['data'] ?? dataPend['pagos'] ?? [];
+      }
+      pendientes = (dataPend as List).map((e) => Pago.fromJson(e)).toList();
+      listaPendientes = pendientes;
+      totalPendientesCount = pendientes.length;
+
     } catch (e) {
-      debugPrint("Error cargando dashboard pagos: $e");
+      print("Error pagos: ${ErrorHandler.extractMessage(e)}");
     } finally {
       isLoading = false;
       notifyListeners();
     }
   }
 
-  // Carga las tarjetas KPIs
-  Future<void> _fetchKpis() async {
-    final token = LocalStorage.getToken();
-    if (token == null) return;
-    try {
-      final response = await ApiService.dio.get(
-        '$_baseUrl/pagos/balance',
-        queryParameters: {
-          'fechaInicio': fechaInicio.toIso8601String(),
-          'fechaFin': fechaFin.toIso8601String(),
-        },
-      );
-
-      if (response.data != null) {
-        totalCobrado = (response.data['totalCobrado'] ?? 0).toDouble();
-        totalPendiente = (response.data['totalPendiente'] ?? 0).toDouble();
-      }
-    } catch (e) {
-      debugPrint("Error cargando KPIs: $e");
-      totalCobrado = 0;
-      totalPendiente = 0;
-    }
-    notifyListeners();
-  }
-
-  // Obtiene los pagos pendientes
-  Future<void> getPagosPendientes({
-    required int page,
-    bool notifyLoading = true,
-    bool append = false,
-  }) async {
-    final token = LocalStorage.getToken();
-    if (token == null) return;
-    if (notifyLoading) {
-      if (append) {
-        isLoadingMorePendientes = true;
-      } else {
-        isLoadingPendientes = true;
-      }
-      notifyListeners();
-    }
-    pagePendientes = page;
-
-    try {
-      final response = await ApiService.dio.get(
-        '$_baseUrl/pagos',
-        queryParameters: {
-          'page': page,
-          'size': pageSize,
-          'pagado': false,
-          if (currentSearchTerm.isNotEmpty) 'search': currentSearchTerm,
-        },
-      );
-
-      final data = response.data;
-      final List<dynamic> content = data['content'];
-      final totalPages = data['totalPages'];
-
-      final newItems = content.map((e) => Pago.fromJson(e)).toList();
-
-      if (append) {
-        listaPendientes.addAll(newItems);
-      } else {
-        listaPendientes = newItems;
-      }
-
-      totalPendientesCount = data['totalElements'];
-      hasMorePendientes = (page + 1) < totalPages;
-    } catch (e) {
-      debugPrint("Error pendientes: ${ErrorHandler.extractMessage(e)}");
-    } finally {
-      isLoadingPendientes = false;
-      isLoadingMorePendientes = false;
-      notifyListeners();
-    }
-  }
-
-  Future<void> loadMorePendientes() async {
-    if (isLoadingMorePendientes || !hasMorePendientes) return;
-    await getPagosPendientes(page: pagePendientes + 1, append: true);
-  }
-
-  // Obtiene los pagos historial
-  Future<void> getPagosHistorial({
-    required int page,
-    bool notifyLoading = true,
-    bool append = false,
-  }) async {
-    final token = LocalStorage.getToken();
-    if (token == null) return;
-    if (notifyLoading) {
-      if (append) {
-        isLoadingMoreHistorial = true;
-      } else {
-        isLoadingHistorial = true;
-      }
-      notifyListeners();
-    }
-    pageHistorial = page;
-
-    try {
-      final response = await ApiService.dio.get(
-        '$_baseUrl/pagos',
-        queryParameters: {
-          'page': page,
-          'size': pageSize,
-          'pagado': true,
-          'fechaInicio': fechaInicio.toIso8601String(),
-          'fechaFin': fechaFin.toIso8601String(),
-          if (currentSearchTerm.isNotEmpty) 'search': currentSearchTerm,
-        },
-      );
-
-      final data = response.data;
-      final List<dynamic> content = data['content'];
-      final totalPages = data['totalPages'];
-
-      final newItems = content.map((e) => Pago.fromJson(e)).toList();
-
-      if (append) {
-        listaHistorial.addAll(newItems);
-      } else {
-        listaHistorial = newItems;
-      }
-
-      totalHistorialCount = data['totalElements'];
-      hasMoreHistorial = (page + 1) < totalPages;
-    } catch (e) {
-      debugPrint("Error historial: ${ErrorHandler.extractMessage(e)}");
-    } finally {
-      isLoadingHistorial = false;
-      isLoadingMoreHistorial = false;
-      notifyListeners();
-    }
-  }
-
-  Future<void> loadMoreHistorial() async {
-    if (isLoadingMoreHistorial || !hasMoreHistorial) return;
-    await getPagosHistorial(page: pageHistorial + 1, append: true);
-  }
-
-  // Comprobación ligera para el Sidebar
-  Future<void> checkPendingCount() async {
-    final token = LocalStorage.getToken();
-    if (token == null) return;
-    try {
-      final response = await ApiService.dio.get(
-        '$_baseUrl/pagos',
-        queryParameters: {'page': 0, 'size': 1, 'pagado': false},
-      );
-      if (response.data != null && response.data['totalElements'] != null) {
-        globalPendingCount = response.data['totalElements'];
-        notifyListeners();
-      }
-    } catch (e) {
-      debugPrint("Error comprobando badge pagos: $e");
-    }
-  }
-
   Future<String?> confirmarPago(int idPago) async {
     try {
-      await ApiService.dio.put('$_baseUrl/pagos/$idPago/confirmar');
-
-      final index = listaPendientes.indexWhere((p) => p.idPago == idPago);
-      if (index != -1) {
-        final pago = listaPendientes[index];
-
-        totalCobrado += pago.monto;
-        totalPendiente -= pago.monto;
-
-        listaPendientes.removeAt(index);
-        totalPendientesCount--;
-
-        notifyListeners();
-        checkPendingCount();
-
-        if (listaPendientes.isEmpty && pagePendientes > 0) {
-          getPagosPendientes(page: pagePendientes - 1);
-        } else {
-          getPagosPendientes(page: pagePendientes, notifyLoading: false);
-        }
-      }
-
-      getPagosHistorial(page: 0);
-
-      return null;
-    } catch (e) {
-      return ErrorHandler.extractMessage(e);
-    }
-  }
-
-  Future<String?> deshacerPago(int idPago) async {
-    try {
-      await ApiService.dio.put('$_baseUrl/pagos/$idPago/pendiente');
-
-      final index = listaHistorial.indexWhere((p) => p.idPago == idPago);
-      if (index != -1) {
-        final pago = listaHistorial[index];
-
-        totalCobrado -= pago.monto;
-        totalPendiente += pago.monto;
-
-        listaHistorial.removeAt(index);
-        totalHistorialCount--;
-      }
-
-      getPagosPendientes(page: 0);
-      getPagosHistorial(page: 0);
-      checkPendingCount();
-      _fetchKpis();
-
+      await ApiService.dio.put(
+        '$_baseUrl/pagos/$idPago/confirmar'
+      );
+      
+      final now = DateTime.now();
+      loadData(now, now); 
       return null;
     } catch (e) {
       return ErrorHandler.extractMessage(e);
@@ -301,27 +135,27 @@ class PaymentsProvider extends ChangeNotifier {
 
   Future<List<Pago>> fetchPagosCliente(int idCliente) async {
     try {
-      final response = await ApiService.dio.get('$_baseUrl/pagos/cliente/$idCliente');
-      final List<dynamic> data = response.data;
-      return data.map((e) => Pago.fromJson(e)).toList();
+      final response = await ApiService.dio.get(
+        '$_baseUrl/pagos/cliente/$idCliente',
+        queryParameters: {'size': 500, 'sort': 'fechaPago,desc'},
+      );
+      final rawList = response.data is Map ? (response.data['content'] ?? []) : (response.data ?? []);
+      return (rawList as List).map((json) => Pago.fromJson(json)).toList();
     } catch (e) {
-      debugPrint("Error buscando pagos del cliente: $e");
+      debugPrint('Error fetchPagosCliente: ${ErrorHandler.extractMessage(e)}');
       return [];
     }
   }
 
   void clearAllData() {
-    totalCobrado = 0;
-    totalPendiente = 0;
-    globalPendingCount = 0;
-    listaPendientes = [];
+    historial = [];
+    pendientes = [];
     listaHistorial = [];
-    pagePendientes = 0;
-    pageHistorial = 0;
-    totalPendientesCount = 0;
+    listaPendientes = [];
     totalHistorialCount = 0;
-    currentSearchTerm = '';
+    totalPendientesCount = 0;
     isLoading = false;
+    globalPendingCount = 0;
     notifyListeners();
   }
 }
