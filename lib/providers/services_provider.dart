@@ -29,7 +29,11 @@ class ServicesProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final Map<String, dynamic> params = {};
+      final Map<String, dynamic> params = {
+        'page': currentPage,
+        'size': pageSize,
+      };
+      
       if (filterActive != null) {
         params['activo'] = filterActive;
       }
@@ -40,10 +44,18 @@ class ServicesProvider extends ChangeNotifier {
       );
 
       dynamic rawData = response.data;
-      if (rawData is Map) {
-         rawData = rawData['content'] ?? rawData['data'] ?? rawData['servicios'] ?? [];
+      List<dynamic> listData = [];
+
+      if (rawData is Map && rawData.containsKey('content')) {
+         listData = rawData['content'];
+         totalElements = rawData['totalElements'] ?? listData.length;
+      } else {
+         listData = rawData is Map ? (rawData['data'] ?? rawData['servicios'] ?? []) : rawData;
+         totalElements = listData.length;
       }
-      List<Servicio> tempList = (rawData as List).map((e) => Servicio.fromJson(e)).toList();
+
+      List<Servicio> tempList = listData.map((e) => Servicio.fromJson(e)).toList();
+      
       tempList.sort((a, b) {
         bool aEsSesion = a.sesiones == null;
         bool bEsSesion = b.sesiones == null;
@@ -53,8 +65,8 @@ class ServicesProvider extends ChangeNotifier {
 
         return b.idServicio.compareTo(a.idServicio);
       });
+      
       servicios = tempList;
-      totalElements = servicios.length;
     } catch (e) {
       print('Error cargando servicios: ${ErrorHandler.extractMessage(e)}');
     } finally {
