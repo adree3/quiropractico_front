@@ -9,6 +9,8 @@ class UserAvatarWidget extends StatelessWidget {
   final int profilePictureVersion;
   final double radius;
   final double fontSize;
+  final Color? backgroundColor;
+  final Color? textColor;
 
   const UserAvatarWidget({
     super.key,
@@ -16,10 +18,17 @@ class UserAvatarWidget extends StatelessWidget {
     this.profilePictureVersion = 0,
     this.radius = 20,
     this.fontSize = 16,
+    this.backgroundColor,
+    this.textColor,
   });
 
   @override
   Widget build(BuildContext context) {
+    final effectiveBgColor =
+        backgroundColor ?? AppTheme.primaryColor.withOpacity(0.1);
+    final effectiveTextColor = textColor ??
+        (backgroundColor != null ? Colors.white : AppTheme.primaryColor);
+
     if (usuario == null) {
       return CircleAvatar(
         radius: radius,
@@ -29,13 +38,15 @@ class UserAvatarWidget extends StatelessWidget {
     }
 
     if (usuario!.tieneFotoPerfil) {
-      final photoUrl = '${ApiConfig.baseUrl}/usuarios/${usuario!.idUsuario}/foto-perfil?v=$profilePictureVersion';
+      final photoUrl =
+          '${ApiConfig.baseUrl}/usuarios/${usuario!.idUsuario}/foto-perfil?v=$profilePictureVersion';
       return CircleAvatar(
         radius: radius,
-        backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
-        backgroundImage: NetworkImage(photoUrl, headers: {
-          'Authorization': 'Bearer ${LocalStorage.getToken()}'
-        }),
+        backgroundColor: effectiveBgColor,
+        backgroundImage: NetworkImage(
+          photoUrl,
+          headers: {'Authorization': 'Bearer ${LocalStorage.getToken()}'},
+        ),
       );
     }
 
@@ -46,11 +57,11 @@ class UserAvatarWidget extends StatelessWidget {
 
     return CircleAvatar(
       radius: radius,
-      backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
+      backgroundColor: effectiveBgColor,
       child: Text(
         initials,
         style: TextStyle(
-          color: AppTheme.primaryColor,
+          color: effectiveTextColor,
           fontWeight: FontWeight.bold,
           fontSize: fontSize,
         ),
