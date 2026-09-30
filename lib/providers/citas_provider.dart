@@ -16,7 +16,7 @@ class CitasProvider extends ChangeNotifier {
   StompClient? _stompClient;
   bool _isWsInitialized = false;
 
-  bool isLoading = true;
+  bool isLoading = false;
   String? errorMessage;
   
   // Rastreo de firmas recibidas por WebSocket para evitar problemas de paginación
@@ -99,8 +99,15 @@ class CitasProvider extends ChangeNotifier {
     bool resetPage = false,
     bool notifyLoading = true,
   }) async {
+    // 2. Prevenir llamadas concurrentes
+    if (isLoading && notifyLoading) return;
+
     final token = LocalStorage.getToken();
-    if (token == null) return;
+    if (token == null) {
+      isLoading = false;
+      notifyListeners();
+      return;
+    }
 
     // Inicializar WS si no lo está
     initWebSocket();

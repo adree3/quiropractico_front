@@ -12,6 +12,7 @@ import 'package:go_router/go_router.dart';
 import 'package:quiropractico_front/ui/modals/cita_completar_dialog.dart';
 import 'package:quiropractico_front/models/documento.dart';
 import 'package:quiropractico_front/providers/documentos_provider.dart';
+import 'package:quiropractico_front/providers/citas_provider.dart';
 import 'package:quiropractico_front/config/api_config.dart';
 
 // ──────────────────────────────────────────────────────────
@@ -373,6 +374,7 @@ class _CitaDetalleModalState extends State<CitaDetalleModal> {
                               icon: Icons.payment_outlined,
                               label: 'Método de pago',
                               value: widget.cita.infoPago,
+                              customValue: _buildPaymentChips(widget.cita.infoPago),
                               tooltip: 'Ver pago',
                               onTap: () {
                                 Navigator.pop(context);
@@ -451,6 +453,114 @@ class _CitaDetalleModalState extends State<CitaDetalleModal> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildPaymentChips(String rawInfo) {
+    bool isBono = rawInfo.contains('Bono');
+    bool isFamiliar = rawInfo.startsWith('Bono de ');
+    
+    String title = 'Pago Directo';
+    String? owner;
+    int? left;
+    
+    if (isBono) {
+      if (isFamiliar) {
+        final match = RegExp(r'Bono de (.*?) \(').firstMatch(rawInfo);
+        if (match != null) owner = match.group(1);
+      }
+      
+      final nameMatch = RegExp(r'\((.*?) / quedan').firstMatch(rawInfo);
+      if (nameMatch != null) {
+        title = nameMatch.group(1)!;
+      } else {
+        title = 'Bono';
+      }
+      
+      final leftMatch = RegExp(r'quedan (\d+)').firstMatch(rawInfo);
+      if (leftMatch != null) {
+        left = int.tryParse(leftMatch.group(1)!);
+      }
+    }
+
+    final mainColor = isBono ? Colors.indigo : Colors.teal;
+    final mainIcon = isBono ? Icons.local_activity : Icons.payments_rounded;
+
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          decoration: BoxDecoration(
+            color: mainColor.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: mainColor.withOpacity(0.3)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(mainIcon, size: 16, color: mainColor),
+              const SizedBox(width: 6),
+              Text(
+                title,
+                style: TextStyle(
+                  color: mainColor,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                ),
+              ),
+            ],
+          ),
+        ),
+        
+        if (owner != null)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: Colors.orange.shade50,
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: Colors.orange.shade200),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.family_restroom, size: 14, color: Colors.orange.shade800),
+                const SizedBox(width: 4),
+                Text(
+                  'De $owner',
+                  style: TextStyle(
+                    color: Colors.orange.shade900,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+        if (left != null)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: left == 0 
+                  ? Colors.red.shade100 
+                  : (left <= 2 ? Colors.orange.shade100 : Colors.green.shade100),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              '$left restante${left == 1 ? '' : 's'}',
+              style: TextStyle(
+                color: left == 0 
+                    ? Colors.red.shade900 
+                    : (left <= 2 ? Colors.orange.shade900 : Colors.green.shade900),
+                fontWeight: FontWeight.w900,
+                fontSize: 12,
+              ),
+            ),
+          ),
+      ],
     );
   }
 
@@ -545,8 +655,14 @@ class _CitaDetalleModalState extends State<CitaDetalleModal> {
                 label: 'Ver PDF',
                 icon: Icons.picture_as_pdf_outlined,
                 backgroundColor: Colors.red.shade700,
-                onPressed: () {
-                   debugPrint('Abriendo PDF: ${widget.cita.rutaJustificante}');
+                onPressed: () async {
+                   final provider = Provider.of<CitasProvider>(context, listen: false);
+                   final url = await provider.obtenerUrlJustificante(widget.cita.idCita);
+                   if (url != null && context.mounted) {
+                     await launchUrl(Uri.parse(url));
+                   } else if (context.mounted) {
+                     CustomSnackBar.show(context, message: 'No se pudo obtener el PDF', type: SnackBarType.error);
+                   }
                 },
               ),
             ]
@@ -797,6 +913,7 @@ class _InfoRow extends StatefulWidget {
   final IconData icon;
   final String label;
   final String value;
+  final Widget? customValue;
   final VoidCallback? onTap;
   final String? tooltip;
   final Color? colorValue;
@@ -805,6 +922,7 @@ class _InfoRow extends StatefulWidget {
     required this.icon,
     required this.label,
     required this.value,
+    this.customValue,
     this.onTap,
     this.tooltip,
     this.colorValue,
@@ -858,14 +976,17 @@ class _InfoRowState extends State<_InfoRow> {
                             ),
                           ),
                           const SizedBox(height: 1),
-                          Text(
-                            widget.value,
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                              color: widget.colorValue ?? Colors.black87,
+                          if (widget.customValue != null)
+                            widget.customValue!
+                          else
+                            Text(
+                              widget.value,
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                color: widget.colorValue ?? Colors.black87,
+                              ),
                             ),
-                          ),
                         ],
                       ),
                     ),

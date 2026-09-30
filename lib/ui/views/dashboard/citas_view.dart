@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:quiropractico_front/models/cita.dart';
 import 'package:quiropractico_front/providers/ui_provider.dart';
 import 'package:intl/intl.dart';
 import 'package:quiropractico_front/ui/widgets/hoverable_action_button.dart';
@@ -10,7 +12,7 @@ import 'package:quiropractico_front/ui/modals/cita_modal.dart';
 import 'package:quiropractico_front/ui/modals/cita_detalle_modal.dart';
 import 'package:quiropractico_front/ui/modals/cita_completar_dialog.dart';
 import 'package:go_router/go_router.dart';
-import 'package:quiropractico_front/ui/widgets/paginated_table.dart';
+import 'package:quiropractico_front/ui/widgets/premium_data_table.dart';
 import 'package:quiropractico_front/ui/widgets/avatar_widget.dart';
 import 'package:quiropractico_front/ui/widgets/dashboard_dropdown.dart';
 import 'package:quiropractico_front/ui/widgets/custom_date_range_picker.dart';
@@ -29,13 +31,13 @@ class _CitasViewState extends State<CitasView> {
   Timer? _debounce;
   final searchCtrl = TextEditingController();
   final ScrollController _headerScroll = ScrollController();
-  
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final provider = Provider.of<CitasProvider>(context, listen: false);
-      if (provider.citas.isEmpty && !provider.isLoading) {
+      if (provider.citas.isEmpty) {
         provider.loadCitas();
       }
     });
@@ -71,7 +73,7 @@ class _CitasViewState extends State<CitasView> {
   @override
   Widget build(BuildContext context) {
     final uiProvider = Provider.of<UiProvider>(context);
-        final citasProvider = Provider.of<CitasProvider>(context);
+    final citasProvider = Provider.of<CitasProvider>(context);
     final citas = citasProvider.citas;
     final kpis = citasProvider.kpis;
 
@@ -314,431 +316,38 @@ class _CitasViewState extends State<CitasView> {
                   children: [
                     Expanded(
                       flex: 4,
-                      child: PaginatedTable(
+                      child: PremiumDataTable<Cita>(
+                        items: citas,
                         isLoading: citasProvider.isLoading,
-                        isEmpty: citas.isEmpty,
-                        emptyMessage: "No se encuentran citas con esos filtros",
-                        totalElements: citasProvider.totalElements,
-                        pageSize: citasProvider.pageSize,
-                        currentPage: citasProvider.currentPage,
-                        rowSpacing: 8.0,
-                        hoverElevation: 0.0,
-                        enableSmoothTransitions: true,
-                        onPageChanged: (page) {
-                          citasProvider.setPage(page);
-                        },
-                        columns: const [
-                          DataColumn(
-                            label: Text(
-                              "Id",
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
+                        wrapInCard: true,
+                        columnFlexes: const [1, 2, 3, 2, 2, 2],
+                        columnHeaders: [
+                          _buildHeaderCell("ID"),
+                          _buildHeaderCell("Fecha y Hora"),
+                          _buildHeaderCell("Paciente"),
+                          _buildHeaderCell("Forma de Pago"),
+                          _buildHeaderCell(
+                            "Estado",
+                            alignment: Alignment.centerLeft,
                           ),
-                          DataColumn(
-                            label: Text(
-                              "Fecha y Hora",
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                          DataColumn(
-                            label: Text(
-                              "Paciente",
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                          DataColumn(
-                            label: Text(
-                              "Forma de Pago",
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                          DataColumn(
-                            label: Text(
-                              "Estado",
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                          DataColumn(
-                            label: Text(
-                              "Acciones",
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
+                          _buildHeaderCell(
+                            "Acciones",
+                            alignment: Alignment.centerRight,
                           ),
                         ],
-                        rows:
-                            citas.map((cita) {
-                              String fecha = DateFormat(
-                                'dd/MM/yy, HH:mm',
-                              ).format(cita.fechaHoraInicio);
-                              Color estadoColor;
-                              switch (cita.estado.toLowerCase()) {
-                                case 'programada':
-                                  estadoColor = Colors.blue;
-                                  break;
-                                case 'completada':
-                                  estadoColor = Colors.green;
-                                  break;
-                                case 'cancelada':
-                                  estadoColor = Colors.red;
-                                  break;
-                                case 'ausente':
-                                  estadoColor = Colors.grey;
-                                  break;
-                                default:
-                                  estadoColor = Colors.grey;
-                              }
 
-                              return DataRow(
-                                // Removemos el onSelectChanged global para que no interfiera cuando cliquean el Avatar, WhatsApp o Forma de Pago.
-                                // La navegación al detalle de la cita se hará en un widget específico de la celda u otra zona, pero para
-                                // mantener toda la fila clicable excepto esas áreas, la envolveremos en un detector de gestos si es necesario,
-                                // o dejaremos el onSelectChanged activo y le daremos prioridad a botones. Flutter DataRow prioriza
-                                // InkWell / IconButton hijos sobre onSelectChanged.
-                                onSelectChanged: (_) {
-                                  showDialog(
-                                    context: context,
-                                    builder:
-                                        (context) =>
-                                            CitaDetalleModal(cita: cita),
-                                  ).then((value) {
-                                    if (value == true) {
-                                      citasProvider.loadCitas(
-                                        page: citasProvider.currentPage,
-                                      );
-                                    } else if (value == 'edit') {
-                                      showDialog(
-                                        context: context,
-                                        builder:
-                                            (context) =>
-                                                CitaModal(citaExistente: cita),
-                                      ).then((valEdit) {
-                                        if (valEdit == true) {
-                                          citasProvider.loadCitas(
-                                            page: citasProvider.currentPage,
-                                          );
-                                        }
-                                      });
-                                    }
-                                  });
-                                },
-                                cells: [
-                                  DataCell(
-                                    Tooltip(
-                                      message: "Detalles de la cita",
-                                      child: Text(
-                                        '#${cita.idCita}',
-                                        style: TextStyle(
-                                          color: Colors.grey[400],
-                                          fontWeight: FontWeight.w400,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  DataCell(
-                                    Tooltip(
-                                      message: "Detalles de la cita",
-                                      child: Text(
-                                        fecha,
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  DataCell(
-                                    Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        InkWell(
-                                          onTap:
-                                              () => context.push(
-                                                '/pacientes/${cita.idCliente}',
-                                              ),
-                                          child: AvatarWidget(
-                                            nombreCompleto:
-                                                cita.nombreClienteCompleto,
-                                            id: cita.idCliente,
-                                            radius: 16,
-                                            fontSize: 12,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Expanded(
-                                          child: Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              Flexible(
-                                                child: Tooltip(
-                                                  message:
-                                                      "Detalles de ${cita.nombreClienteCompleto}",
-                                                  child: InkWell(
-                                                    onTap:
-                                                        () => context.push(
-                                                          '/pacientes/${cita.idCliente}',
-                                                        ),
-                                                    child: Text(
-                                                      cita.nombreClienteCompleto,
-                                                      overflow:
-                                                          TextOverflow.ellipsis,
-                                                    ),
-                                                  ),
-                                                ),
-                                              ),
-                                              const SizedBox(width: 4),
-                                              IconButton(
-                                                icon: const FaIcon(
-                                                  FontAwesomeIcons.whatsapp,
-                                                  color: Colors.green,
-                                                  size: 16,
-                                                ),
-                                                padding: EdgeInsets.zero,
-                                                constraints:
-                                                    const BoxConstraints(),
-                                                tooltip: "Abrir WhatsApp",
-                                                onPressed: () {
-                                                  String url =
-                                                      'https://wa.me/34${cita.telefonoCliente.replaceAll(RegExp(r'[^\d]'), '')}';
-                                                  launchUrl(Uri.parse(url));
-                                                },
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  DataCell(
-                                    Tooltip(
-                                      message: "Ver bono utilizado",
-                                      child: InkWell(
-                                        // onTap en InkWell previene que el click burbujee hasta el DataRow.onSelectChanged
-                                        onTap: () {
-                                          context.push(
-                                            '/pacientes/${cita.idBonoCliente ?? cita.idCliente}?tabIndex=1&showBono=true&resaltarCitaId=${cita.idCita}',
-                                          );
-                                        },
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Text(
-                                              _formatPago(
-                                                cita.infoPago,
-                                              ).replaceAll(' (F)', ''),
-                                              style: TextStyle(
-                                                color: Colors.blue,
-                                                fontWeight: FontWeight.w500,
-                                              ),
-                                              maxLines: 2,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                            if (cita.infoPago.contains(
-                                                  'Bono de',
-                                                ) ||
-                                                _formatPago(
-                                                  cita.infoPago,
-                                                ).contains('(F)')) ...[
-                                              const SizedBox(width: 6),
-                                              Tooltip(
-                                                message: "Pagado por familiar",
-                                                child: Container(
-                                                  padding:
-                                                      const EdgeInsets.symmetric(
-                                                        horizontal: 6,
-                                                        vertical: 2,
-                                                      ),
-                                                  decoration: BoxDecoration(
-                                                    color:
-                                                        Colors.orange.shade50,
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          6,
-                                                        ),
-                                                    border: Border.all(
-                                                      color:
-                                                          Colors
-                                                              .orange
-                                                              .shade200,
-                                                    ),
-                                                  ),
-                                                  child: Text(
-                                                    'Fam',
-                                                    style: TextStyle(
-                                                      color:
-                                                          Colors
-                                                              .orange
-                                                              .shade700,
-                                                      fontSize: 10,
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                    ),
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  DataCell(
-                                    Align(
-                                      alignment: Alignment.centerLeft,
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 10,
-                                          vertical: 3,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: estadoColor.withOpacity(0.1),
-                                          borderRadius: BorderRadius.circular(
-                                            12,
-                                          ),
-                                          border: Border.all(
-                                            color: estadoColor,
-                                          ),
-                                        ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Text(
-                                              cita.estado.toUpperCase(),
-                                              style: TextStyle(
-                                                color: estadoColor,
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 11,
-                                              ),
-                                            ),
-                                            if (cita.estado.toLowerCase() == 'completada' && !cita.firmada) ...[
-                                              const SizedBox(width: 6),
-                                              const Tooltip(
-                                                message: "Pendiente de firma",
-                                                child: Icon(
-                                                  Icons.warning_amber_rounded,
-                                                  color: Colors.orange,
-                                                  size: 16,
-                                                ),
-                                              ),
-                                            ] else if (cita.firmada) ...[
-                                              const SizedBox(width: 6),
-                                              const Icon(
-                                                Icons.verified_user_outlined,
-                                                color: Colors.green,
-                                                size: 16,
-                                              ),
-                                            ]
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  DataCell(
-                                    Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Tooltip(
-                                          message: "Ir a Agenda",
-                                          child: IconButton(
-                                            icon: const Icon(
-                                              Icons.calendar_today_outlined,
-                                              color: Colors.blueGrey,
-                                              size: 20,
-                                            ),
-                                            onPressed: () {
-                                              context.go(
-                                                '/agenda?fecha=${cita.fechaHoraInicio.toIso8601String().split('T')[0]}',
-                                              );
-                                            },
-                                          ),
-                                        ),
-                                        Tooltip(
-                                          message: "Editar Cita",
-                                          child: IconButton(
-                                            icon: const Icon(
-                                              Icons.edit_outlined,
-                                              color: Colors.orange,
-                                              size: 20,
-                                            ),
-                                            onPressed: () {
-                                              showDialog(
-                                                context: context,
-                                                builder:
-                                                    (context) => CitaModal(
-                                                      citaExistente: cita,
-                                                    ),
-                                              ).then((value) {
-                                                if (value == true) {
-                                                  citasProvider.loadCitas(
-                                                    page:
-                                                        citasProvider
-                                                            .currentPage,
-                                                  );
-                                                }
-                                              });
-                                            },
-                                          ),
-                                        ),
-                                        if (cita.estado.toLowerCase() == 'completada' && !cita.firmada)
-                                          Tooltip(
-                                            message: "Solicitar Firma en Tablet",
-                                            child: IconButton(
-                                              icon: const Icon(
-                                                Icons.draw_outlined,
-                                                color: Colors.indigo,
-                                                size: 20,
-                                              ),
-                                              onPressed: () async {
-                                                showDialog(
-                                                  context: context,
-                                                  builder: (context) => CitaCompletarDialog(cita: cita),
-                                                ).then((value) {
-                                                  if (value == true) {
-                                                    citasProvider.loadCitas(page: citasProvider.currentPage);
-                                                  }
-                                                });
-                                              },
-                                            ),
-                                          ),
-                                        if (cita.firmada && cita.rutaJustificante != null)
-                                          Tooltip(
-                                            message: "Ver Justificante (PDF)",
-                                            child: IconButton(
-                                              icon: const Icon(
-                                                Icons.picture_as_pdf_outlined,
-                                                color: Colors.red,
-                                                size: 20,
-                                              ),
-                                              onPressed: () async {
-                                                final url = await Provider.of<CitasProvider>(context, listen: false).obtenerUrlJustificante(cita.idCita);
-                                                if (url != null) {
-                                                  launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
-                                                }
-                                              },
-                                            ),
-                                          ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              );
-                            }).toList(),
+                        bottomContent: _buildPaginationControls(
+                          context,
+                          citasProvider,
+                        ),
+                        emptyStateBuilder:
+                            (_) => _buildEmptyState(
+                              citasProvider,
+                              "No se encuentran citas con esos filtros",
+                            ),
+                        rowBuilder: (context, cita, index) {
+                          return _buildRowItem(context, citasProvider, cita);
+                        },
                       ),
                     ),
                     if (showKpis) const SizedBox(width: 20),
@@ -753,6 +362,513 @@ class _CitasViewState extends State<CitasView> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildHeaderCell(
+    String title, {
+    Alignment alignment = Alignment.centerLeft,
+  }) {
+    return Align(
+      alignment: alignment,
+      child: Text(
+        title,
+        style: TextStyle(
+          fontWeight: FontWeight.w600,
+          fontSize: 16,
+          color: Colors.blueGrey.shade800,
+          letterSpacing: 0.2,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(CitasProvider provider, String mensajeVacio) {
+    return Padding(
+      padding: const EdgeInsets.all(48.0),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(18.0),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.calendar_month_outlined,
+                size: 40,
+                color: Colors.blue.shade400,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              mensajeVacio,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey.shade800,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPaginationControls(
+    BuildContext context,
+    CitasProvider provider,
+  ) {
+    if (provider.totalElements <= provider.pageSize &&
+        provider.currentPage == 0) {
+      return const SizedBox.shrink();
+    }
+
+    final int startRecord = (provider.currentPage * provider.pageSize) + 1;
+    final int endRecord = min(
+      (provider.currentPage + 1) * provider.pageSize,
+      provider.totalElements,
+    );
+    final int totalPages = (provider.totalElements / provider.pageSize).ceil();
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: Colors.grey.shade200)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            "Mostrando $startRecord - $endRecord de ${provider.totalElements} registros",
+            style: TextStyle(
+              fontSize: 13,
+              color: Colors.grey[600],
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.chevron_left, size: 20),
+                onPressed:
+                    provider.currentPage > 0 && !provider.isLoading
+                        ? () => provider.setPage(provider.currentPage - 1)
+                        : null,
+                tooltip: "Anterior",
+                splashRadius: 18,
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                child: Text(
+                  "Página ${provider.currentPage + 1} de ${totalPages == 0 ? 1 : totalPages}",
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.chevron_right, size: 20),
+                onPressed:
+                    provider.currentPage < totalPages - 1 && !provider.isLoading
+                        ? () => provider.setPage(provider.currentPage + 1)
+                        : null,
+                tooltip: "Siguiente",
+                splashRadius: 18,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRowItem(
+    BuildContext context,
+    CitasProvider provider,
+    Cita cita,
+  ) {
+    String fecha = DateFormat('dd/MM/yy, HH:mm').format(cita.fechaHoraInicio);
+    Color estadoColor;
+    switch (cita.estado.toLowerCase()) {
+      case 'programada':
+        estadoColor = Colors.blue.shade400;
+        break;
+      case 'completada':
+        estadoColor = Colors.green.shade400;
+        break;
+      case 'cancelada':
+        estadoColor = Colors.red.shade400;
+        break;
+      case 'ausente':
+        estadoColor = Colors.grey.shade400;
+        break;
+      default:
+        estadoColor = Colors.grey.shade400;
+    }
+
+    final bool isInactive =
+        cita.estado.toLowerCase() == 'cancelada' ||
+        cita.estado.toLowerCase() == 'ausente';
+    final Color textColor = isInactive ? Colors.grey : Colors.black87;
+    final TextDecoration? textDecoration =
+        isInactive ? TextDecoration.lineThrough : null;
+
+    return Tooltip(
+      message: "Detalles de la cita",
+      waitDuration: const Duration(milliseconds: 600),
+      child: InkWell(
+        onTap: () {
+          showDialog(
+            context: context,
+            builder: (context) => CitaDetalleModal(cita: cita),
+          ).then((value) {
+            if (value == true) {
+              provider.loadCitas(page: provider.currentPage);
+            } else if (value == 'edit') {
+              showDialog(
+                context: context,
+                builder: (context) => CitaModal(citaExistente: cita),
+              ).then((valEdit) {
+                if (valEdit == true) {
+                  provider.loadCitas(page: provider.currentPage);
+                }
+              });
+            }
+          });
+        },
+        hoverColor: Colors.grey.shade100.withOpacity(0.5),
+        child: Container(
+          decoration: BoxDecoration(
+            border: Border(left: BorderSide(color: estadoColor, width: 4.0)),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 15.68),
+          child: Row(
+            children: [
+              Expanded(
+                flex: 1,
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    '#${cita.idCita}',
+                    style: TextStyle(
+                      fontFamily: 'monospace',
+                      color: Colors.grey[400],
+                      fontWeight: FontWeight.w500,
+                      fontSize: 15,
+                      decoration: textDecoration,
+                    ),
+                  ),
+                ),
+              ),
+              Expanded(
+                flex: 2,
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    fecha,
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                      color: textColor,
+                      decoration: textDecoration,
+                    ),
+                  ),
+                ),
+              ),
+              Expanded(
+                flex: 3,
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      InkWell(
+                        onTap:
+                            () => context.push('/pacientes/${cita.idCliente}'),
+                        child: AvatarWidget(
+                          nombreCompleto: cita.nombreClienteCompleto,
+                          id: cita.idCliente,
+                          radius: 16,
+                          fontSize: 12,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Tooltip(
+                          message: "Detalles de ${cita.nombreClienteCompleto}",
+                          child: InkWell(
+                            onTap:
+                                () => context.push(
+                                  '/pacientes/${cita.idCliente}',
+                                ),
+                            child: Text(
+                              cita.nombreClienteCompleto,
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                              style: TextStyle(
+                                fontSize: 15,
+                                color: textColor,
+                                decoration: textDecoration,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      IconButton(
+                        icon: const FaIcon(
+                          FontAwesomeIcons.whatsapp,
+                          color: Colors.green,
+                          size: 16,
+                        ),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                        tooltip: "Abrir WhatsApp",
+                        onPressed: () {
+                          String url =
+                              'https://wa.me/34${cita.telefonoCliente.replaceAll(RegExp(r'[^\d]'), '')}';
+                          launchUrl(Uri.parse(url));
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              Expanded(
+                flex: 2,
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Tooltip(
+                    message: "Ver bono utilizado",
+                    child: InkWell(
+                      onTap: () {
+                        context.push(
+                          '/pacientes/${cita.idBonoCliente ?? cita.idCliente}?tabIndex=1&showBono=true&resaltarCitaId=${cita.idCita}',
+                        );
+                      },
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Flexible(
+                            child: Text(
+                              _formatPago(cita.infoPago).replaceAll(' (F)', ''),
+                              style: TextStyle(
+                                color: Colors.blue.shade700,
+                                fontWeight: FontWeight.w500,
+                                fontSize: 15,
+                                decoration: textDecoration,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (cita.infoPago.contains('Bono de') ||
+                              _formatPago(cita.infoPago).contains('(F)')) ...[
+                            const SizedBox(width: 6),
+                            Tooltip(
+                              message: "Pagado por familiar",
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.orange.shade50,
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(
+                                    color: Colors.orange.shade200,
+                                  ),
+                                ),
+                                child: Text(
+                                  'Fam',
+                                  style: TextStyle(
+                                    color: Colors.orange.shade700,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              Expanded(
+                flex: 2,
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 3,
+                    ),
+                    decoration: BoxDecoration(
+                      color: estadoColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: estadoColor),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          cita.estado.toUpperCase(),
+                          style: TextStyle(
+                            color: estadoColor,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 11,
+                          ),
+                        ),
+                        if (cita.estado.toLowerCase() == 'completada' &&
+                            !cita.firmada) ...[
+                          const SizedBox(width: 6),
+                          const Tooltip(
+                            message: "Pendiente de firma",
+                            child: Icon(
+                              Icons.warning_amber_rounded,
+                              color: Colors.orange,
+                              size: 16,
+                            ),
+                          ),
+                        ] else if (cita.firmada) ...[
+                          const SizedBox(width: 6),
+                          const Icon(
+                            Icons.verified_user_outlined,
+                            color: Colors.green,
+                            size: 16,
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              Expanded(
+                flex: 2,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (cita.estado.toLowerCase() == 'completada' &&
+                        !cita.firmada) ...[
+                      Tooltip(
+                        message: "Solicitar Firma en Tablet",
+                        child: IconButton(
+                          icon: const Icon(
+                            Icons.draw_outlined,
+                            color: Colors.indigo,
+                            size: 20,
+                          ),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(
+                            minWidth: 32,
+                            minHeight: 32,
+                          ),
+                          onPressed: () async {
+                            showDialog(
+                              context: context,
+                              builder:
+                                  (context) => CitaCompletarDialog(cita: cita),
+                            ).then((value) {
+                              if (value == true) {
+                                provider.loadCitas(page: provider.currentPage);
+                              }
+                            });
+                          },
+                        ),
+                      ),
+                    ],
+                    if (cita.firmada && cita.rutaJustificante != null) ...[
+                      const SizedBox(width: 4),
+                      Tooltip(
+                        message: "Ver Justificante (PDF)",
+                        child: IconButton(
+                          icon: const Icon(
+                            Icons.picture_as_pdf_outlined,
+                            color: Colors.red,
+                            size: 20,
+                          ),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(
+                            minWidth: 32,
+                            minHeight: 32,
+                          ),
+                          onPressed: () async {
+                            final url = await provider.obtenerUrlJustificante(
+                              cita.idCita,
+                            );
+                            if (url != null) {
+                              launchUrl(
+                                Uri.parse(url),
+                                mode: LaunchMode.externalApplication,
+                              );
+                            }
+                          },
+                        ),
+                      ),
+                    ],
+                    const SizedBox(width: 4),
+                    Tooltip(
+                      message: "Ir a Agenda",
+                      child: IconButton(
+                        icon: const Icon(
+                          Icons.calendar_today_outlined,
+                          color: Colors.blueGrey,
+                          size: 20,
+                        ),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(
+                          minWidth: 32,
+                          minHeight: 32,
+                        ),
+                        onPressed: () {
+                          context.go(
+                            '/agenda?fecha=${cita.fechaHoraInicio.toIso8601String().split('T')[0]}',
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Tooltip(
+                      message: "Editar Cita",
+                      child: IconButton(
+                        icon: const Icon(
+                          Icons.edit_outlined,
+                          color: Colors.orange,
+                          size: 20,
+                        ),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(
+                          minWidth: 32,
+                          minHeight: 32,
+                        ),
+                        onPressed: () {
+                          showDialog(
+                            context: context,
+                            builder:
+                                (context) => CitaModal(citaExistente: cita),
+                          ).then((value) {
+                            if (value == true) {
+                              provider.loadCitas(page: provider.currentPage);
+                            }
+                          });
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -808,7 +924,7 @@ class _CitasViewState extends State<CitasView> {
   // WIDGET DEL PANEL LATERAL KPI
   Widget _buildKpiPanel(dynamic kpis, bool isLoading) {
     final uiProvider = Provider.of<UiProvider>(context);
-        return Container(
+    return Container(
       padding: EdgeInsets.all(uiProvider.isCitasSidePanelCollapsed ? 10 : 20),
       decoration: BoxDecoration(
         color: Colors.white,
