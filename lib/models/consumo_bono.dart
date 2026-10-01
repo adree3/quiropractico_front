@@ -8,6 +8,9 @@ class ConsumoBono {
   final String? nombreQuiropractico;
   final String? nombrePaciente;
   final String? estadoCita;
+  final DateTime? fechaHoraFin;
+  final String? notasRecepcion;
+  final bool firmada;
 
   ConsumoBono({
     required this.idConsumo,
@@ -19,6 +22,9 @@ class ConsumoBono {
     this.nombreQuiropractico,
     this.nombrePaciente,
     this.estadoCita,
+    this.fechaHoraFin,
+    this.notasRecepcion,
+    this.firmada = false,
   });
 
   factory ConsumoBono.fromJson(Map<String, dynamic> json) {
@@ -33,6 +39,9 @@ class ConsumoBono {
       nombreQuiropractico: json['nombreQuiropractico'],
       nombrePaciente: json['nombrePaciente'],
       estadoCita: json['estadoCita'],
+      fechaHoraFin: json['fechaHoraFin'] != null ? DateTime.parse(json['fechaHoraFin']) : null,
+      notasRecepcion: json['notasRecepcion'],
+      firmada: json['firmada'] ?? false,
     );
   }
 }

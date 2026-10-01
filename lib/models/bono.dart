@@ -6,6 +6,7 @@ class Bono {
   final DateTime? fechaCaducidad;
   final bool esPagado;
   final DateTime fechaCompra;
+  final bool tieneProximaCita;
 
   Bono({
     required this.idBonoActivo,
@@ -15,6 +16,7 @@ class Bono {
     this.fechaCaducidad,
     this.esPagado = true,
     required this.fechaCompra,
+    this.tieneProximaCita = false,
   });
 
   factory Bono.fromJson(Map<String, dynamic> json) {
@@ -32,6 +34,7 @@ class Bono {
           json['fechaCompra'] != null
               ? DateTime.parse(json['fechaCompra'])
               : DateTime.now(), // Fallback
+      tieneProximaCita: json['tieneProximaCita'] ?? false,
     );
   }
 }
