@@ -13,24 +13,23 @@ class BonosProvider extends ChangeNotifier {
   bool isLoadingMore = false;
   bool hasMore = true;
   int currentPage = 0;
-  int pageSize = 15;
+  int pageSize = 30;
   int totalElements = 0;
 
   String? lastSearch;
   Timer? _debounce;
 
-  Future<void> getHistorial({String? search, bool refresh = false}) async {
+  Future<void> getHistorial({String? search, bool refresh = false, bool silent = false}) async {
     if (refresh) {
       currentPage = 0;
       hasMore = true;
-      bonos.clear();
-      isLoading = true;
+      if (!silent) isLoading = true;
     } else {
       if (!hasMore || isLoadingMore) return;
-      isLoadingMore = true;
+      if (!silent) isLoadingMore = true;
     }
     
-    notifyListeners();
+    if (!silent) notifyListeners();
 
     try {
       final response = await ApiService.dio.get(
@@ -38,6 +37,7 @@ class BonosProvider extends ChangeNotifier {
         queryParameters: {
           'page': currentPage,
           'size': pageSize,
+          'sort': 'idBonoActivo,desc',
           if (search != null && search.isNotEmpty) 'search': search,
         },
       );
@@ -48,7 +48,12 @@ class BonosProvider extends ChangeNotifier {
       totalElements = data['totalElements'];
 
       final newItems = content.map((e) => BonoHistorico.fromJson(e)).toList();
-      bonos.addAll(newItems);
+      
+      if (refresh) {
+        bonos = newItems;
+      } else {
+        bonos.addAll(newItems);
+      }
 
       hasMore = (currentPage + 1) < totalPages;
       if (hasMore) currentPage++;
@@ -58,7 +63,7 @@ class BonosProvider extends ChangeNotifier {
     } finally {
       isLoading = false;
       isLoadingMore = false;
-      notifyListeners();
+      notifyListeners(); // Siempre notificamos al final para actualizar la vista
     }
   }
 

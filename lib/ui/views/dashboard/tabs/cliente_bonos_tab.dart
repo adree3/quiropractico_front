@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:quiropractico_front/config/theme/app_theme.dart';
 import 'package:quiropractico_front/models/bono.dart';
+import 'package:quiropractico_front/models/bono_historico.dart';
 import 'package:quiropractico_front/models/cliente.dart';
 import 'package:quiropractico_front/providers/client_detail_provider.dart';
 import 'package:quiropractico_front/ui/widgets/bono_detalle_modal.dart';
@@ -79,16 +80,21 @@ class _ClienteBonosTabState extends State<ClienteBonosTab> {
 
     if (!mounted) return;
 
-    showDialog(
-      context: context,
-      builder:
-          (ctx) => BonoDetalleModal(
-            bono: targetBono!,
-            nombreCliente:
-                "${widget.cliente.nombre} ${widget.cliente.apellidos}",
-            idCliente: widget.cliente.idCliente,
-            resaltarCitaId: widget.resaltarCitaId,
-          ),
+    BonoDetalleModal.show(
+      context,
+      bono: BonoHistorico(
+        idBonoActivo: targetBono.idBonoActivo,
+        idCliente: widget.cliente.idCliente,
+        nombreCliente: "${widget.cliente.nombre} ${widget.cliente.apellidos}",
+        nombreServicio: targetBono.nombreServicio,
+        sesionesTotales: targetBono.sesionesTotales,
+        sesionesRestantes: targetBono.sesionesRestantes,
+        fechaCompra: targetBono.fechaCompra,
+        fechaCaducidad: targetBono.fechaCaducidad,
+        pagado: targetBono.esPagado,
+        tieneProximaCita: targetBono.tieneProximaCita,
+      ),
+      resaltarCitaId: widget.resaltarCitaId,
     );
   }
 
@@ -157,16 +163,21 @@ class _ClienteBonosTabState extends State<ClienteBonosTab> {
         message: "Toca para ver historial del bono",
         child: InkWell(
           onTap: () {
-            showDialog(
-              context: context,
-              builder:
-                  (ctx) => BonoDetalleModal(
-                    bono: bono,
-                    nombreCliente:
-                        "${widget.cliente.nombre} ${widget.cliente.apellidos}",
-                    idCliente: widget.cliente.idCliente,
-                    resaltarCitaId: widget.resaltarCitaId,
-                  ),
+            BonoDetalleModal.show(
+              context,
+              bono: BonoHistorico(
+                idBonoActivo: bono.idBonoActivo,
+                idCliente: widget.cliente.idCliente,
+                nombreCliente: "${widget.cliente.nombre} ${widget.cliente.apellidos}",
+                nombreServicio: bono.nombreServicio,
+                sesionesTotales: bono.sesionesTotales,
+                sesionesRestantes: bono.sesionesRestantes,
+                fechaCompra: bono.fechaCompra,
+                fechaCaducidad: bono.fechaCaducidad,
+                pagado: bono.esPagado,
+                tieneProximaCita: bono.tieneProximaCita,
+              ),
+              resaltarCitaId: widget.resaltarCitaId,
             );
           },
           borderRadius: BorderRadius.circular(12),
