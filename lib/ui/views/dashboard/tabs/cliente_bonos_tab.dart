@@ -1,13 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import 'package:quiropractico_front/config/theme/app_theme.dart';
-import 'package:quiropractico_front/models/bono.dart';
 import 'package:quiropractico_front/models/bono_historico.dart';
 import 'package:quiropractico_front/models/cliente.dart';
 import 'package:quiropractico_front/providers/client_detail_provider.dart';
 import 'package:quiropractico_front/ui/widgets/bono_detalle_modal.dart';
-import 'package:quiropractico_front/ui/modals/venta_bono_modal.dart';
 import 'package:quiropractico_front/ui/widgets/empty_state.dart';
 import 'package:quiropractico_front/services/api_service.dart';
 import 'package:quiropractico_front/config/api_config.dart';
@@ -34,34 +31,19 @@ class _ClienteBonosTabState extends State<ClienteBonosTab> {
   @override
   void initState() {
     super.initState();
-    // La apertura del modal se evaluará en el build después de cargar datos
   }
 
   Future<void> _abrirPrimerBono(ClientDetailProvider provider) async {
     if (provider.bonos.isEmpty) return;
 
-    if (widget.resaltarCitaId != null) {
-      // Búsqueda silenciosa
-    }
-
-    Bono? targetBono;
+    BonoHistorico? targetBono;
 
     if (widget.resaltarCitaId != null) {
-      // Buscar el bono dueño de la cita consultando sus consumos
       for (final bono in provider.bonos) {
         try {
-          final res = await ApiService.dio.get(
-            '${ApiConfig.baseUrl}/bonos/${bono.idBonoActivo}/consumos',
-          );
-
+          final res = await ApiService.dio.get('${ApiConfig.baseUrl}/bonos/${bono.idBonoActivo}/consumos');
           if (res.data is List) {
-            final list = res.data as List;
-            final hasCita = list.any(
-              (item) =>
-                  item['idCita']?.toString() ==
-                  widget.resaltarCitaId.toString(),
-            );
-
+            final hasCita = (res.data as List).any((item) => item['idCita']?.toString() == widget.resaltarCitaId.toString());
             if (hasCita) {
               targetBono = bono;
               break;
@@ -72,44 +54,22 @@ class _ClienteBonosTabState extends State<ClienteBonosTab> {
     }
 
     if (targetBono == null) {
-      final activeBonos =
-          provider.bonos.where((b) => b.sesionesRestantes > 0).toList();
-      targetBono =
-          activeBonos.isNotEmpty ? activeBonos.first : provider.bonos.first;
+      final activeBonos = provider.bonos.where((b) => b.sesionesRestantes > 0).toList();
+      targetBono = activeBonos.isNotEmpty ? activeBonos.first : provider.bonos.first;
     }
 
     if (!mounted) return;
 
-    BonoDetalleModal.show(
+    await BonoDetalleModal.show(
       context,
-      bono: BonoHistorico(
-        idBonoActivo: targetBono.idBonoActivo,
-        idCliente: widget.cliente.idCliente,
-        nombreCliente: "${widget.cliente.nombre} ${widget.cliente.apellidos}",
-        nombreServicio: targetBono.nombreServicio,
-        sesionesTotales: targetBono.sesionesTotales,
-        sesionesRestantes: targetBono.sesionesRestantes,
-        fechaCompra: targetBono.fechaCompra,
-        fechaCaducidad: targetBono.fechaCaducidad,
-        pagado: targetBono.esPagado,
-        tieneProximaCita: targetBono.tieneProximaCita,
-      ),
+      bono: targetBono,
       resaltarCitaId: widget.resaltarCitaId,
     );
-  }
-
-  void _mostrarVentaBono(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => VentaBonoModal(cliente: widget.cliente),
-    ).then((val) {
-      if (val == true) {
-        Provider.of<ClientDetailProvider>(
-          context,
-          listen: false,
-        ).loadFullData(widget.cliente.idCliente);
-      }
-    });
+    
+    if (mounted) {
+      provider.refreshBonos(silent: true);
+      provider.refreshCitas(silent: true);
+    }
   }
 
   Widget _buildSectionHeader(String title) {
@@ -127,8 +87,7 @@ class _ClienteBonosTabState extends State<ClienteBonosTab> {
     );
   }
 
-  Widget _buildBonoCard(BuildContext context, Bono bono) {
-    // Calcular porcentaje de uso
+  Widget _buildBonoCard(BuildContext context, BonoHistorico bono) {
     double porcentaje = 0.0;
     if (bono.sesionesTotales > 0) {
       porcentaje = bono.sesionesRestantes / bono.sesionesTotales;
@@ -142,153 +101,100 @@ class _ClienteBonosTabState extends State<ClienteBonosTab> {
 
     String textoSesiones;
     if (bono.sesionesTotales == 1) {
-      if (bono.sesionesRestantes == 1) {
-        textoSesiones = "Sesión única disponible";
-      } else {
-        textoSesiones = "Sesión única consumida";
-      }
+      textoSesiones = bono.sesionesRestantes == 1 ? "Sesión única disponible" : "Sesión única consumida";
     } else {
-      textoSesiones =
-          "${bono.sesionesRestantes} de ${bono.sesionesTotales} sesiones disponibles";
+      textoSesiones = "${bono.sesionesRestantes} de ${bono.sesionesTotales} sesiones disponibles";
     }
 
     return Card(
-      elevation: 2,
+      elevation: 0,
+      color: Colors.white,
       margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: BorderSide(color: Colors.grey.shade200),
       ),
+      clipBehavior: Clip.antiAlias,
       child: Tooltip(
         message: "Toca para ver historial del bono",
         child: InkWell(
-          onTap: () {
-            BonoDetalleModal.show(
+          onTap: () async {
+            await BonoDetalleModal.show(
               context,
-              bono: BonoHistorico(
-                idBonoActivo: bono.idBonoActivo,
-                idCliente: widget.cliente.idCliente,
-                nombreCliente: "${widget.cliente.nombre} ${widget.cliente.apellidos}",
-                nombreServicio: bono.nombreServicio,
-                sesionesTotales: bono.sesionesTotales,
-                sesionesRestantes: bono.sesionesRestantes,
-                fechaCompra: bono.fechaCompra,
-                fechaCaducidad: bono.fechaCaducidad,
-                pagado: bono.esPagado,
-                tieneProximaCita: bono.tieneProximaCita,
-              ),
+              bono: bono,
               resaltarCitaId: widget.resaltarCitaId,
             );
+            if (context.mounted) {
+              final provider = Provider.of<ClientDetailProvider>(context, listen: false);
+              provider.refreshBonos(silent: true);
+              provider.refreshCitas(silent: true);
+            }
           },
-          borderRadius: BorderRadius.circular(12),
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
+          child: IntrinsicHeight(
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    Icons.card_membership,
-                    color: statusColor,
-                    size: 28,
-                  ),
-                ),
-                const SizedBox(width: 16),
+                Container(width: 4, color: statusColor),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      RichText(
-                        text: TextSpan(
-                          children: [
-                            TextSpan(
-                              text: bono.nombreServicio,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                                color: Colors.black87,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(color: statusColor.withOpacity(0.1), shape: BoxShape.circle),
+                          child: Icon(Icons.card_membership, color: statusColor, size: 28),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              RichText(
+                                text: TextSpan(
+                                  children: [
+                                    TextSpan(text: bono.nombreServicio, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black87)),
+                                    TextSpan(text: "  Ref: #${bono.idBonoActivo}", style: TextStyle(color: Colors.grey.shade400, fontSize: 13)),
+                                  ],
+                                ),
                               ),
-                            ),
-                            TextSpan(
-                              text: "  Ref: #${bono.idBonoActivo}",
-                              style: TextStyle(
-                                color: Colors.grey.shade400,
-                                fontSize: 13,
-                                fontWeight: FontWeight.normal,
+                              const SizedBox(height: 4),
+                              Text(textoSesiones, style: TextStyle(color: Colors.grey.shade700, fontWeight: FontWeight.w500, fontSize: 13)),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  Text("Comprado el ${DateFormat('dd/MM/yyyy').format(bono.fechaCompra)}", style: TextStyle(color: Colors.grey.shade500, fontSize: 12)),
+                                  if (bono.monto != null) ...[
+                                    const SizedBox(width: 8),
+                                    Text("•", style: TextStyle(color: Colors.grey.shade400)),
+                                    const SizedBox(width: 8),
+                                    Text("${bono.monto!.toStringAsFixed(2)} €", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.black87)),
+                                  ]
+                                ]
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        textoSesiones,
-                        style: TextStyle(
-                          color: Colors.grey.shade700,
-                          fontWeight: FontWeight.w500,
-                          fontSize: 13,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        "Comprado el ${DateFormat('dd/MM/yyyy').format(bono.fechaCompra)}",
-                        style: TextStyle(
-                          color: Colors.grey.shade500,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
+                        if (!(bono.pagado))
+                          Container(
+                            margin: const EdgeInsets.only(right: 8),
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.red.shade200)),
+                            child: Text("PENDIENTE DE PAGO", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.red.shade700)),
+                          )
+                        else
+                          Container(
+                            margin: const EdgeInsets.only(right: 8),
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(color: statusColor.withOpacity(0.1), borderRadius: BorderRadius.circular(8), border: Border.all(color: statusColor.withOpacity(0.3))),
+                            child: Text(isActive ? "ACTIVO" : "AGOTADO", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: statusColor)),
+                          ),
+                        Icon(Icons.chevron_right, color: Colors.grey.shade400),
+                      ],
+                    ),
                   ),
                 ),
-                // Chip de pagado
-                if (!bono.esPagado)
-                  Container(
-                    margin: const EdgeInsets.only(right: 8),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.red.shade100,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.red.shade300),
-                    ),
-                    child: Text(
-                      "PENDIENTE",
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.red.shade800,
-                      ),
-                    ),
-                  )
-                else
-                  // Opcional: Mostrar "PAGADO" o solo mostrar si es pendiente para no ensuciar
-                  Container(
-                    margin: const EdgeInsets.only(right: 8),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.green.shade50,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.green.shade200),
-                    ),
-                    child: Text(
-                      "PAGADO",
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.green.shade800,
-                      ),
-                    ),
-                  ),
-                Icon(Icons.chevron_right, color: Colors.grey.shade400),
               ],
             ),
           ),
@@ -300,74 +206,43 @@ class _ClienteBonosTabState extends State<ClienteBonosTab> {
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<ClientDetailProvider>(context);
-    final bonosActivos =
-        provider.bonos.where((b) => b.sesionesRestantes > 0).toList();
-    final bonosConsumidos =
-        provider.bonos.where((b) => b.sesionesRestantes == 0).toList();
+    final bonosActivos = provider.bonos.where((b) => b.sesionesRestantes > 0).toList();
+    final bonosConsumidos = provider.bonos.where((b) => b.sesionesRestantes == 0).toList();
 
-    // Auto-abrir modal de bono si se solicita
-    if (widget.showBono &&
-        !_dialogShown &&
-        !provider.isLoading &&
-        provider.bonos.isNotEmpty) {
+    if (widget.showBono && !_dialogShown && !provider.isLoading && provider.bonos.isNotEmpty) {
       _dialogShown = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _abrirPrimerBono(provider);
       });
     }
 
-    return Stack(
-      children: [
-        if (provider.bonos.isEmpty)
-          EmptyStateWidget(
-            icon: Icons.card_membership,
-            title: "Sin bonos contratados",
-            subtitle: "El paciente no tiene bonos activos ni historial.",
-            action: ElevatedButton.icon(
-              onPressed: () => _mostrarVentaBono(context),
-              icon: const Icon(Icons.add_card),
-              label: const Text("Vender Nuevo Bono"),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryColor,
-                foregroundColor: Colors.white,
-              ),
-            ),
-          )
-        else
-          RefreshIndicator(
-            onRefresh: () async {
-              await provider.loadFullData(widget.cliente.idCliente);
-            },
-            child: ListView(
-              padding: const EdgeInsets.only(bottom: 80),
-              children: [
-                if (bonosActivos.isNotEmpty) ...[
-                  _buildSectionHeader("Bonos Activos"),
-                  ...bonosActivos.map((bono) => _buildBonoCard(context, bono)),
-                ],
-                if (bonosConsumidos.isNotEmpty) ...[
-                  if (bonosActivos.isNotEmpty)
-                    const Divider(height: 30, thickness: 1),
-                  _buildSectionHeader("Historial de Bonos"),
-                  ...bonosConsumidos.map(
-                    (bono) => _buildBonoCard(context, bono),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        Positioned(
-          bottom: 16,
-          right: 16,
-          child: FloatingActionButton.extended(
-            onPressed: () => _mostrarVentaBono(context),
-            icon: const Icon(Icons.add_card),
-            label: const Text("Vender Bono"),
-            backgroundColor: Colors.green,
-            foregroundColor: Colors.white,
-          ),
-        ),
-      ],
+    if (provider.bonos.isEmpty) {
+      return const EmptyStateWidget(
+        icon: Icons.card_membership,
+        title: "Sin bonos contratados",
+        subtitle: "El paciente no tiene bonos activos ni historial.",
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: () async {
+        await provider.loadFullData(widget.cliente.idCliente);
+      },
+      child: ListView(
+        padding: const EdgeInsets.only(bottom: 20),
+        children: [
+          if (bonosActivos.isNotEmpty) ...[
+            _buildSectionHeader("Bonos Activos"),
+            ...bonosActivos.map((bono) => _buildBonoCard(context, bono)),
+          ],
+          if (bonosConsumidos.isNotEmpty) ...[
+            if (bonosActivos.isNotEmpty)
+              const Divider(height: 30, thickness: 1),
+            _buildSectionHeader("Historial de Bonos"),
+            ...bonosConsumidos.map((bono) => _buildBonoCard(context, bono)),
+          ],
+        ],
+      ),
     );
   }
 }

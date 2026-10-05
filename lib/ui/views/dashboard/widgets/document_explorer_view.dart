@@ -180,7 +180,7 @@ class _DocumentExplorerViewState extends State<DocumentExplorerView> {
         final isUploading = !isPapelera && provider.isUploading;
 
         return Scaffold(
-          backgroundColor: Colors.grey.shade50,
+          backgroundColor: Colors.transparent,
           appBar: AppBar(
             backgroundColor: Colors.white,
             elevation: 0,

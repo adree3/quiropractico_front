@@ -129,16 +129,9 @@ class _FolderCardState extends State<_FolderCard> {
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: _hovering
-                  ? widget.carpeta.color.withOpacity(0.35)
+                  ? Colors.blue.shade300
                   : Colors.grey.shade200,
             ),
-            boxShadow: [
-              BoxShadow(
-                color: widget.carpeta.color.withOpacity(_hovering ? 0.18 : 0.06),
-                blurRadius: _hovering ? 20 : 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
           ),
           child: InkWell(
             onTap: widget.onTap,

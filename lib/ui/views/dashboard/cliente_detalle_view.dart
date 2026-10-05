@@ -6,10 +6,11 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:quiropractico_front/config/theme/app_theme.dart';
 import 'package:quiropractico_front/providers/client_detail_provider.dart';
-import 'package:quiropractico_front/providers/clients_provider.dart';
 import 'package:quiropractico_front/ui/modals/client_modal.dart';
 import 'package:quiropractico_front/ui/modals/cita_detalle_modal.dart';
 import 'package:quiropractico_front/ui/modals/cita_modal.dart';
+import 'package:quiropractico_front/ui/modals/venta_bono_modal.dart';
+import 'package:quiropractico_front/ui/widgets/bono_detalle_modal.dart';
 import 'package:quiropractico_front/ui/views/dashboard/tabs/cliente_bonos_tab.dart';
 import 'package:quiropractico_front/ui/views/dashboard/tabs/cliente_citas_tab.dart';
 import 'package:quiropractico_front/ui/views/dashboard/tabs/cliente_archivos_tab.dart';
@@ -103,12 +104,8 @@ class _ContentState extends State<_Content>
     }
 
     final cliente = provider.cliente!;
-    final bonosActivos =
-        provider.bonos.where((b) => b.sesionesRestantes > 0).length;
-    final saldoSesiones = provider.bonos.fold(
-      0,
-      (sum, b) => sum + b.sesionesRestantes,
-    );
+    final bonosActivos = provider.bonos.where((b) => b.sesionesRestantes > 0).length;
+    final saldoSesiones = provider.bonos.fold(0, (sum, b) => sum + b.sesionesRestantes);
     final bool isDeleted = !cliente.activo;
 
     return Column(
@@ -130,115 +127,280 @@ class _ContentState extends State<_Content>
             ),
             const SizedBox(width: 10),
             const Text(
-              "Detalles del Paciente",
+              "Expediente del Paciente",
               style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
           ],
         ),
+        const SizedBox(height: 16),
 
-        // Card info cliente
-        Card(
-          elevation: 2,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(15),
+        // Flat Desktop Header
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: Colors.grey.shade300, width: 1),
           ),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(24, 20, 8, 20),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                AvatarWidget(
-                  nombreCompleto: cliente.nombre,
-                  id: cliente.idCliente,
-                  radius: 35,
-                  fontSize: 28,
-                ),
-                const SizedBox(width: 25),
-
-                // Datos del Cliente
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Fila Superior (Identidad + Acciones)
+              Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    AvatarWidget(
+                      nombreCompleto: cliente.nombre,
+                      id: cliente.idCliente,
+                      radius: 35,
+                      fontSize: 28,
+                    ),
+                    const SizedBox(width: 20),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Flexible(
-                            child: Text(
-                              "${cliente.nombre} ${cliente.apellidos}",
-                              style: TextStyle(
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                                decoration:
-                                    isDeleted
-                                        ? TextDecoration.lineThrough
-                                        : null,
-                                color: isDeleted ? Colors.grey : Colors.black87,
+                          Row(
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  "${cliente.nombre} ${cliente.apellidos}",
+                                  style: TextStyle(
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.bold,
+                                    color: isDeleted ? Colors.grey : Colors.black87,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
+                              if (isDeleted) ...[
+                                const SizedBox(width: 10),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(4),
+                                    border: Border.all(color: Colors.red),
+                                  ),
+                                  child: const Text(
+                                    "BAJA",
+                                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.red),
+                                  ),
+                                ),
+                              ],
+                              const SizedBox(width: 8),
+                              Text(
+                                '#${cliente.idCliente}',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey[400],
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 10),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color:
-                                  isDeleted
-                                      ? Colors.red.withOpacity(0.1)
-                                      : Colors.green.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(4),
-                              border: Border.all(
-                                color: isDeleted ? Colors.red : Colors.green,
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              Tooltip(
+                                message: "Abrir WhatsApp",
+                                child: InkWell(
+                                  onTap: () => _lanzarWhatsApp(context, cliente.telefono),
+                                  borderRadius: BorderRadius.circular(4),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const FaIcon(FontAwesomeIcons.whatsapp, size: 14, color: Colors.green),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          cliente.telefono,
+                                          style: const TextStyle(color: Colors.blueGrey, fontWeight: FontWeight.w600, fontSize: 13),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
                               ),
-                            ),
-                            child: Text(
-                              isDeleted ? "BAJA" : "ACTIVO",
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                                color: isDeleted ? Colors.red : Colors.green,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            '#${cliente.idCliente}',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey[400],
-                              fontWeight: FontWeight.w500,
-                            ),
+                              if (cliente.email != null && cliente.email!.isNotEmpty) ...[
+                                const SizedBox(width: 12),
+                                _EmailCopyRow(email: cliente.email!),
+                              ],
+                            ],
                           ),
                         ],
                       ),
-                      const SizedBox(height: 5),
-                      Tooltip(
-                        message: "Abrir WhatsApp",
-                        child: InkWell(
-                          onTap:
-                              () => _lanzarWhatsApp(context, cliente.telefono),
-                          borderRadius: BorderRadius.circular(5),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              vertical: 4,
-                              horizontal: 2,
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const FaIcon(
-                                  FontAwesomeIcons.whatsapp,
-                                  size: 16,
-                                  color: Colors.green,
+                    ),
+                    const SizedBox(width: 10),
+                    // Botones Sutiles
+                    Row(
+                      children: [
+                        IconButton(
+                          onPressed: () async {
+                            final refresh = await showDialog(
+                              context: context,
+                              builder: (_) => ClientModal(clienteExistente: cliente),
+                            );
+                            if (refresh == true) {
+                              await provider.refreshCliente(silent: false);
+                              if (context.mounted) {
+                                CustomSnackBar.show(context, message: "Paciente actualizado", type: SnackBarType.success);
+                              }
+                            }
+                          },
+                          icon: const Icon(Icons.edit, color: Colors.blueGrey),
+                          tooltip: "Editar",
+                        ),
+                        IconButton(
+                          onPressed: () async {
+                            final nombreCompleto = "${cliente.nombre} ${cliente.apellidos}";
+                            if (!isDeleted) {
+                              final confirm = await showDialog<bool>(
+                                context: context,
+                                builder: (context) => DeleteConfirmDialog(
+                                  title: '¿Eliminar Paciente?',
+                                  content: '¿Estás seguro de que deseas eliminar al paciente "$nombreCompleto"?',
                                 ),
-                                const SizedBox(width: 5),
-                                Text(
-                                  cliente.telefono,
-                                  style: const TextStyle(
-                                    color: Colors.blueGrey,
-                                    fontWeight: FontWeight.w600,
+                              );
+                              if (confirm != true) return;
+                            }
+                            String? err;
+                            if (isDeleted) {
+                              err = await provider.recoverClient(cliente.idCliente);
+                            } else {
+                              err = await provider.deleteClient(cliente.idCliente);
+                            }
+                            if (err == null) {
+                              if (context.mounted) {
+                                CustomSnackBar.show(
+                                  context,
+                                  message: !isDeleted ? "Paciente $nombreCompleto eliminado" : "Paciente $nombreCompleto reactivado",
+                                  type: SnackBarType.success,
+                                );
+                              }
+                            } else {
+                              if (context.mounted) {
+                                CustomSnackBar.show(context, message: err, type: SnackBarType.error);
+                              }
+                            }
+                          },
+                          icon: Icon(isDeleted ? Icons.restore : Icons.delete, color: isDeleted ? Colors.green : Colors.red),
+                          tooltip: isDeleted ? "Reactivar Paciente" : "Eliminar",
+                        ),
+                      ],
+                    ),
+                    const SizedBox(width: 20),
+                    // Acciones Principales
+                    Row(
+                      children: [
+                        ElevatedButton.icon(
+                          onPressed: () async {
+                            final refresh = await showDialog(
+                              context: context,
+                              builder: (_) => CitaModal(preSelectedClient: cliente),
+                            );
+                            if (refresh == true) {
+                              provider.refreshCitas(silent: false);
+                              provider.refreshBonos(silent: false);
+                            }
+                          },
+                          icon: const Icon(Icons.calendar_today, size: 16),
+                          label: const Text("Agendar Cita"),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.primaryColor,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        ElevatedButton.icon(
+                          onPressed: () async {
+                            final refresh = await showDialog(
+                              context: context,
+                              builder: (_) => VentaBonoModal(cliente: cliente),
+                            );
+                            if (refresh == true) {
+                              provider.refreshBonos(silent: false);
+                            }
+                          },
+                          icon: const Icon(Icons.card_membership, size: 16),
+                          label: const Text("Vender Bono"),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              Divider(height: 1, color: Colors.grey.shade200),
+              // Fila Inferior (Resumen Clínico-Financiero)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(8),
+                          onTap: () async {
+                            if (cliente.proximaCita != null) {
+                              await showDialog(
+                                context: context,
+                                builder: (_) => CitaDetalleModal(cita: cliente.proximaCita!),
+                              );
+                              if (context.mounted) {
+                                provider.refreshCliente(silent: true);
+                                provider.refreshCitas(silent: true);
+                              }
+                            } else {
+                              final refresh = await showDialog(
+                                context: context,
+                                builder: (_) => CitaModal(preSelectedClient: cliente),
+                              );
+                              if (refresh == true && context.mounted) {
+                                provider.refreshCliente(silent: true);
+                                provider.refreshCitas(silent: true);
+                              }
+                            }
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.all(4.0),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: cliente.proximaCita != null ? Colors.purple.withOpacity(0.1) : Colors.orange.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Icon(
+                                    cliente.proximaCita != null ? Icons.event_available : Icons.event_busy,
+                                    color: cliente.proximaCita != null ? Colors.purple : Colors.orange,
+                                    size: 20,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text("Próxima Cita", style: TextStyle(fontSize: 12, color: Colors.grey.shade600, fontWeight: FontWeight.bold)),
+                                      Text(
+                                        cliente.proximaCita != null ? DateFormat('d MMM - HH:mm', 'es').format(cliente.proximaCita!.fechaHoraInicio) : "Sin cita programada",
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 14,
+                                          color: cliente.proximaCita != null ? Colors.purple.shade700 : Colors.orange.shade700,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ],
@@ -246,275 +408,199 @@ class _ContentState extends State<_Content>
                           ),
                         ),
                       ),
-                      // Email (si existe) con copia al portapapeles
-                      if (cliente.email != null &&
-                          cliente.email!.isNotEmpty) ...[
-                        const SizedBox(height: 4),
-                        _EmailCopyRow(email: cliente.email!),
-                      ],
-                      const SizedBox(height: 15),
-                      // Stats Chips Mejorados
-                      SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                          children: [
-                            _StatChip(
-                              label: "Citas programadas",
-                              value: (cliente.citasPendientes ?? 0).toString(),
-                              icon: Icons.calendar_month,
-                              color: Colors.blue,
-                              tooltip:
-                                  "Ver historial de citas de ${cliente.nombre}",
-                              onTap: () => _tabController.animateTo(0),
+                    ),
+                    Expanded(
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(8),
+                          onTap: () {
+                            _tabController.animateTo(1);
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.all(4.0),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(color: Colors.blue.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+                                  child: const Icon(Icons.card_membership, color: Colors.blue, size: 20),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text("Bonos / Sesiones", style: TextStyle(fontSize: 12, color: Colors.grey.shade600, fontWeight: FontWeight.bold)),
+                                      Text(
+                                        "$bonosActivos activos · $saldoSesiones disp.",
+                                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: Colors.black87),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
                             ),
-                            const SizedBox(width: 15),
-                            _StatChip(
-                              label: "Bonos activos",
-                              value: bonosActivos.toString(),
-                              icon: Icons.card_membership,
-                              color: Colors.orange,
-                              tooltip: "Ver cartera de bonos activos",
-                              onTap: () => _tabController.animateTo(1),
-                            ),
-                            const SizedBox(width: 15),
-                            _StatChip(
-                              label: "Saldo de bonos",
-                              value: saldoSesiones.toString(),
-                              icon: Icons.account_balance_wallet,
-                              color: Colors.green,
-                              tooltip: "Total de sesiones disponibles en bonos",
-                              onTap: () => _tabController.animateTo(1),
-                            ),
-                            const SizedBox(width: 15),
-                            // CHIP PRÓXIMA CITA
-                            _StatChip(
-                              label:
-                                  provider.proximaCita != null
-                                      ? "Próxima Cita"
-                                      : "Crear Cita",
-                              value:
-                                  provider.proximaCita != null
-                                      ? DateFormat(
-                                        'd MMM - HH:mm',
-                                        'es',
-                                      ).format(
-                                        provider.proximaCita!.fechaHoraInicio,
-                                      )
-                                      : "Sin agendar",
-                              valueFontSize:
-                                  provider.proximaCita != null ? 14 : 16,
-                              icon:
-                                  provider.proximaCita != null
-                                      ? Icons.event_available
-                                      : Icons.calendar_today,
-                              color:
-                                  provider.proximaCita != null
-                                      ? Colors.purple
-                                      : Colors.red.shade300,
-                              tooltip:
-                                  provider.proximaCita != null
-                                      ? "Ver detalles de la próxima cita"
-                                      : "Sin citas futuras. Pulsa para agendar.",
-                              onTap: () async {
-                                final proxima = provider.proximaCita;
-                                if (proxima != null) {
-                                  final result = await showDialog(
-                                    context: context,
-                                    builder:
-                                        (_) => CitaDetalleModal(cita: proxima),
-                                  );
-
-                                  // Si hubo cambios en la cita próxima
-                                  if (result == true || result == 'edit') {
-                                    debugPrint(
-                                      "DEBUG: StatChip interaction returned changed. Reloading...",
-                                    );
-                                    provider.loadFullData(cliente.idCliente);
-                                    if (context.mounted) {
-                                      Provider.of<ClientsProvider>(
-                                        context,
-                                        listen: false,
-                                      ).reloadClient(cliente.idCliente);
-                                    }
-                                  } else {
-                                    // Si solo se cerró, intentamos recargar por si acaso (comportamiento original)
-                                    // pero idealmente deberíamos respetar el result.
-                                    // Dejamos carga solo si el usuario hizo algo, para evitar parpadeos.
-                                    // Pero como el código anterior forzaba carga, y "proximaCita" puede haber cambiado...
-                                    // Mejor: Si result es null, NO recargar (fix duplicación/parpadeo).
-                                  }
-                                  if (result == 'edit' && context.mounted) {
-                                    final editResult = await showDialog(
-                                      context: context,
-                                      builder:
-                                          (_) =>
-                                              CitaModal(citaExistente: proxima),
-                                    );
-                                    if (editResult == true && context.mounted) {
-                                      provider.loadFullData(cliente.idCliente);
-                                      Provider.of<ClientsProvider>(
-                                        context,
-                                        listen: false,
-                                      ).reloadClient(cliente.idCliente);
-                                    }
-                                  }
-                                } else {
-                                  final refresh = await showDialog(
-                                    context: context,
-                                    builder:
-                                        (_) => CitaModal(
-                                          preSelectedClient: cliente,
-                                        ),
-                                  );
-                                  if (refresh == true) {
-                                    provider.loadFullData(cliente.idCliente);
-                                    if (context.mounted) {
-                                      Provider.of<ClientsProvider>(
-                                        context,
-                                        listen: false,
-                                      ).reloadClient(cliente.idCliente);
-                                    }
-                                  }
-                                }
-                              },
-                            ),
-                          ],
+                          ),
                         ),
                       ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Row(
-                  children: [
-                    IconButton(
-                      onPressed: () async {
-                        final refresh = await showDialog(
-                          context: context,
-                          builder:
-                              (_) => ClientModal(clienteExistente: cliente),
-                        );
-
-                        if (refresh == true) {
-                          await provider.refreshClient();
-                          if (context.mounted) {
-                            CustomSnackBar.show(
-                              context,
-                              message: "Paciente actualizado",
-                              type: SnackBarType.success,
-                            );
-                          }
-                        }
-                      },
-                      icon: const Icon(
-                        Icons.edit,
-                        color: Colors.blue,
-                        size: 28,
-                      ),
-                      tooltip: "Editar",
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
                     ),
-                    const SizedBox(width: 8),
-                    IconButton(
-                      onPressed: () async {
-                        final nombreCompleto = "${cliente.nombre} ${cliente.apellidos}";
-                        
-                        if (!isDeleted) {
-                          final confirm = await showDialog<bool>(
-                            context: context,
-                            builder: (context) => DeleteConfirmDialog(
-                              title: '¿Eliminar Paciente?',
-                              content: '¿Estás seguro de que deseas eliminar al paciente "$nombreCompleto"?',
+                    Expanded(
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(8),
+                          onTap: () {
+                            _tabController.animateTo(0);
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.all(4.0),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(color: Colors.green.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+                                  child: const Icon(Icons.history, color: Colors.green, size: 20),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text("${cliente.citasCompletadas} completadas", style: TextStyle(fontSize: 12, color: Colors.black87, fontWeight: FontWeight.bold)),
+                                      Text(
+                                        "${cliente.citasAusentes} ausencias · ${cliente.citasCanceladas} canceladas",
+                                        style: TextStyle(fontWeight: FontWeight.w500, fontSize: 12, color: Colors.grey.shade600),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
                             ),
-                          );
-                          if (confirm != true) return;
-                        }
-
-                        String? err;
-                        if (isDeleted) {
-                          err = await provider.recoverClient(cliente.idCliente);
-                        } else {
-                          err = await provider.deleteClient(cliente.idCliente);
-                        }
-
-                        if (err == null) {
-                          if (context.mounted) {
-                            CustomSnackBar.show(
-                              context,
-                              message:
-                                  !isDeleted
-                                      ? "Paciente $nombreCompleto eliminado"
-                                      : "Paciente $nombreCompleto reactivado",
-                              type: SnackBarType.success,
-                            );
-                          }
-                        } else {
-                          if (context.mounted) {
-                            CustomSnackBar.show(
-                              context,
-                              message: err,
-                              type: SnackBarType.error,
-                            );
-                          }
-                        }
-                      },
-                      icon: Icon(
-                        isDeleted ? Icons.restore : Icons.delete,
-                        color: isDeleted ? Colors.green : Colors.red,
-                        size: 28,
+                          ),
+                        ),
                       ),
-                      tooltip: isDeleted ? "Reactivar Paciente" : "Eliminar",
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
                     ),
-                    const SizedBox(width: 10),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 20),
-
-        // Tabs
-        Expanded(
-          child: Column(
-            children: [
-              TabBar(
-                controller: _tabController,
-                labelColor: AppTheme.primaryColor,
-                unselectedLabelColor: Colors.grey,
-                indicatorColor: AppTheme.primaryColor,
-                labelStyle: const TextStyle(fontWeight: FontWeight.bold),
-                tabs: const [
-                  Tab(text: "Historial de Citas", icon: Icon(Icons.history)),
-                  Tab(
-                    text: "Cartera de Bonos",
-                    icon: Icon(Icons.card_membership),
-                  ),
-                  Tab(text: "Familiares", icon: Icon(Icons.family_restroom)),
-                  Tab(text: "Archivos", icon: Icon(Icons.folder_open)),
-                ],
-              ),
-              const SizedBox(height: 10),
-              Expanded(
-                child: TabBarView(
-                  controller: _tabController,
-                  physics: const NeverScrollableScrollPhysics(),
-                  children: [
-                    ClienteCitasTab(cliente: cliente),
-                    ClienteBonosTab(
-                      cliente: cliente,
-                      showBono: widget.showBono,
-                      resaltarCitaId: widget.resaltarCitaId,
+                    Expanded(
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(8),
+                          onTap: () {
+                            if (cliente.deudaPendiente > 0) {
+                              final impagados = provider.bonos.where((b) => !(b.pagado ?? true)).toList();
+                              if (impagados.length == 1 && cliente.pagosPendientesCount <= 1) {
+                                BonoDetalleModal.show(context, bono: impagados.first).then((_) {
+                                  provider.refreshCliente(silent: true);
+                                  provider.refreshBonos(silent: true);
+                                });
+                              } else {
+                                _tabController.animateTo(1);
+                                CustomSnackBar.show(
+                                  context,
+                                  message: 'Selecciona el bono que deseas cobrar',
+                                  type: SnackBarType.info,
+                                );
+                              }
+                            }
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.all(4.0),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: cliente.deudaPendiente > 0 ? Colors.red.withOpacity(0.1) : Colors.green.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Icon(
+                                    Icons.account_balance_wallet,
+                                    color: cliente.deudaPendiente > 0 ? Colors.red.shade700 : Colors.green.shade700,
+                                    size: 20,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        cliente.deudaPendiente > 0 ? "Pendiente: ${cliente.deudaPendiente.toStringAsFixed(2)} €" : "Al día",
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          color: cliente.deudaPendiente > 0 ? Colors.red.shade700 : Colors.green.shade700,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      if (cliente.deudaPendiente > 0)
+                                        Text(
+                                          "(${cliente.pagosPendientesCount} ${cliente.pagosPendientesCount == 1 ? 'pago' : 'pagos'})",
+                                          style: TextStyle(fontWeight: FontWeight.w500, fontSize: 12, color: Colors.red.shade400),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
-                    ClienteFamiliaresTab(cliente: cliente),
-                    ClienteArchivosTab(cliente: cliente),
                   ],
                 ),
               ),
             ],
+          ),
+        ),
+        const SizedBox(height: 20),
+
+        // Tabs Monolíticos
+        Expanded(
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Colors.grey.shade300, width: 1),
+            ),
+            child: Column(
+              children: [
+                Container(
+                  decoration: BoxDecoration(
+                    border: Border(bottom: BorderSide(color: Colors.grey.shade200, width: 1)),
+                  ),
+                  child: TabBar(
+                    controller: _tabController,
+                    labelColor: AppTheme.primaryColor,
+                    unselectedLabelColor: Colors.grey,
+                    indicatorColor: AppTheme.primaryColor,
+                    labelStyle: const TextStyle(fontWeight: FontWeight.bold),
+                    tabs: [
+                      Tab(text: "Citas (${provider.historialCitas.length})"),
+                      Tab(text: "Bonos y Sesiones (${provider.bonos.length})"),
+                      Tab(text: "Familiares (${provider.familiares.length})"),
+                      const Tab(text: "Archivos"),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: TabBarView(
+                    controller: _tabController,
+                    physics: const NeverScrollableScrollPhysics(),
+                    children: [
+                      ClienteCitasTab(cliente: cliente),
+                      ClienteBonosTab(
+                        cliente: cliente,
+                        showBono: widget.showBono,
+                        resaltarCitaId: widget.resaltarCitaId,
+                      ),
+                      ClienteFamiliaresTab(cliente: cliente),
+                      ClienteArchivosTab(cliente: cliente),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ],
@@ -554,30 +640,14 @@ class _ContentState extends State<_Content>
 class _SkeletonClienteDetalle extends StatelessWidget {
   const _SkeletonClienteDetalle();
 
-  /// Elemento principal: opacidad completa → más visible en shimmer
   Widget _box(double w, double h, {double radius = 8}) {
-    return Container(
-      width: w,
-      height: h,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(radius),
-      ),
-    );
+    return Container(width: w, height: h, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(radius)));
   }
 
-  /// Elemento secundario: opacidad reducida → más tenue en shimmer
   Widget _boxFaded(double w, double h, {double radius = 8, double opacity = 0.45}) {
     return Opacity(
       opacity: opacity,
-      child: Container(
-        width: w,
-        height: h,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(radius),
-        ),
-      ),
+      child: Container(width: w, height: h, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(radius))),
     );
   }
 
@@ -589,87 +659,111 @@ class _SkeletonClienteDetalle extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Navegación: botón atrás (tenue) + título (completo)
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-            child: Row(
-              children: [
-                _boxFaded(36, 36, radius: 18),
-                const SizedBox(width: 12),
-                _box(200, 24),               // título prominente
-              ],
-            ),
+          // Navegación
+          Row(
+            children: [
+              _boxFaded(36, 36, radius: 18),
+              const SizedBox(width: 12),
+              _box(200, 24),
+            ],
           ),
-
-          // Card del paciente
-          Card(
-            elevation: 2,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _box(70, 70, radius: 35),    // avatar: prominente
-                  const SizedBox(width: 25),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _box(240, 26),              // nombre: prominente
-                        const SizedBox(height: 12),
-                        _boxFaded(140, 16),          // teléfono: tenue
-                        const SizedBox(height: 10),
-                        _boxFaded(180, 14, opacity: 0.3), // email: muy tenue
-                        const SizedBox(height: 20),
-                        Row(
+          const SizedBox(height: 16),
+          // Flat Desktop Header
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Colors.grey.shade300, width: 1),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(20.0),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _box(70, 70, radius: 35),
+                      const SizedBox(width: 20),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _box(130, 60, radius: 12),          // chip 1: prominente
-                            const SizedBox(width: 15),
-                            _boxFaded(130, 60, radius: 12),     // chip 2: tenue
-                            const SizedBox(width: 15),
-                            _box(130, 60, radius: 12),          // chip 3: prominente
-                            const SizedBox(width: 15),
-                            _boxFaded(130, 60, radius: 12),     // chip 4: tenue
+                            _box(240, 26),
+                            const SizedBox(height: 12),
+                            _boxFaded(140, 16),
                           ],
                         ),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(width: 20),
+                      _box(130, 40, radius: 8),
+                      const SizedBox(width: 10),
+                      _box(130, 40, radius: 8),
+                    ],
                   ),
-                ],
-              ),
+                ),
+                Divider(height: 1, color: Colors.grey.shade300),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  child: Row(
+                    children: List.generate(4, (index) => Expanded(
+                      child: Row(
+                        children: [
+                          _box(36, 36, radius: 8),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _boxFaded(80, 12),
+                                const SizedBox(height: 6),
+                                _box(120, 16),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    )),
+                  ),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 20),
-
-          // Tabs: el primero prominent (activo), los demás tenues
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            child: Row(
-              children: [
-                _box(140, 36, radius: 6),           // tab activo
-                const SizedBox(width: 12),
-                _boxFaded(140, 36, radius: 6),
-                const SizedBox(width: 12),
-                _boxFaded(120, 36, radius: 6),
-                const SizedBox(width: 12),
-                _boxFaded(100, 36, radius: 6),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // Filas de contenido: alternamos prominente / tenue
+          // Tabs
           Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.transparent,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.grey.shade300, width: 1),
+              ),
               child: Column(
-                children: List.generate(5, (i) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: i.isEven
-                      ? _box(double.infinity, 72, radius: 10)
-                      : _boxFaded(double.infinity, 72, radius: 10),
-                )),
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Row(
+                      children: [
+                        _box(120, 30), const SizedBox(width: 20),
+                        _boxFaded(120, 30), const SizedBox(width: 20),
+                        _boxFaded(120, 30), const SizedBox(width: 20),
+                        _boxFaded(120, 30),
+                      ],
+                    ),
+                  ),
+                  Divider(height: 1, color: Colors.grey.shade300),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        children: List.generate(3, (i) => Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: _boxFaded(double.infinity, 80, radius: 10),
+                        )),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),

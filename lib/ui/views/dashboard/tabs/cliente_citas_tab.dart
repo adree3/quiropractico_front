@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
-import 'package:quiropractico_front/config/theme/app_theme.dart';
 import 'package:quiropractico_front/models/cliente.dart';
 import 'package:quiropractico_front/models/cita.dart';
 import 'package:quiropractico_front/providers/client_detail_provider.dart';
@@ -12,6 +11,7 @@ import 'package:quiropractico_front/ui/widgets/custom_date_range_picker.dart';
 import 'package:quiropractico_front/ui/widgets/dashboard_dropdown.dart';
 import 'package:quiropractico_front/ui/widgets/empty_state.dart';
 import 'package:quiropractico_front/ui/widgets/hoverable_filter_button.dart';
+import 'package:shimmer/shimmer.dart';
 
 class ClienteCitasTab extends StatefulWidget {
   final Cliente cliente;
@@ -39,12 +39,8 @@ class _ClienteCitasTabState extends State<ClienteCitasTab> {
   }
 
   void _onScroll() {
-    if (_scrollController.position.pixels >=
-        _scrollController.position.maxScrollExtent - 200) {
-      final provider = Provider.of<ClientDetailProvider>(
-        context,
-        listen: false,
-      );
+    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
+      final provider = Provider.of<ClientDetailProvider>(context, listen: false);
       if (!provider.isLoadingMoreCitas && provider.hasMoreCitas) {
         provider.loadMoreCitas();
       }
@@ -71,6 +67,28 @@ class _ClienteCitasTabState extends State<ClienteCitasTab> {
     return agrupado;
   }
 
+  Widget _buildSkeletonLoader() {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Shimmer.fromColors(
+        baseColor: Colors.grey.shade300,
+        highlightColor: Colors.grey.shade100,
+        child: Column(
+          children: List.generate(3, (index) => 
+            Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              height: 80,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+              ),
+            )
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<ClientDetailProvider>(context);
@@ -83,44 +101,15 @@ class _ClienteCitasTabState extends State<ClienteCitasTab> {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
           child: Row(
+            mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              SizedBox(
-                height: 38,
-                child: Tooltip(
-                  message: "Cita para ${widget.cliente.nombre}",
-                  child: ElevatedButton.icon(
-                    onPressed: () async {
-                      final refresh = await showDialog(
-                        context: context,
-                        builder:
-                            (_) => CitaModal(preSelectedClient: widget.cliente),
-                      );
-                      if (refresh == true) {
-                        provider.loadFullData(widget.cliente.idCliente);
-                      }
-                    },
-                    icon: const Icon(Icons.add, size: 18),
-                    label: const Text(
-                      "Crear Cita",
-                      style: TextStyle(fontSize: 13),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.primaryColor,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                    ),
-                  ),
-                ),
-              ),
-              const Spacer(),
               // Filtro Fechas
               SizedBox(
                 height: 38,
                 child: HoverableFilterButton(
-                  label:
-                      provider.fechaInicio != null
-                          ? "${DateFormat('dd/MM/yy').format(provider.fechaInicio!)} - ${provider.fechaFin != null ? DateFormat('dd/MM/yy').format(provider.fechaFin!) : '...'}"
-                          : "Fechas",
+                  label: provider.fechaInicio != null
+                      ? "${DateFormat('dd/MM/yy').format(provider.fechaInicio!)} - ${provider.fechaFin != null ? DateFormat('dd/MM/yy').format(provider.fechaFin!) : '...'}"
+                      : "Fechas",
                   icon: Icons.date_range,
                   isActive: provider.fechaInicio != null,
                   tooltip: "Filtrar por rango de fechas",
@@ -182,29 +171,21 @@ class _ClienteCitasTabState extends State<ClienteCitasTab> {
           ),
         ),
 
-        if (provider.isLoadingCitas)
-          const Padding(
-            padding: EdgeInsets.all(20.0),
-            child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
-          ),
-
-        Expanded(
-          child:
-              provider.historialCitas.isEmpty &&
-                      !provider.isLoading &&
-                      !provider.isLoadingCitas
-                  ? const EmptyStateWidget(
+        if (provider.isLoadingCitas && provider.historialCitas.isEmpty)
+          Expanded(child: _buildSkeletonLoader())
+        else
+          Expanded(
+            child: provider.historialCitas.isEmpty && !provider.isLoading && !provider.isLoadingCitas
+                ? const EmptyStateWidget(
                     icon: Icons.event_note,
                     title: "No hay citas registradas",
-                    subtitle:
-                        "El historial de citas de este paciente aparecerá aquí.",
+                    subtitle: "El historial de citas de este paciente aparecerá aquí.",
                   )
-                  : NotificationListener<ScrollNotification>(
+                : NotificationListener<ScrollNotification>(
                     onNotification: (ScrollNotification scrollInfo) {
                       if (!provider.isLoadingMoreCitas &&
                           provider.hasMoreCitas &&
-                          scrollInfo.metrics.pixels >=
-                              scrollInfo.metrics.maxScrollExtent - 200) {
+                          scrollInfo.metrics.pixels >= scrollInfo.metrics.maxScrollExtent - 200) {
                         provider.loadMoreCitas();
                       }
                       return false;
@@ -212,14 +193,10 @@ class _ClienteCitasTabState extends State<ClienteCitasTab> {
                     child: ListView.builder(
                       controller: _scrollController,
                       padding: const EdgeInsets.all(5),
-                      itemCount:
-                          mesKeys.length + (provider.hasMoreCitas ? 1 : 0),
+                      itemCount: mesKeys.length + (provider.hasMoreCitas || provider.isLoadingCitas ? 1 : 0),
                       itemBuilder: (ctx, i) {
                         if (i == mesKeys.length) {
-                          return const Padding(
-                            padding: EdgeInsets.all(20.0),
-                            child: Center(child: CircularProgressIndicator()),
-                          );
+                          return _buildSkeletonLoader();
                         }
 
                         final mesKey = mesKeys[i];
@@ -231,12 +208,7 @@ class _ClienteCitasTabState extends State<ClienteCitasTab> {
                             // Cabecera del Mes
                             Container(
                               width: double.infinity,
-                              padding: const EdgeInsets.fromLTRB(
-                                16,
-                                12,
-                                16,
-                                12,
-                              ),
+                              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
                               child: Row(
                                 children: [
                                   Text(
@@ -261,20 +233,16 @@ class _ClienteCitasTabState extends State<ClienteCitasTab> {
                             ),
                             // Lista de citas del mes
                             Column(
-                              children:
-                                  citasDelMes.map((cita) {
-                                    return _CitaCard(
-                                      cita: cita,
-                                      cliente: widget.cliente,
-                                    );
-                                  }).toList(),
+                              children: citasDelMes.map((cita) {
+                                return _CitaCard(cita: cita, cliente: widget.cliente);
+                              }).toList(),
                             ),
                           ],
                         );
                       },
                     ),
                   ),
-        ),
+          ),
       ],
     );
   }
@@ -316,8 +284,13 @@ class _CitaCard extends StatelessWidget {
     }
 
     return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 0,
+      color: Colors.white,
+      margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: Colors.grey.shade200),
+      ),
       child: Tooltip(
         message: "Ver detalles de la cita",
         child: InkWell(
@@ -329,36 +302,23 @@ class _CitaCard extends StatelessWidget {
 
             if (!context.mounted) return;
 
-            final provider = Provider.of<ClientDetailProvider>(
-              context,
-              listen: false,
-            );
+            final provider = Provider.of<ClientDetailProvider>(context, listen: false);
 
-            // Si result es true recargar todo
             if (result == true) {
-              provider.loadFullData(cliente.idCliente);
-              // También recargamos el ClientsProvider para que la vista de lista se actualice
-              Provider.of<ClientsProvider>(
-                context,
-                listen: false,
-              ).reloadClient(cliente.idCliente);
-            }
-            // Si result es 'edit' abrir modal de edición
-            else if (result == 'edit') {
+              provider.refreshCitas(silent: true);
+              provider.refreshBonos(silent: true);
+              Provider.of<ClientsProvider>(context, listen: false).reloadClient(cliente.idCliente);
+            } else if (result == 'edit') {
               final editResult = await showDialog(
                 context: context,
                 builder: (_) => CitaModal(citaExistente: cita),
               );
-              // Si se editó correctamente, recargar todo
               if (editResult == true && context.mounted) {
-                provider.loadFullData(cliente.idCliente);
-                Provider.of<ClientsProvider>(
-                  context,
-                  listen: false,
-                ).reloadClient(cliente.idCliente);
+                provider.refreshCitas(silent: true);
+                provider.refreshBonos(silent: true);
+                Provider.of<ClientsProvider>(context, listen: false).reloadClient(cliente.idCliente);
               }
             }
-            // Si result es null no hacer nada.
           },
           borderRadius: BorderRadius.circular(12),
           child: Padding(
@@ -385,10 +345,7 @@ class _CitaCard extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        dateFormat
-                            .format(cita.fechaHoraInicio)
-                            .split(' ')[1]
-                            .toUpperCase(),
+                        dateFormat.format(cita.fechaHoraInicio).split(' ')[1].toUpperCase(),
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
@@ -409,41 +366,28 @@ class _CitaCard extends StatelessWidget {
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
+                          color: Colors.black87,
                         ),
                       ),
                       const SizedBox(height: 4),
                       Row(
                         children: [
-                          const Icon(
-                            Icons.calendar_today,
-                            size: 14,
-                            color: Colors.grey,
-                          ),
+                          const Icon(Icons.calendar_today, size: 14, color: Colors.grey),
                           const SizedBox(width: 4),
                           Text(
                             dateFormat.format(cita.fechaHoraInicio),
-                            style: const TextStyle(
-                              color: Colors.grey,
-                              fontSize: 13,
-                            ),
+                            style: const TextStyle(color: Colors.grey, fontSize: 13),
                           ),
                         ],
                       ),
                       const SizedBox(height: 4),
                       Row(
                         children: [
-                          const Icon(
-                            Icons.person_outline,
-                            size: 14,
-                            color: Colors.grey,
-                          ),
+                          const Icon(Icons.person_outline, size: 14, color: Colors.grey),
                           const SizedBox(width: 4),
                           Text(
                             cita.nombreQuiropractico,
-                            style: const TextStyle(
-                              color: Colors.grey,
-                              fontSize: 13,
-                            ),
+                            style: const TextStyle(color: Colors.grey, fontSize: 13),
                           ),
                         ],
                       ),
@@ -453,25 +397,30 @@ class _CitaCard extends StatelessWidget {
                 // Estado y Hora (Derecha)
                 Column(
                   mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Icon(estadoIcon, color: estadoColor),
-                    const SizedBox(height: 4),
-                    Text(
-                      cita.estado,
-                      style: TextStyle(
-                        color: estadoColor,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: estadoColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(estadoIcon, color: estadoColor, size: 14),
+                          const SizedBox(width: 4),
+                          Text(
+                            cita.estado,
+                            style: TextStyle(color: estadoColor, fontSize: 10, fontWeight: FontWeight.bold),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 8),
                     Text(
                       "${timeFormat.format(cita.fechaHoraInicio)} - ${timeFormat.format(cita.fechaHoraFin)}",
-                      style: TextStyle(
-                        color: Colors.grey.shade600,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w500,
-                      ),
+                      style: TextStyle(color: Colors.grey.shade600, fontSize: 11, fontWeight: FontWeight.w500),
                     ),
                   ],
                 ),

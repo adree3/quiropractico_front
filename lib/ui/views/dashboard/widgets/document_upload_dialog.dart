@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:desktop_drop/desktop_drop.dart';
 import 'package:quiropractico_front/models/cliente.dart';
 import 'package:quiropractico_front/models/cita.dart';
 import 'package:quiropractico_front/models/pago.dart';
@@ -34,6 +35,7 @@ class _DocumentUploadDialogState extends State<DocumentUploadDialog> {
   bool _isSubmitting = false;
   String? _globalError;
   bool _autoValidate = false;
+  bool _dragging = false;
   
   // Para Consentimientos
   String? _selectedConsentType;
@@ -158,22 +160,76 @@ class _DocumentUploadDialogState extends State<DocumentUploadDialog> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 // ── 1. Selector de archivo ──
-                InkWell(
-                  onTap: _pickFile,
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      border: Border.all(
-                        color: _selectedFiles.isNotEmpty ? widget.carpeta.color : Colors.grey.shade400,
-                        width: _selectedFiles.isNotEmpty ? 2 : 1,
+                DropTarget(
+                  onDragEntered: (_) => setState(() => _dragging = true),
+                  onDragExited: (_) => setState(() => _dragging = false),
+                  onDragDone: (details) async {
+                    setState(() => _dragging = false);
+                    var files = details.files;
+                    if (files.isEmpty) return;
+                    
+                    if (widget.carpeta.id != 'imagenes' && files.length > 1) {
+                      files = [files.first];
+                    }
+
+                    List<PlatformFile> validFiles = [];
+                    for (var file in files) {
+                       final name = file.name.toLowerCase();
+                       bool isValid = true;
+                       if (widget.carpeta.id == 'firmas' || widget.carpeta.id == 'consentimientos' || widget.carpeta.id == 'informes') {
+                         isValid = name.endsWith('.pdf');
+                       } else if (widget.carpeta.id == 'facturacion') {
+                         isValid = name.endsWith('.pdf') || name.endsWith('.jpg') || name.endsWith('.jpeg') || name.endsWith('.png');
+                       }
+                       // For imagenes, let's just accept common images
+                       else if (widget.carpeta.id == 'imagenes') {
+                         isValid = name.endsWith('.jpg') || name.endsWith('.jpeg') || name.endsWith('.png') || name.endsWith('.gif') || name.endsWith('.webp');
+                       }
+
+                       if (!isValid) {
+                         setState(() => _globalError = 'Tipo de archivo no permitido para esta carpeta.');
+                         return;
+                       }
+                       final bytes = await file.readAsBytes();
+                       validFiles.add(PlatformFile(
+                         name: file.name,
+                         size: bytes.length,
+                         bytes: bytes,
+                       ));
+                    }
+                    
+                    if (validFiles.any((f) => f.size > 15 * 1024 * 1024)) {
+                      setState(() {
+                        _globalError = 'Algún archivo supera el límite de 15MB.';
+                      });
+                      return;
+                    }
+                    
+                    setState(() {
+                       _selectedFiles = validFiles;
+                       _globalError = null;
+                    });
+                  },
+                  child: InkWell(
+                    onTap: _pickFile,
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          color: _dragging 
+                              ? widget.carpeta.color 
+                              : (_selectedFiles.isNotEmpty ? widget.carpeta.color : Colors.grey.shade400),
+                          width: _dragging || _selectedFiles.isNotEmpty ? 2 : 1,
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                        color: _dragging 
+                            ? widget.carpeta.color.withOpacity(0.1) 
+                            : (_selectedFiles.isNotEmpty
+                                ? widget.carpeta.color.withOpacity(0.05)
+                                : Colors.grey.shade50),
                       ),
-                      borderRadius: BorderRadius.circular(12),
-                      color: _selectedFiles.isNotEmpty
-                          ? widget.carpeta.color.withOpacity(0.05)
-                          : Colors.grey.shade50,
-                    ),
-                    child: Column(
+                      child: Column(
                       children: [
                         // PDF firmada → icono PDF estilizado; otros → icono genérico
                         if (isFirma)
@@ -198,18 +254,18 @@ class _DocumentUploadDialogState extends State<DocumentUploadDialog> {
                             ],
                           )
                         else
-                          Icon(Icons.drive_folder_upload_rounded, size: 48,
-                              color: widget.carpeta.color.withOpacity(0.5)),
+                          Icon(Icons.cloud_upload_rounded, size: 48,
+                              color: _selectedFiles.isNotEmpty ? widget.carpeta.color : Colors.blueGrey.shade300),
                         const SizedBox(height: 12),
                         Text(
                           _selectedFiles.isNotEmpty
                               ? (_selectedFiles.length == 1 ? _selectedFiles.first.name : '${_selectedFiles.length} archivos seleccionados')
                               : isFirma
                                   ? '1. Seleccionar documento PDF firmado'
-                                  : '1. Haz clic aquí para adjuntar archivo${widget.carpeta.id == 'imagenes' ? 's' : ''}',
+                                  : '1. Arrastra archivos aquí o haz clic para subir',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
-                            color: _selectedFiles.isNotEmpty ? Colors.black87 : Colors.blueGrey,
+                            color: _selectedFiles.isNotEmpty ? Colors.black87 : Colors.blueGrey.shade600,
                           ),
                           textAlign: TextAlign.center,
                         ),
@@ -235,8 +291,9 @@ class _DocumentUploadDialogState extends State<DocumentUploadDialog> {
                     ),
                   ),
                 ),
+                ),
                 const SizedBox(height: 24),
-
+                
                 // ── 2. Campos Específicos según Carpeta ──
                 if (widget.carpeta.id == 'consentimientos') ...[
                   const Text('2. Tipo de Consentimiento', style: TextStyle(fontWeight: FontWeight.bold)),
@@ -371,13 +428,33 @@ class _DocumentUploadDialogState extends State<DocumentUploadDialog> {
           onPressed: _isSubmitting ? null : () => Navigator.pop(context),
           child: Text('Cancelar', style: TextStyle(color: _isSubmitting ? Colors.grey.shade400 : Colors.grey)),
         ),
-        ElevatedButton.icon(
-          style: ElevatedButton.styleFrom(backgroundColor: widget.carpeta.color),
-          onPressed: _isSubmitting ? null : _submitDialog,
-          icon: _isSubmitting 
-              ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-              : const Icon(Icons.cloud_upload_rounded),
-          label: Text(_isSubmitting ? 'Guardando...' : _getLabelForSubmit()),
+        Consumer<DocumentosProvider>(
+          builder: (context, provider, child) {
+            return ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(backgroundColor: widget.carpeta.color),
+              onPressed: _isSubmitting ? null : _submitDialog,
+              icon: _isSubmitting 
+                  ? const SizedBox.shrink()
+                  : const Icon(Icons.cloud_upload_rounded),
+              label: _isSubmitting 
+                  ? SizedBox(
+                      width: 140,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text('Subiendo... ${(provider.uploadProgress * 100).toInt()}%'),
+                          const SizedBox(height: 4),
+                          LinearProgressIndicator(
+                            value: provider.uploadProgress,
+                            color: Colors.white,
+                            backgroundColor: Colors.white.withValues(alpha: 0.3),
+                          ),
+                        ],
+                      ),
+                    )
+                  : Text(_getLabelForSubmit()),
+            );
+          },
         ),
       ],
     );
