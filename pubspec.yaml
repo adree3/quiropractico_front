@@ -45,6 +45,7 @@ dependencies:
   web_socket_channel: ^3.0.1
   # Firma digital
   signature: ^5.5.0
+  desktop_drop: ^0.8.4
 
 dev_dependencies:
   flutter_test:
