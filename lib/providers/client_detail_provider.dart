@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:quiropractico_front/config/api_config.dart';
-import 'package:quiropractico_front/models/bono.dart';
+import 'package:quiropractico_front/models/bono_historico.dart';
 import 'package:quiropractico_front/models/cita.dart';
 import 'package:quiropractico_front/models/cita_conflicto.dart';
 import 'package:quiropractico_front/models/cliente.dart';
@@ -16,7 +16,7 @@ class ClientDetailProvider extends ChangeNotifier {
 
   Cliente? cliente;
   List<Cita> historialCitas = [];
-  List<Bono> bonos = [];
+  List<BonoHistorico> bonos = [];
   List<Familiar> familiares = [];
   
   bool isLoading = false;
@@ -44,14 +44,80 @@ class ClientDetailProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Cita? get proximaCita {
-    if (historialCitas.isEmpty) return null;
-    return historialCitas.firstWhere((c) => c.fechaHoraInicio.isAfter(DateTime.now()), orElse: () => historialCitas.first);
+
+
+  Future<void> refreshCliente({bool silent = true}) async {
+    if (cliente == null) return;
+    if (!silent) {
+      isLoading = true;
+      notifyListeners();
+    }
+    try {
+      final respCliente = await ApiService.dio.get('$_baseUrl/clientes/${cliente!.idCliente}');
+      cliente = Cliente.fromJson(respCliente.data);
+    } catch (e) {
+      debugPrint('Error refreshCliente: $e');
+    } finally {
+      if (!silent) isLoading = false;
+      notifyListeners();
+    }
   }
 
-  Future<void> refreshClient() async {
-    if (cliente != null) {
-      await loadFullData(cliente!.idCliente);
+  Future<void> refreshCitas({bool silent = true}) async {
+    if (cliente == null) return;
+    if (!silent) {
+      isLoading = true;
+      notifyListeners();
+    }
+    try {
+      final respCitas = await ApiService.dio.get('$_baseUrl/citas/cliente/${cliente!.idCliente}');
+      final dataCitas = respCitas.data is Map ? (respCitas.data['content'] ?? []) : respCitas.data;
+      historialCitas = (dataCitas as List).map((e) => Cita.fromJson(e)).toList();
+    } catch (e) {
+      debugPrint('Error refreshCitas: $e');
+    } finally {
+      if (!silent) isLoading = false;
+      notifyListeners();
+      // Refrescamos silenciosamente el cliente para que se sincronicen los KPIs de cabecera (como próximas citas)
+      refreshCliente(silent: true);
+    }
+  }
+
+  Future<void> refreshBonos({bool silent = true}) async {
+    if (cliente == null) return;
+    if (!silent) {
+      isLoading = true;
+      notifyListeners();
+    }
+    try {
+      final respBonos = await ApiService.dio.get('$_baseUrl/bonos/cliente/${cliente!.idCliente}');
+      final dataBonos = respBonos.data is Map ? (respBonos.data['content'] ?? []) : respBonos.data;
+      bonos = (dataBonos as List).map((e) => BonoHistorico.fromJson(e)).toList();
+    } catch (e) {
+      debugPrint('Error refreshBonos: $e');
+    } finally {
+      if (!silent) isLoading = false;
+      notifyListeners();
+      // Refrescamos silenciosamente el cliente para que se sincronicen los KPIs (deuda, bonos activos, etc.)
+      refreshCliente(silent: true);
+    }
+  }
+
+  Future<void> refreshFamiliares({bool silent = true}) async {
+    if (cliente == null) return;
+    if (!silent) {
+      isLoading = true;
+      notifyListeners();
+    }
+    try {
+      final respFamilia = await ApiService.dio.get('$_baseUrl/clientes/${cliente!.idCliente}/familiares');
+      final dataFamilia = respFamilia.data is Map ? (respFamilia.data['content'] ?? []) : respFamilia.data;
+      familiares = (dataFamilia as List).map((e) => Familiar.fromJson(e)).toList();
+    } catch (e) {
+      debugPrint('Error refreshFamiliares: $e');
+    } finally {
+      if (!silent) isLoading = false;
+      notifyListeners();
     }
   }
 
@@ -60,7 +126,7 @@ class ClientDetailProvider extends ChangeNotifier {
     if (targetId == 0) return "No hay cliente";
     try {
       await ApiService.dio.put('$_baseUrl/clientes/$targetId/recuperar');
-      await refreshClient();
+      await loadFullData(targetId);
       return null;
     } catch (e) {
       debugPrint("Error al recuperar cliente: $e");
@@ -73,7 +139,7 @@ class ClientDetailProvider extends ChangeNotifier {
     if (targetId == 0) return "No hay cliente";
     try {
       await ApiService.dio.delete('$_baseUrl/clientes/$targetId');
-      await refreshClient();
+      await loadFullData(targetId);
       return null;
     } catch (e) {
       debugPrint("Error al borrar cliente: $e");
@@ -86,26 +152,26 @@ class ClientDetailProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // Cargar Cliente Básico
-      final respCliente = await ApiService.dio.get('$_baseUrl/clientes/$idCliente');
-      cliente = Cliente.fromJson(respCliente.data);
+      // Ejecutar peticiones en paralelo para que sea más rápido
+      final responses = await Future.wait([
+        ApiService.dio.get('$_baseUrl/clientes/$idCliente'),
+        ApiService.dio.get('$_baseUrl/citas/cliente/$idCliente'),
+        ApiService.dio.get('$_baseUrl/bonos/cliente/$idCliente'),
+        ApiService.dio.get('$_baseUrl/clientes/$idCliente/familiares'),
+      ]);
 
-      // Cargar Historial Citas
-      final respCitas = await ApiService.dio.get('$_baseUrl/citas/cliente/$idCliente');
-      final dataCitas = respCitas.data is Map ? (respCitas.data['content'] ?? []) : respCitas.data;
+      cliente = Cliente.fromJson(responses[0].data);
+      
+      final dataCitas = responses[1].data is Map ? (responses[1].data['content'] ?? []) : responses[1].data;
       historialCitas = (dataCitas as List).map((e) => Cita.fromJson(e)).toList();
-
-      // Cargar Bonos
-      final respBonos = await ApiService.dio.get('$_baseUrl/bonos/cliente/$idCliente');
-      final dataBonos = respBonos.data is Map ? (respBonos.data['content'] ?? []) : respBonos.data;
-      bonos = (dataBonos as List).map((e) => Bono.fromJson(e)).toList();
-
-      // Cargar Familia
-      final respFamilia = await ApiService.dio.get('$_baseUrl/clientes/$idCliente/familiares');
-      final dataFamilia = respFamilia.data is Map ? (respFamilia.data['content'] ?? []) : respFamilia.data;
+      
+      final dataBonos = responses[2].data is Map ? (responses[2].data['content'] ?? []) : responses[2].data;
+      bonos = (dataBonos as List).map((e) => BonoHistorico.fromJson(e)).toList();
+      
+      final dataFamilia = responses[3].data is Map ? (responses[3].data['content'] ?? []) : responses[3].data;
       familiares = (dataFamilia as List).map((e) => Familiar.fromJson(e)).toList();
     } catch (e) {
-      print('Error cargando detalle: ${ErrorHandler.extractMessage(e)}');
+      debugPrint('Error cargando detalle: ${ErrorHandler.extractMessage(e)}');
     } finally {
       isLoading = false;
       notifyListeners();
@@ -171,16 +237,6 @@ class ClientDetailProvider extends ChangeNotifier {
 
   // Helper para no repetir codigo de la recarga de familiares
   Future<void> _recargarFamiliares() async {
-    if (cliente == null) return;
-    try {
-      final respFamilia = await ApiService.dio.get(
-        '$_baseUrl/clientes/${cliente!.idCliente}/familiares'
-      );
-      final dataFamilia = respFamilia.data is Map ? (respFamilia.data['content'] ?? []) : respFamilia.data;
-      familiares = (dataFamilia as List).map((e) => Familiar.fromJson(e)).toList();
-      notifyListeners();
-    } catch (e) {
-      print("Error recargando familiares: $e");
-    }
+    await refreshFamiliares();
   }
 }

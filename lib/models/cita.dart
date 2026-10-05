@@ -83,4 +83,23 @@ class Cita {
       rutaJustificante: rutaJustificante ?? this.rutaJustificante,
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'idCita': idCita,
+      'idCliente': idCliente,
+      'nombreClienteCompleto': nombreClienteCompleto,
+      'telefonoCliente': telefonoCliente,
+      'idQuiropractico': idQuiropractico,
+      'nombreQuiropractico': nombreQuiropractico,
+      'fechaHoraInicio': fechaHoraInicio.toIso8601String(),
+      'fechaHoraFin': fechaHoraFin.toIso8601String(),
+      'estado': estado,
+      'notasRecepcion': notas,
+      'infoPago': infoPago,
+      'idBonoCliente': idBonoCliente,
+      'firmada': firmada,
+      'rutaJustificante': rutaJustificante,
+    };
+  }
 }

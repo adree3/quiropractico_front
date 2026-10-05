@@ -136,7 +136,7 @@ class PaymentsProvider extends ChangeNotifier {
 
   /// Actualiza el término de búsqueda con reseteo de página
   void onSearchChanged(String search) {
-    currentSearchTerm = search.trim();
+    currentSearchTerm = search;
     pageHistorial = 0;
     pagePendientes = 0;
 

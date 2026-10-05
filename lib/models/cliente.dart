@@ -1,3 +1,5 @@
+import 'package:quiropractico_front/models/cita.dart';
+
 class Cliente {
   final int idCliente;
   final String nombre;
@@ -13,6 +15,14 @@ class Cliente {
   final bool tieneFamiliares;
   final DateTime? ultimaCita;
 
+  // Nuevos campos calculados
+  final int citasCompletadas;
+  final int citasCanceladas;
+  final int citasAusentes;
+  final double deudaPendiente;
+  final int pagosPendientesCount;
+  final Cita? proximaCita;
+
   Cliente({
     required this.idCliente,
     required this.nombre,
@@ -25,6 +35,12 @@ class Cliente {
     this.bonosActivos,
     this.tieneFamiliares = false,
     this.ultimaCita,
+    this.citasCompletadas = 0,
+    this.citasCanceladas = 0,
+    this.citasAusentes = 0,
+    this.deudaPendiente = 0.0,
+    this.pagosPendientesCount = 0,
+    this.proximaCita,
   });
   factory Cliente.fromJson(Map<String, dynamic> json) {
     return Cliente(
@@ -42,6 +58,12 @@ class Cliente {
           json['ultimaCita'] != null
               ? DateTime.parse(json['ultimaCita'])
               : null,
+      citasCompletadas: json['citasCompletadas'] ?? 0,
+      citasCanceladas: json['citasCanceladas'] ?? 0,
+      citasAusentes: json['citasAusentes'] ?? 0,
+      deudaPendiente: (json['deudaPendiente'] ?? 0.0).toDouble(),
+      pagosPendientesCount: json['pagosPendientesCount'] ?? 0,
+      proximaCita: json['proximaCita'] != null ? Cita.fromJson(json['proximaCita']) : null,
     );
   }
 
@@ -57,6 +79,12 @@ class Cliente {
     int? bonosActivos,
     bool? tieneFamiliares,
     DateTime? ultimaCita,
+    int? citasCompletadas,
+    int? citasCanceladas,
+    int? citasAusentes,
+    double? deudaPendiente,
+    int? pagosPendientesCount,
+    Cita? proximaCita,
   }) {
     return Cliente(
       idCliente: idCliente ?? this.idCliente,
@@ -70,6 +98,12 @@ class Cliente {
       bonosActivos: bonosActivos ?? this.bonosActivos,
       tieneFamiliares: tieneFamiliares ?? this.tieneFamiliares,
       ultimaCita: ultimaCita ?? this.ultimaCita,
+      citasCompletadas: citasCompletadas ?? this.citasCompletadas,
+      citasCanceladas: citasCanceladas ?? this.citasCanceladas,
+      citasAusentes: citasAusentes ?? this.citasAusentes,
+      deudaPendiente: deudaPendiente ?? this.deudaPendiente,
+      pagosPendientesCount: pagosPendientesCount ?? this.pagosPendientesCount,
+      proximaCita: proximaCita ?? this.proximaCita,
     );
   }
 
@@ -86,6 +120,12 @@ class Cliente {
       'bonosActivos': bonosActivos,
       'tieneFamiliares': tieneFamiliares,
       'ultimaCita': ultimaCita?.toIso8601String(),
+      'citasCompletadas': citasCompletadas,
+      'citasCanceladas': citasCanceladas,
+      'citasAusentes': citasAusentes,
+      'deudaPendiente': deudaPendiente,
+      'pagosPendientesCount': pagosPendientesCount,
+      'proximaCita': proximaCita?.toJson(),
     };
   }
 }

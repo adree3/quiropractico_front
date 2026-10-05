@@ -11,11 +11,23 @@ class DocumentosProvider extends ChangeNotifier {
   List<Documento> documentos = [];
   bool isLoading = false;
   bool isUploading = false;
+  double uploadProgress = 0.0;
   String? errorMessage;
+  int? _currentClienteId;
 
   /// Carga la lista de documentos de un cliente (sin URLs temporales)
-  Future<void> loadDocumentos(int idCliente) async {
-    isLoading = true;
+  Future<void> loadDocumentos(int idCliente, {bool silent = false}) async {
+    if (_currentClienteId != idCliente) {
+      documentos = [];
+      _currentClienteId = idCliente;
+      isLoading = true;
+    } else {
+      if (documentos.isNotEmpty && !silent) {
+        return; // Smart cache: ya están cargados y no se fuerza recarga
+      }
+      if (!silent) isLoading = true;
+    }
+    
     errorMessage = null;
     notifyListeners();
 
@@ -27,7 +39,9 @@ class DocumentosProvider extends ChangeNotifier {
       errorMessage = ErrorHandler.extractMessage(e);
       debugPrint('Error cargando documentos: $errorMessage');
     } finally {
-      isLoading = false;
+      if (!silent || isLoading) {
+        isLoading = false;
+      }
       notifyListeners();
     }
   }
@@ -56,6 +70,7 @@ class DocumentosProvider extends ChangeNotifier {
     String? notas,
   }) async {
     isUploading = true;
+    uploadProgress = 0.0;
     notifyListeners();
 
     try {
@@ -69,7 +84,16 @@ class DocumentosProvider extends ChangeNotifier {
       if (idPago != null) url += '&idPago=$idPago';
       if (notas != null && notas.isNotEmpty) url += '&notas=${Uri.encodeComponent(notas)}';
 
-      final response = await ApiService.dio.post(url, data: formData);
+      final response = await ApiService.dio.post(
+        url, 
+        data: formData,
+        onSendProgress: (sent, total) {
+          if (total > 0) {
+            uploadProgress = sent / total;
+            notifyListeners();
+          }
+        },
+      );
       
       if (response.statusCode == 200) {
         final nuevoDoc = Documento.fromJson(response.data);
@@ -86,6 +110,7 @@ class DocumentosProvider extends ChangeNotifier {
       return msg;
     } finally {
       isUploading = false;
+      uploadProgress = 0.0;
       notifyListeners();
     }
   }
