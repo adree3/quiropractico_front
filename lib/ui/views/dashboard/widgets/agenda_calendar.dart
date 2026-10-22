@@ -12,6 +12,7 @@ import 'package:quiropractico_front/ui/views/dashboard/agenda_view_datasource.da
 import 'package:quiropractico_front/ui/widgets/custom_snackbar.dart';
 import 'package:quiropractico_front/providers/settings_provider.dart';
 import 'package:syncfusion_flutter_calendar/calendar.dart';
+import 'package:quiropractico_front/ui/widgets/whatsapp_status_badge.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter/scheduler.dart';
 
@@ -384,12 +385,22 @@ class AgendaCalendar extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Text(
-                              cita.nombreClienteCompleto,
-                              style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold, fontSize: 14),
-                              overflow: TextOverflow.ellipsis,
+                            Row(
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    cita.nombreClienteCompleto,
+                                    style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold, fontSize: 14),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                if (cita.confirmadaWhatsapp || cita.recordatorioEnviado) ...[
+                                  const SizedBox(width: 4),
+                                  WhatsappStatusBadge(cita: cita, showText: false),
+                                ],
+                              ],
                             ),
-                            const SizedBox(height: 4),
+                            const SizedBox(height: 2),
                             Text(
                               cita.nombreQuiropractico.split(' ').first,
                               style: const TextStyle(color: Colors.black54, fontSize: 12),

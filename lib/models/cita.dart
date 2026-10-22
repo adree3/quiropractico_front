@@ -13,6 +13,8 @@ class Cita {
   final int? idBonoCliente;
   final bool firmada;
   final String? rutaJustificante;
+  final bool confirmadaWhatsapp;
+  final bool recordatorioEnviado;
 
   Cita({
     required this.idCita,
@@ -29,6 +31,8 @@ class Cita {
     this.idBonoCliente,
     this.firmada = false,
     this.rutaJustificante,
+    this.confirmadaWhatsapp = false,
+    this.recordatorioEnviado = false,
   });
 
   factory Cita.fromJson(Map<String, dynamic> json) {
@@ -47,6 +51,8 @@ class Cita {
       idBonoCliente: json['idBonoCliente'],
       firmada: json['firmada'] ?? false,
       rutaJustificante: json['rutaJustificante'],
+      confirmadaWhatsapp: json['confirmadaWhatsapp'] ?? false,
+      recordatorioEnviado: json['recordatorioEnviado'] ?? false,
     );
   }
 
@@ -65,6 +71,8 @@ class Cita {
     int? idBonoCliente,
     bool? firmada,
     String? rutaJustificante,
+    bool? confirmadaWhatsapp,
+    bool? recordatorioEnviado,
   }) {
     return Cita(
       idCita: idCita ?? this.idCita,
@@ -81,6 +89,8 @@ class Cita {
       idBonoCliente: idBonoCliente ?? this.idBonoCliente,
       firmada: firmada ?? this.firmada,
       rutaJustificante: rutaJustificante ?? this.rutaJustificante,
+      confirmadaWhatsapp: confirmadaWhatsapp ?? this.confirmadaWhatsapp,
+      recordatorioEnviado: recordatorioEnviado ?? this.recordatorioEnviado,
     );
   }
 
@@ -100,6 +110,8 @@ class Cita {
       'idBonoCliente': idBonoCliente,
       'firmada': firmada,
       'rutaJustificante': rutaJustificante,
+      'confirmadaWhatsapp': confirmadaWhatsapp,
+      'recordatorioEnviado': recordatorioEnviado,
     };
   }
 }

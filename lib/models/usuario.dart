@@ -7,6 +7,9 @@ class Usuario {
   final bool cuentaBloqueada;
   final DateTime? ultimaConexion;
   final bool tieneFotoPerfil;
+  final bool debeCambiarPassword;
+  final String? numeroColegiado;
+  final String? colorAgenda;
 
   // Helpers de permisos por rol
   /// true si el rol es super_admin
@@ -15,8 +18,8 @@ class Usuario {
   /// true si el rol es admin O super_admin (permisos de administración completos)
   bool get isAdmin => rol.toLowerCase() == 'admin' || isSuperAdmin;
 
-  /// true si tiene permisos de gestión (admin, super_admin, quiropráctico)
-  bool get isGestor => isAdmin || rol.toLowerCase() == 'quiropráctico';
+  /// true si tiene permisos de gestión (admin, super_admin, doctor)
+  bool get isGestor => isAdmin || rol.toLowerCase() == 'doctor';
 
   Usuario({
     required this.idUsuario,
@@ -27,6 +30,9 @@ class Usuario {
     required this.cuentaBloqueada,
     this.ultimaConexion,
     this.tieneFotoPerfil = false,
+    this.debeCambiarPassword = false,
+    this.numeroColegiado,
+    this.colorAgenda,
   });
 
   Usuario copyWith({
@@ -38,6 +44,9 @@ class Usuario {
     bool? cuentaBloqueada,
     DateTime? ultimaConexion,
     bool? tieneFotoPerfil,
+    bool? debeCambiarPassword,
+    String? numeroColegiado,
+    String? colorAgenda,
   }) {
     return Usuario(
       idUsuario: idUsuario ?? this.idUsuario,
@@ -48,6 +57,9 @@ class Usuario {
       cuentaBloqueada: cuentaBloqueada ?? this.cuentaBloqueada,
       ultimaConexion: ultimaConexion ?? this.ultimaConexion,
       tieneFotoPerfil: tieneFotoPerfil ?? this.tieneFotoPerfil,
+      debeCambiarPassword: debeCambiarPassword ?? this.debeCambiarPassword,
+      numeroColegiado: numeroColegiado ?? this.numeroColegiado,
+      colorAgenda: colorAgenda ?? this.colorAgenda,
     );
   }
 
@@ -56,7 +68,7 @@ class Usuario {
       idUsuario: json['idUsuario'],
       nombreCompleto: json['nombreCompleto'],
       username: json['username'],
-      rol: json['rol'] ?? 'recepción',
+      rol: json['rol'] ?? 'recepcion',
       activo: (json['activo'] == 1 || json['activo'] == true),
       cuentaBloqueada:
           (json['cuentaBloqueada'] == 1 || json['cuentaBloqueada'] == true),
@@ -65,6 +77,9 @@ class Usuario {
               ? DateTime.tryParse(json['ultimaConexion'].toString())
               : null,
       tieneFotoPerfil: json['tieneFotoPerfil'] == true,
+      debeCambiarPassword: json['debeCambiarPassword'] == true,
+      numeroColegiado: json['numeroColegiado'],
+      colorAgenda: json['colorAgenda'],
     );
   }
 

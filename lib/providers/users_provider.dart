@@ -67,7 +67,7 @@ class UsersProvider extends ChangeNotifier {
       final data = {
         "nombreCompleto": fullName,
         "username": currentUser?.username ?? '',
-        "rol": currentUser?.rol ?? 'recepción',
+        "rol": currentUser?.rol ?? 'recepcion',
       };
       
       await ApiService.dio.put('$_baseUrl/usuarios/$targetId', data: data, );

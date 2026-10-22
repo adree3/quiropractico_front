@@ -565,7 +565,7 @@ class _PaymentsViewState extends State<PaymentsView> {
                   child: Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
-                      DateFormat('dd/MM/yyyy').format(pago.fechaPago),
+                      DateFormat('dd/MM/yyyy').format(pago.fechaPago!),
                       style: const TextStyle(
                         fontSize: 14,
                         color: Colors.black87,
@@ -731,7 +731,7 @@ class _PaymentsViewState extends State<PaymentsView> {
                   child: Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
-                      DateFormat('dd/MM HH:mm').format(pago.fechaPago),
+                      DateFormat('dd/MM HH:mm').format(pago.fechaPago!),
                       style: const TextStyle(
                         fontSize: 14,
                         color: Colors.black87,
@@ -1013,7 +1013,7 @@ class _CobrarButtonState extends State<_CobrarButton> {
                 });
                 final fechaFormat = DateFormat(
                   'dd/MM/yyyy',
-                ).format(widget.pago.fechaPago);
+                ).format(widget.pago.fechaPago!);
                 CustomSnackBar.show(
                   context,
                   message:

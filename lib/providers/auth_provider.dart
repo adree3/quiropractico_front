@@ -21,8 +21,8 @@ class AuthProvider extends ChangeNotifier {
   
   bool get isSuperAdmin => role == 'super_admin';
   bool get isAdmin => role == 'admin' || role == 'super_admin';
-  bool get isQuiropractico => role == 'quiropráctico' || isAdmin;
-  bool get isRecepcion => role == 'recepción' || isAdmin;
+  bool get isQuiropractico => role == 'doctor' || isAdmin;
+  bool get isRecepcion => role == 'recepcion' || isAdmin;
 
   // Aliases for backwards compatibility with UI views that still use old names
   bool get isGestor => isAdmin || isRecepcion;
@@ -42,6 +42,12 @@ class AuthProvider extends ChangeNotifier {
 
     try {
       final clinicaId = LocalStorage.getClinicaId();
+      if (clinicaId == null) {
+        errorMessage = 'Por favor, selecciona un espacio de trabajo primero.';
+        isLoginLoading = false;
+        notifyListeners();
+        return false;
+      }
       print('ClinicaId sacado de caché: $clinicaId');
       
       final response = await AuthService.login(username, password, clinicaId);
@@ -59,8 +65,8 @@ class AuthProvider extends ChangeNotifier {
         return true;
       } else{
         final apiError = ApiError.fromJson(response.data);
-        errorMessage = apiError.message;
-        if (apiError.errorType == 'ACCOUNT_LOCKED') {
+        errorMessage = apiError.displayMessage;
+        if (apiError.codigo == 'ACCOUNT_LOCKED') {
           authStatus = AuthStatus.locked;
         } else {
           authStatus = AuthStatus.notAuthenticated;

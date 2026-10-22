@@ -14,6 +14,7 @@ import 'package:quiropractico_front/models/documento.dart';
 import 'package:quiropractico_front/providers/documentos_provider.dart';
 import 'package:quiropractico_front/providers/citas_provider.dart';
 import 'package:quiropractico_front/config/api_config.dart';
+import 'package:quiropractico_front/ui/widgets/whatsapp_status_badge.dart';
 
 // ──────────────────────────────────────────────────────────
 // Helpers de estado
@@ -309,35 +310,44 @@ class _CitaDetalleModalState extends State<CitaDetalleModal> {
                             ),
                           ),
                           const SizedBox(width: 12),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 11,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              color: color.withOpacity(0.08),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: color.withOpacity(0.4)),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  _iconForEstado(widget.cita.estado),
-                                  color: color,
-                                  size: 14,
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 11,
+                                  vertical: 6,
                                 ),
-                                const SizedBox(width: 5),
-                                Text(
-                                  _labelForEstado(widget.cita.estado),
-                                  style: TextStyle(
-                                    color: color,
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                  ),
+                                decoration: BoxDecoration(
+                                  color: color.withOpacity(0.08),
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(color: color.withOpacity(0.4)),
                                 ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      _iconForEstado(widget.cita.estado),
+                                      color: color,
+                                      size: 14,
+                                    ),
+                                    const SizedBox(width: 5),
+                                    Text(
+                                      _labelForEstado(widget.cita.estado),
+                                      style: TextStyle(
+                                        color: color,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              if (widget.cita.confirmadaWhatsapp || widget.cita.recordatorioEnviado) ...[
+                                const SizedBox(height: 4),
+                                WhatsappStatusBadge(cita: widget.cita, showText: true),
                               ],
-                            ),
+                            ],
                           ),
                         ],
                       ),

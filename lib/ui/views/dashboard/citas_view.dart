@@ -19,6 +19,7 @@ import 'package:quiropractico_front/ui/widgets/custom_date_range_picker.dart';
 import 'package:quiropractico_front/ui/widgets/kpi_skeleton_loader.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:quiropractico_front/ui/widgets/whatsapp_status_badge.dart';
 
 class CitasView extends StatefulWidget {
   const CitasView({super.key});
@@ -283,11 +284,14 @@ class _CitasViewState extends State<CitasView> {
                                     label: "Nueva Cita",
                                     icon: Icons.add,
                                     isPrimary: true,
-                                    onTap: () {
-                                      showDialog(
+                                    onTap: () async {
+                                      final res = await showDialog(
                                         context: context,
                                         builder: (context) => const CitaModal(),
                                       );
+                                      if (res == true && context.mounted) {
+                                        citasProvider.loadCitas();
+                                      }
                                     },
                                   ),
                                 ),
@@ -706,48 +710,58 @@ class _CitasViewState extends State<CitasView> {
                 flex: 2,
                 child: Align(
                   alignment: Alignment.centerLeft,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 3,
-                    ),
-                    decoration: BoxDecoration(
-                      color: estadoColor.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: estadoColor),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          cita.estado.toUpperCase(),
-                          style: TextStyle(
-                            color: estadoColor,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 11,
-                          ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 3,
                         ),
-                        if (cita.estado.toLowerCase() == 'completada' &&
-                            !cita.firmada) ...[
-                          const SizedBox(width: 6),
-                          const Tooltip(
-                            message: "Pendiente de firma",
-                            child: Icon(
-                              Icons.warning_amber_rounded,
-                              color: Colors.orange,
-                              size: 16,
+                        decoration: BoxDecoration(
+                          color: estadoColor.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: estadoColor),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              cita.estado.toUpperCase(),
+                              style: TextStyle(
+                                color: estadoColor,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 11,
+                              ),
                             ),
-                          ),
-                        ] else if (cita.firmada) ...[
-                          const SizedBox(width: 6),
-                          const Icon(
-                            Icons.verified_user_outlined,
-                            color: Colors.green,
-                            size: 16,
-                          ),
-                        ],
+                            if (cita.estado.toLowerCase() == 'completada' &&
+                                !cita.firmada) ...[
+                              const SizedBox(width: 6),
+                              const Tooltip(
+                                message: "Pendiente de firma",
+                                child: Icon(
+                                  Icons.warning_amber_rounded,
+                                  color: Colors.orange,
+                                  size: 16,
+                                ),
+                              ),
+                            ] else if (cita.firmada) ...[
+                              const SizedBox(width: 6),
+                              const Icon(
+                                Icons.verified_user_outlined,
+                                color: Colors.green,
+                                size: 16,
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                      if (cita.confirmadaWhatsapp || cita.recordatorioEnviado) ...[
+                        const SizedBox(height: 4),
+                        WhatsappStatusBadge(cita: cita, showText: true),
                       ],
-                    ),
+                    ],
                   ),
                 ),
               ),

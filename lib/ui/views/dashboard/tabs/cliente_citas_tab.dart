@@ -12,6 +12,7 @@ import 'package:quiropractico_front/ui/widgets/dashboard_dropdown.dart';
 import 'package:quiropractico_front/ui/widgets/empty_state.dart';
 import 'package:quiropractico_front/ui/widgets/hoverable_filter_button.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:quiropractico_front/ui/widgets/whatsapp_status_badge.dart';
 
 class ClienteCitasTab extends StatefulWidget {
   final Cliente cliente;
@@ -92,7 +93,7 @@ class _ClienteCitasTabState extends State<ClienteCitasTab> {
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<ClientDetailProvider>(context);
-    final citasAgrupadas = _agruparCitasPorMes(provider.historialCitas);
+    final citasAgrupadas = _agruparCitasPorMes(provider.filteredCitas);
     final mesKeys = citasAgrupadas.keys.toList();
 
     return Column(
@@ -171,11 +172,11 @@ class _ClienteCitasTabState extends State<ClienteCitasTab> {
           ),
         ),
 
-        if (provider.isLoadingCitas && provider.historialCitas.isEmpty)
+        if (provider.isLoadingCitas && provider.filteredCitas.isEmpty)
           Expanded(child: _buildSkeletonLoader())
         else
           Expanded(
-            child: provider.historialCitas.isEmpty && !provider.isLoading && !provider.isLoadingCitas
+            child: provider.filteredCitas.isEmpty && !provider.isLoading && !provider.isLoadingCitas
                 ? const EmptyStateWidget(
                     icon: Icons.event_note,
                     title: "No hay citas registradas",
@@ -417,6 +418,10 @@ class _CitaCard extends StatelessWidget {
                         ],
                       ),
                     ),
+                    if (cita.confirmadaWhatsapp || cita.recordatorioEnviado) ...[
+                      const SizedBox(height: 4),
+                      WhatsappStatusBadge(cita: cita, showText: false),
+                    ],
                     const SizedBox(height: 8),
                     Text(
                       "${timeFormat.format(cita.fechaHoraInicio)} - ${timeFormat.format(cita.fechaHoraFin)}",

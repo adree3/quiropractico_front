@@ -8,9 +8,9 @@ class ErrorHandler {
       if (error.response != null && error.response?.data != null) {
         try {
           final apiError = ApiError.fromJson(error.response!.data);
-          return apiError.message; 
+          return apiError.displayMessage; 
         } catch (e) {
-          return "Error inesperado del servidor (${error.response?.statusCode})";
+          return "Error inesperado de red (${error.response?.statusCode})";
         }
       }
       

@@ -19,7 +19,7 @@ class _UserModalState extends State<UserModal> {
   final passCtrl = TextEditingController();
   String? _usernameError;
 
-  String rolSeleccionado = 'recepción';
+  String rolSeleccionado = 'recepcion';
   bool get isEditing => widget.usuarioExistente != null;
 
   @override
@@ -216,12 +216,12 @@ class _UserModalState extends State<UserModal> {
                 ),
                 items: [
                   const DropdownMenuItem(
-                    value: 'recepción',
+                    value: 'recepcion',
                     child: Text("Recepción (Básico)"),
                   ),
                   const DropdownMenuItem(
-                    value: 'quiropráctico',
-                    child: Text("Quiropráctico (Médico)"),
+                    value: 'doctor',
+                    child: Text("Doctor (Médico)"),
                   ),
                   const DropdownMenuItem(
                     value: 'admin',

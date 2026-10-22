@@ -46,10 +46,8 @@ class _UsersViewState extends State<UsersView> {
       case 'admin':
       case 'super_admin':
         return 1;
-      case 'quiropráctico':
-      case 'quiropractico':
+      case 'doctor':
         return 2;
-      case 'recepción':
       case 'recepcion':
         return 3;
       default:
@@ -62,10 +60,8 @@ class _UsersViewState extends State<UsersView> {
       case 'admin':
       case 'super_admin':
         return Colors.purple.shade400;
-      case 'quiropráctico':
-      case 'quiropractico':
+      case 'doctor':
         return Colors.blue.shade400;
-      case 'recepción':
       case 'recepcion':
       default:
         return Colors.amber.shade500;

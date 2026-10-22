@@ -42,6 +42,18 @@ class _LoginFormState extends State<_LoginForm> {
   
   bool _isObscure = true;
 
+  @override
+  void initState() {
+    super.initState();
+    if (LocalStorage.getClinicaId() == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          context.go('/workspace-finder');
+        }
+      });
+    }
+  }
+
   void _submit() async {
     if (_formKey.currentState!.validate()) {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);

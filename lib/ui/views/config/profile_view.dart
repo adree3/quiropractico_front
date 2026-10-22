@@ -71,7 +71,7 @@ class _ProfileViewState extends State<ProfileView> {
       );
     }
 
-    final esQuiro = user.rol.toLowerCase() == 'quiropráctico' || user.rol.toLowerCase() == 'quiropractico';
+    final esQuiro = user.rol.toLowerCase() == 'doctor';
 
     // ── Horarios del quiro ────────────────────────────────────
     final horariosQuiro = user == null ? [] : horariosProvider.horariosGlobales
@@ -714,9 +714,9 @@ class _RolBadge extends StatelessWidget {
         c = Colors.purple;
         label = 'Administrador';
         break;
-      case 'quiropractico':
+      case 'doctor':
         c = AppTheme.primaryColor;
-        label = 'Quiropráctico';
+        label = 'Doctor';
         break;
       default:
         c = Colors.teal;
