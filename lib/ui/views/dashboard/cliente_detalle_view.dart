@@ -98,9 +98,7 @@ class _ContentState extends State<_Content>
   void _initWebSocket() {
     final token = LocalStorage.getToken();
     if (token == null) return;
-    final String wsUrl = ApiConfig.baseUrl
-        .replaceFirst('http', 'ws')
-        .replaceAll('/api', '/ws-kiosk');
+    final String wsUrl = ApiConfig.wsUrl;
 
     _stompClient = StompClient(
       config: StompConfig(

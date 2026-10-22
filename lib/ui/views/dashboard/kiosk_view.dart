@@ -119,10 +119,7 @@ class _KioskViewState extends State<KioskView> {
   }
 
   void _connectWebSocket() {
-    final String wsUrl = ApiConfig.baseUrl
-        .replaceFirst('http', 'ws')
-        .replaceAll('/api', '/ws-kiosk');
-
+    final String wsUrl = ApiConfig.wsUrl;
     final String? token = LocalStorage.getToken();
 
     _stompClient = StompClient(

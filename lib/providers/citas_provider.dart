@@ -37,9 +37,7 @@ class CitasProvider extends ChangeNotifier {
     if (_isWsInitialized) return;
     final token = LocalStorage.getToken();
     if (token == null) return;
-    final String wsUrl = ApiConfig.baseUrl
-        .replaceFirst('http', 'ws')
-        .replaceAll('/api', '/ws-kiosk');
+    final String wsUrl = ApiConfig.wsUrl;
 
     _stompClient = StompClient(
       config: StompConfig(
