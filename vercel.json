@@ -1,4 +1,6 @@
 {
+  "buildCommand": "git clone https://github.com/flutter/flutter.git -b 3.29.3 --depth 1 flutter-sdk && export PATH=\"$PATH:$(pwd)/flutter-sdk/bin\" && flutter config --no-analytics && flutter pub get && flutter build web --release --dart-define=API_URL=$API_URL",
+  "outputDirectory": "build/web",
   "cleanUrls": true,
   "rewrites": [
     {
