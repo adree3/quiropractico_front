@@ -22,10 +22,12 @@ import 'package:quiropractico_front/providers/bonos_provider.dart';
 import 'package:quiropractico_front/providers/documentos_provider.dart';
 import 'package:quiropractico_front/providers/workspace_provider.dart';
 import 'package:quiropractico_front/providers/settings_provider.dart';
+import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:quiropractico_front/services/api_service.dart';
 import 'package:quiropractico_front/services/local_storage.dart';
 
 void main() async {
+  usePathUrlStrategy();
   WidgetsFlutterBinding.ensureInitialized();
   await LocalStorage.configurePrefs();
   await ApiService.configureDio();
