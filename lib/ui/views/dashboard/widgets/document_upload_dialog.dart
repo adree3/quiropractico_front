@@ -5,6 +5,7 @@ import 'package:desktop_drop/desktop_drop.dart';
 import 'package:quiropractico_front/models/cliente.dart';
 import 'package:quiropractico_front/models/cita.dart';
 import 'package:quiropractico_front/models/pago.dart';
+import 'package:quiropractico_front/models/tipo_documento.dart';
 import 'package:quiropractico_front/providers/citas_provider.dart';
 import 'package:quiropractico_front/providers/payments_provider.dart';
 import 'package:quiropractico_front/ui/widgets/skeleton_widgets.dart';
@@ -14,9 +15,15 @@ import 'package:quiropractico_front/ui/views/dashboard/widgets/quota_exceeded_di
 
 class DocumentUploadDialog extends StatefulWidget {
   final Cliente cliente;
-  final CarpetaLogica carpeta;
+  final CarpetaLogica? carpeta;
+  final TipoDocumento? initialTipo;
 
-  const DocumentUploadDialog({super.key, required this.cliente, required this.carpeta});
+  const DocumentUploadDialog({
+    super.key,
+    required this.cliente,
+    this.carpeta,
+    this.initialTipo,
+  });
 
   @override
   State<DocumentUploadDialog> createState() => _DocumentUploadDialogState();
@@ -25,6 +32,8 @@ class DocumentUploadDialog extends StatefulWidget {
 class _DocumentUploadDialogState extends State<DocumentUploadDialog> {
   final _formKey = GlobalKey<FormState>();
   final _notasController = TextEditingController();
+  final _etiquetaController = TextEditingController();
+  late TipoDocumento _selectedTipo;
   List<PlatformFile> _selectedFiles = [];
   Cita? _selectedCita;
   Pago? _selectedPago;
@@ -52,9 +61,24 @@ class _DocumentUploadDialogState extends State<DocumentUploadDialog> {
   @override
   void initState() {
     super.initState();
-    if (widget.carpeta.id == 'facturacion') {
+    if (widget.initialTipo != null) {
+      _selectedTipo = widget.initialTipo!;
+    } else if (widget.carpeta != null) {
+      switch (widget.carpeta!.id) {
+        case 'imagenes': _selectedTipo = TipoDocumento.pruebaMedica; break;
+        case 'firmas': _selectedTipo = TipoDocumento.justificanteAsistencia; break;
+        case 'consentimientos': _selectedTipo = TipoDocumento.consentimientoLopd; break;
+        case 'informes': _selectedTipo = TipoDocumento.informeMedico; break;
+        case 'facturacion': _selectedTipo = TipoDocumento.facturacion; break;
+        default: _selectedTipo = TipoDocumento.otro; break;
+      }
+    } else {
+      _selectedTipo = TipoDocumento.pruebaMedica;
+    }
+
+    if (_selectedTipo == TipoDocumento.facturacion) {
       _fetchPagos();
-    } else if (widget.carpeta.id != 'consentimientos') {
+    } else if (_selectedTipo != TipoDocumento.consentimientoLopd && _selectedTipo != TipoDocumento.consentimientoTratamiento) {
       _fetchCitas();
     } else {
       _isLoadingCitas = false;
@@ -79,10 +103,10 @@ class _DocumentUploadDialogState extends State<DocumentUploadDialog> {
     
     List<Cita> citas = await citasProvider.fetchCitasCliente(widget.cliente.idCliente);
     
-    // Si estamos en la carpeta de firmas, solo mostramos citas que NO tengan firma activa
-    if (widget.carpeta.id == 'firmas') {
+    // Si es justificante de firma, solo mostramos citas que NO tengan firma activa
+    if (_selectedTipo == TipoDocumento.justificanteAsistencia) {
       final idsCitasFirmadas = docsProvider.documentos
-          .where((d) => d.tipoDocumento == 'JUSTIFICANTE_ASISTENCIA')
+          .where((d) => d.tipo == TipoDocumento.justificanteAsistencia)
           .map((d) => d.idCita)
           .where((id) => id != null)
           .toSet();
@@ -99,18 +123,17 @@ class _DocumentUploadDialogState extends State<DocumentUploadDialog> {
   }
 
   Future<void> _pickFile() async {
-    // Firmas → solo PDF; Imágenes → solo images; resto → any
     FileType fileType = FileType.any;
     List<String>? allowedExtensions;
-    if (widget.carpeta.id == 'firmas') {
-      fileType = FileType.custom;
-      allowedExtensions = ['pdf'];
-    } else if (widget.carpeta.id == 'imagenes') {
+    if (_selectedTipo == TipoDocumento.pruebaMedica) {
       fileType = FileType.image;
-    } else if (widget.carpeta.id == 'consentimientos' || widget.carpeta.id == 'informes') {
+    } else if (_selectedTipo == TipoDocumento.justificanteAsistencia ||
+               _selectedTipo == TipoDocumento.consentimientoLopd ||
+               _selectedTipo == TipoDocumento.consentimientoTratamiento ||
+               _selectedTipo == TipoDocumento.informeMedico) {
       fileType = FileType.custom;
       allowedExtensions = ['pdf'];
-    } else if (widget.carpeta.id == 'facturacion') {
+    } else if (_selectedTipo == TipoDocumento.facturacion) {
       fileType = FileType.custom;
       allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png'];
     }
@@ -119,7 +142,7 @@ class _DocumentUploadDialogState extends State<DocumentUploadDialog> {
       type: fileType,
       allowedExtensions: allowedExtensions,
       withData: true,
-      allowMultiple: widget.carpeta.id == 'imagenes',
+      allowMultiple: _selectedTipo == TipoDocumento.pruebaMedica,
     );
 
     if (result != null) {
@@ -138,15 +161,29 @@ class _DocumentUploadDialogState extends State<DocumentUploadDialog> {
   }
 
   @override
+  void dispose() {
+    _etiquetaController.dispose();
+    _notasController.dispose();
+    _customConsentController.dispose();
+    _customTitleController.dispose();
+    _citaSearchController.dispose();
+    _citaFocusNode.dispose();
+    _pagoSearchController.dispose();
+    _pagoFocusNode.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final isFirma = widget.carpeta.id == 'firmas';
+    final isFirma = _selectedTipo == TipoDocumento.justificanteAsistencia;
+    final Color temaColor = _selectedTipo.color;
 
     return AlertDialog(
       title: Row(
         children: [
-          Icon(widget.carpeta.icon, color: widget.carpeta.color),
+          Icon(_selectedTipo.icono, color: temaColor),
           const SizedBox(width: 8),
-          Text(isFirma ? 'Subir Cita Firmada' : 'Subir Evidencia Clínica'),
+          Text(isFirma ? 'Subir Cita Firmada' : 'Subir Documento (${_selectedTipo.nombreLegible})'),
         ],
       ),
       content: SingleChildScrollView(
@@ -168,7 +205,7 @@ class _DocumentUploadDialogState extends State<DocumentUploadDialog> {
                     var files = details.files;
                     if (files.isEmpty) return;
                     
-                    if (widget.carpeta.id != 'imagenes' && files.length > 1) {
+                    if (_selectedTipo != TipoDocumento.pruebaMedica && files.length > 1) {
                       files = [files.first];
                     }
 
@@ -176,18 +213,19 @@ class _DocumentUploadDialogState extends State<DocumentUploadDialog> {
                     for (var file in files) {
                        final name = file.name.toLowerCase();
                        bool isValid = true;
-                       if (widget.carpeta.id == 'firmas' || widget.carpeta.id == 'consentimientos' || widget.carpeta.id == 'informes') {
+                       if (_selectedTipo == TipoDocumento.justificanteAsistencia ||
+                           _selectedTipo == TipoDocumento.consentimientoLopd ||
+                           _selectedTipo == TipoDocumento.consentimientoTratamiento ||
+                           _selectedTipo == TipoDocumento.informeMedico) {
                          isValid = name.endsWith('.pdf');
-                       } else if (widget.carpeta.id == 'facturacion') {
+                       } else if (_selectedTipo == TipoDocumento.facturacion) {
                          isValid = name.endsWith('.pdf') || name.endsWith('.jpg') || name.endsWith('.jpeg') || name.endsWith('.png');
-                       }
-                       // For imagenes, let's just accept common images
-                       else if (widget.carpeta.id == 'imagenes') {
+                       } else if (_selectedTipo == TipoDocumento.pruebaMedica) {
                          isValid = name.endsWith('.jpg') || name.endsWith('.jpeg') || name.endsWith('.png') || name.endsWith('.gif') || name.endsWith('.webp');
                        }
 
                        if (!isValid) {
-                         setState(() => _globalError = 'Tipo de archivo no permitido para esta carpeta.');
+                         setState(() => _globalError = 'Tipo de archivo no permitido para ${_selectedTipo.nombreLegible}.');
                          return;
                        }
                        final bytes = await file.readAsBytes();
@@ -218,15 +256,15 @@ class _DocumentUploadDialogState extends State<DocumentUploadDialog> {
                       decoration: BoxDecoration(
                         border: Border.all(
                           color: _dragging 
-                              ? widget.carpeta.color 
-                              : (_selectedFiles.isNotEmpty ? widget.carpeta.color : Colors.grey.shade400),
+                              ? temaColor 
+                              : (_selectedFiles.isNotEmpty ? temaColor : Colors.grey.shade400),
                           width: _dragging || _selectedFiles.isNotEmpty ? 2 : 1,
                         ),
                         borderRadius: BorderRadius.circular(12),
                         color: _dragging 
-                            ? widget.carpeta.color.withOpacity(0.1) 
+                            ? temaColor.withValues(alpha: 0.1) 
                             : (_selectedFiles.isNotEmpty
-                                ? widget.carpeta.color.withOpacity(0.05)
+                                ? temaColor.withValues(alpha: 0.05)
                                 : Colors.grey.shade50),
                       ),
                       child: Column(
@@ -255,7 +293,7 @@ class _DocumentUploadDialogState extends State<DocumentUploadDialog> {
                           )
                         else
                           Icon(Icons.cloud_upload_rounded, size: 48,
-                              color: _selectedFiles.isNotEmpty ? widget.carpeta.color : Colors.blueGrey.shade300),
+                              color: _selectedFiles.isNotEmpty ? temaColor : Colors.blueGrey.shade300),
                         const SizedBox(height: 12),
                         Text(
                           _selectedFiles.isNotEmpty
@@ -291,68 +329,126 @@ class _DocumentUploadDialogState extends State<DocumentUploadDialog> {
                     ),
                   ),
                 ),
-                ),
-                const SizedBox(height: 24),
+              ),
+              const SizedBox(height: 24),
                 
-                // ── 2. Campos Específicos según Carpeta ──
-                if (widget.carpeta.id == 'consentimientos') ...[
-                  const Text('2. Tipo de Consentimiento', style: TextStyle(fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 8),
-                  DropdownButtonFormField<String>(
-                    value: _selectedConsentType,
-                    decoration: InputDecoration(
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    ),
-                    items: const [
-                      DropdownMenuItem(value: 'LOPD', child: Text('Protección de Datos (LOPD)')),
-                      DropdownMenuItem(value: 'TRATAMIENTO', child: Text('Consentimiento de Tratamiento')),
-                      DropdownMenuItem(value: 'OTRO', child: Text('Otro (Especificar...)')),
-                    ],
-                    onChanged: (val) => setState(() => _selectedConsentType = val),
-                    validator: (val) => val == null ? 'Selecciona un tipo' : null,
-                  ),
-                  if (_selectedConsentType == 'OTRO') ...[
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: _customConsentController,
-                      decoration: InputDecoration(
-                        labelText: 'Especifica el nombre del consentimiento',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+              // ── 2. Categoría y Etiqueta ──
+              Row(
+                children: [
+                  const Text('2. Categoría del Documento', style: TextStyle(fontWeight: FontWeight.bold)),
+                  if (widget.initialTipo != null || widget.carpeta != null) ...[
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.blueGrey.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(4),
                       ),
-                      validator: (val) => (val == null || val.isEmpty) ? 'Escribe el nombre' : null,
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.lock_outline_rounded, size: 12, color: Colors.blueGrey),
+                          SizedBox(width: 4),
+                          Text('Fijada por carpeta',
+                              style: TextStyle(color: Colors.blueGrey, fontSize: 10, fontWeight: FontWeight.bold)),
+                        ],
+                      ),
                     ),
                   ],
-                ] else if (widget.carpeta.id == 'facturacion') ...[
-                   const Text('2. Vincular a Pago / Cobro', style: TextStyle(fontWeight: FontWeight.bold)),
-                   const SizedBox(height: 8),
-                   _isLoadingPagos
+                ],
+              ),
+              const SizedBox(height: 8),
+              Builder(
+                builder: (context) {
+                  final bool isTipoBloqueado = widget.initialTipo != null || widget.carpeta != null;
+
+                  return DropdownButtonFormField<TipoDocumento>(
+                    value: _selectedTipo,
+                    decoration: InputDecoration(
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      filled: isTipoBloqueado,
+                      fillColor: isTipoBloqueado ? Colors.grey.shade100 : null,
+                      suffixIcon: isTipoBloqueado
+                          ? const Tooltip(
+                              message: 'Categoría fijada por la carpeta actual',
+                              child: Icon(Icons.lock_outline_rounded, size: 18, color: Colors.blueGrey),
+                            )
+                          : null,
+                    ),
+                    disabledHint: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(_selectedTipo.icono, color: _selectedTipo.color, size: 20),
+                        const SizedBox(width: 10),
+                        Text(
+                          _selectedTipo.nombreLegible,
+                          style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.w500),
+                        ),
+                      ],
+                    ),
+                    items: TipoDocumento.values.map((tipo) {
+                      return DropdownMenuItem<TipoDocumento>(
+                        value: tipo,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(tipo.icono, color: tipo.color, size: 20),
+                            const SizedBox(width: 10),
+                            Text(tipo.nombreLegible),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                    onChanged: isTipoBloqueado
+                        ? null
+                        : (val) {
+                            if (val != null) {
+                              setState(() {
+                                _selectedTipo = val;
+                                if (_selectedTipo == TipoDocumento.facturacion && _clientPagos.isEmpty) {
+                                  _fetchPagos();
+                                } else if (_clientCitas.isEmpty) {
+                                  _fetchCitas();
+                                }
+                              });
+                            }
+                          },
+                  );
+                },
+              ),
+              if (_selectedTipo == TipoDocumento.pruebaMedica || _selectedTipo == TipoDocumento.otro) ...[
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _etiquetaController,
+                  decoration: InputDecoration(
+                    labelText: 'Etiqueta / Descripción (Opcional)',
+                    hintText: _selectedTipo == TipoDocumento.pruebaMedica
+                        ? 'Ej: Radiografía Lumbar, Resonancia C5-C6...'
+                        : 'Ej: DNI, Presupuesto, Documento Externo...',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                    prefixIcon: const Icon(Icons.label_outline_rounded),
+                  ),
+                ),
+              ],
+              const SizedBox(height: 16),
+
+                // ── 3. Vinculación Opcional ──
+                if (_selectedTipo == TipoDocumento.facturacion) ...[
+                  const Text('3. Vincular a Pago / Cobro', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  _isLoadingPagos
                       ? const SkeletonWidget(width: double.infinity, height: 55)
                       : _buildPagoAutocomplete(),
-                ] else if (widget.carpeta.id == 'otros') ...[
-                  const Text('2. Título o nombre del documento', style: TextStyle(fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 8),
-                  TextFormField(
-                    controller: _customTitleController,
-                    decoration: InputDecoration(
-                      hintText: 'Ej: Documento de Identidad, Presupuesto...',
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                    ),
-                    validator: (val) => (val == null || val.isEmpty) ? 'Debes poner un nombre' : null,
-                  ),
-                ] else ...[
-                  // Imagenes, Firmas, Informes -> Buscador de Citas
+                ] else if (_selectedTipo != TipoDocumento.consentimientoLopd && _selectedTipo != TipoDocumento.consentimientoTratamiento) ...[
                   Row(
                     children: [
-                      Text(
-                        widget.carpeta.id == 'informes' ? '2. Vincular a Sesión (Cita)' : '2. Vincular a Sesión (Cita)',
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
+                      const Text('3. Vincular a Sesión (Cita)', style: TextStyle(fontWeight: FontWeight.bold)),
                       const SizedBox(width: 6),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
-                          color: Colors.blueGrey.withOpacity(0.1),
+                          color: Colors.blueGrey.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: const Text('Opcional',
@@ -376,7 +472,11 @@ class _DocumentUploadDialogState extends State<DocumentUploadDialog> {
                 const SizedBox(height: 8),
                 TextFormField(
                   controller: _notasController,
-                  maxLines: (widget.carpeta.id == 'firmas' || widget.carpeta.id == 'consentimientos') ? 2 : 4,
+                  maxLines: (_selectedTipo == TipoDocumento.justificanteAsistencia ||
+                          _selectedTipo == TipoDocumento.consentimientoLopd ||
+                          _selectedTipo == TipoDocumento.consentimientoTratamiento)
+                      ? 2
+                      : 4,
                   onChanged: (_) {
                      if (_globalError != null && _globalError!.startsWith('❌')) setState(() => _globalError = null);
                   },
@@ -385,7 +485,7 @@ class _DocumentUploadDialogState extends State<DocumentUploadDialog> {
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                   ),
                   validator: (val) {
-                    bool obligatorio = widget.carpeta.id == 'imagenes' || widget.carpeta.id == 'informes';
+                    bool obligatorio = _selectedTipo == TipoDocumento.pruebaMedica || _selectedTipo == TipoDocumento.informeMedico;
                     if (obligatorio && (val == null || val.trim().isEmpty)) {
                       return 'Especifica el contexto de este documento.';
                     }
@@ -431,7 +531,7 @@ class _DocumentUploadDialogState extends State<DocumentUploadDialog> {
         Consumer<DocumentosProvider>(
           builder: (context, provider, child) {
             return ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(backgroundColor: widget.carpeta.color),
+              style: ElevatedButton.styleFrom(backgroundColor: temaColor),
               onPressed: _isSubmitting ? null : _submitDialog,
               icon: _isSubmitting 
                   ? const SizedBox.shrink()
@@ -473,16 +573,17 @@ class _DocumentUploadDialogState extends State<DocumentUploadDialog> {
     if (!formOk) return;
 
     // Preparar datos de salida
-    String? finalNotes = _notasController.text;
-    String? finalTipo = widget.carpeta.tiposIncluidos.first;
+    String? finalNotes = _notasController.text.trim().isEmpty ? null : _notasController.text.trim();
+    String finalTipo = _selectedTipo.codigo;
+    String? finalEtiqueta = _etiquetaController.text.trim().isEmpty ? null : _etiquetaController.text.trim();
 
-    if (widget.carpeta.id == 'consentimientos') {
-       finalNotes = "Tipo: ${_selectedConsentType == 'OTRO' ? _customConsentController.text : _selectedConsentType}. $finalNotes";
-       if (_selectedConsentType == 'LOPD') finalTipo = 'CONSENTIMIENTO_LOPD';
-       if (_selectedConsentType == 'TRATAMIENTO') finalTipo = 'CONSENTIMIENTO_TRATAMIENTO';
+    if (_selectedTipo == TipoDocumento.consentimientoLopd || _selectedTipo == TipoDocumento.consentimientoTratamiento) {
+       if (_selectedConsentType != null) {
+         finalNotes = "Tipo: ${_selectedConsentType == 'OTRO' ? _customConsentController.text : _selectedConsentType}. ${finalNotes ?? ''}".trim();
+       }
     }
-    if (widget.carpeta.id == 'otros') {
-       finalNotes = "Título: ${_customTitleController.text}. $finalNotes";
+    if (_selectedTipo == TipoDocumento.otro && _customTitleController.text.isNotEmpty) {
+       finalNotes = "Título: ${_customTitleController.text}. ${finalNotes ?? ''}".trim();
     }
 
     setState(() {
@@ -501,6 +602,7 @@ class _DocumentUploadDialogState extends State<DocumentUploadDialog> {
         bytes: file.bytes!,
         filename: file.name,
         tipoDocumento: finalTipo,
+        etiqueta: finalEtiqueta,
         idCita: _selectedCita?.idCita,
         idPago: _selectedPago?.idPago,
         notas: finalNotes,
@@ -531,33 +633,51 @@ class _DocumentUploadDialogState extends State<DocumentUploadDialog> {
   }
 
   String _getLabelForNotes() {
-    switch (widget.carpeta.id) {
-      case 'firmas': return '3. Notas adicionales (Opcional)';
-      case 'consentimientos': return '3. Notas adicionales (Opcional)';
-      case 'facturacion': return '3. Notas (Opcional)';
-      case 'informes': return '3. Notas Clínicas (Obligatorio)';
-      case 'imagenes': return '3. Notas Clínicas (Obligatorio)';
-      default: return '3. Notas (Opcional)';
+    switch (_selectedTipo) {
+      case TipoDocumento.justificanteAsistencia:
+      case TipoDocumento.consentimientoLopd:
+      case TipoDocumento.consentimientoTratamiento:
+        return '3. Notas adicionales (Opcional)';
+      case TipoDocumento.facturacion:
+        return '3. Notas (Opcional)';
+      case TipoDocumento.informeMedico:
+      case TipoDocumento.pruebaMedica:
+        return '3. Notas Clínicas (Obligatorio)';
+      case TipoDocumento.otro:
+        return '3. Notas (Opcional)';
     }
   }
 
   String _getHintForNotes() {
-    switch (widget.carpeta.id) {
-      case 'firmas': return 'Ej: Firmado en tablet por el paciente...';
-      case 'consentimientos': return 'Ej: Versión renovada del 2024...';
-      case 'informes': return 'Resume el contenido del informe médico...';
-      case 'imagenes': return 'Escribe hallazgos o conclusiones...';
-      default: return 'Escribe tus observaciones aquí...';
+    switch (_selectedTipo) {
+      case TipoDocumento.justificanteAsistencia:
+        return 'Ej: Firmado en tablet por el paciente...';
+      case TipoDocumento.consentimientoLopd:
+      case TipoDocumento.consentimientoTratamiento:
+        return 'Ej: Versión renovada del 2024...';
+      case TipoDocumento.informeMedico:
+        return 'Resume el contenido del informe médico...';
+      case TipoDocumento.pruebaMedica:
+        return 'Escribe hallazgos o conclusiones...';
+      case TipoDocumento.facturacion:
+        return 'Ej: Factura de tratamiento, justificante bancario...';
+      case TipoDocumento.otro:
+        return 'Escribe tus observaciones aquí...';
     }
   }
 
   String _getLabelForSubmit() {
-     switch (widget.carpeta.id) {
-       case 'firmas': return 'Guardar Firma';
-       case 'consentimientos': return 'Guardar Consentimiento';
-       case 'facturacion': return 'Subir Comprobante';
-       default: return 'Subir al Historial';
-     }
+    switch (_selectedTipo) {
+      case TipoDocumento.justificanteAsistencia:
+        return 'Guardar Justificante';
+      case TipoDocumento.consentimientoLopd:
+      case TipoDocumento.consentimientoTratamiento:
+        return 'Guardar Consentimiento';
+      case TipoDocumento.facturacion:
+        return 'Subir Comprobante';
+      default:
+        return 'Subir al Historial';
+    }
   }
 
   Widget _buildCitaAutocomplete({bool required = false}) {
@@ -672,7 +792,7 @@ class _DocumentUploadDialogState extends State<DocumentUploadDialog> {
       textEditingController: _pagoSearchController,
       focusNode: _pagoFocusNode,
       displayStringForOption: (Pago option) => 
-        "${option.fechaPago.day}/${option.fechaPago.month}/${option.fechaPago.year} - ${option.monto}€ - ${option.concepto}",
+        "${option.fechaPago?.day}/${option.fechaPago?.month}/${option.fechaPago?.year} - ${option.monto}€ - ${option.concepto}",
       optionsBuilder: (TextEditingValue textEditingValue) {
         final queryRaw = textEditingValue.text.trim();
         if (queryRaw.isEmpty) return const Iterable<Pago>.empty();
@@ -687,7 +807,7 @@ class _DocumentUploadDialogState extends State<DocumentUploadDialog> {
           }
           final concepto = pago.concepto.toLowerCase();
           final monto = pago.monto.toString();
-          final dateStr = "${pago.fechaPago.day}/${pago.fechaPago.month}/${pago.fechaPago.year}";
+          final dateStr = "${pago.fechaPago?.day}/${pago.fechaPago?.month}/${pago.fechaPago?.year}";
           return idStr.contains(lowerQuery) || concepto.contains(lowerQuery) || dateStr.contains(lowerQuery) || monto.contains(lowerQuery);
         }).toList();
 
@@ -720,7 +840,7 @@ class _DocumentUploadDialogState extends State<DocumentUploadDialog> {
               : null,
           ),
           validator: (val) {
-             if (widget.carpeta.id == 'facturacion' && _selectedPago == null) {
+             if (_selectedTipo == TipoDocumento.facturacion && _selectedPago == null) {
                return 'Vincula un pago específico';
              }
              if (val != null && val.trim().isNotEmpty && _selectedPago == null) {
@@ -749,7 +869,7 @@ class _DocumentUploadDialogState extends State<DocumentUploadDialog> {
                     dense: true,
                     leading: Icon(option.pagado ? Icons.check_circle_outline : Icons.pending_actions, 
                            color: option.pagado ? Colors.green : Colors.orange, size: 20),
-                    title: Text("${option.fechaPago.day}/${option.fechaPago.month}/${option.fechaPago.year} - ${option.monto}€"),
+                    title: Text("${option.fechaPago?.day}/${option.fechaPago?.month}/${option.fechaPago?.year} - ${option.monto}€"),
                     subtitle: Text(option.concepto),
                     onTap: () => onSelected(option),
                   );

@@ -282,6 +282,27 @@ class _DocumentInfoDialogState extends State<DocumentInfoDialog> {
                   Text('${widget.doc.fechaSubida.day.toString().padLeft(2,'0')}/${widget.doc.fechaSubida.month.toString().padLeft(2,'0')}/${widget.doc.fechaSubida.year}'),
                 ],
               ),
+              if (widget.doc.etiqueta != null && widget.doc.etiqueta!.trim().isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Etiqueta / Detalle:', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blueGrey)),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: Colors.purple.shade50,
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: Colors.purple.shade200),
+                      ),
+                      child: Text(
+                        widget.doc.etiqueta!,
+                        style: TextStyle(color: Colors.purple.shade700, fontSize: 12, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
               if (widget.isPapelera && widget.doc.fechaEliminacionLogica != null) ...[
                 const SizedBox(height: 8),
                 Container(

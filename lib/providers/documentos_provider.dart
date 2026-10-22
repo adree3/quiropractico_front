@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:quiropractico_front/config/api_config.dart';
 import 'package:quiropractico_front/models/documento.dart';
+import 'package:quiropractico_front/models/tipo_documento.dart';
 import 'package:quiropractico_front/services/api_service.dart';
 import 'package:quiropractico_front/utils/error_handler.dart';
+
+enum DocumentViewMode { folders, flatList }
 
 class DocumentosProvider extends ChangeNotifier {
   final String _baseUrl = ApiConfig.baseUrl;
@@ -15,11 +18,57 @@ class DocumentosProvider extends ChangeNotifier {
   String? errorMessage;
   int? _currentClienteId;
 
+  DocumentViewMode _viewMode = DocumentViewMode.folders;
+  TipoDocumento? _carpetaSeleccionada;
+
+  DocumentViewMode get viewMode => _viewMode;
+  TipoDocumento? get carpetaSeleccionada => _carpetaSeleccionada;
+
+  List<Documento> get documentosEnCarpetaActual {
+    final list = (_viewMode == DocumentViewMode.flatList || _carpetaSeleccionada == null)
+        ? List<Documento>.from(documentos)
+        : documentos.where((d) => d.tipo == _carpetaSeleccionada).toList();
+    list.sort((a, b) => b.fechaSubida.compareTo(a.fechaSubida));
+    return list;
+  }
+
+  void toggleViewMode() {
+    _viewMode = _viewMode == DocumentViewMode.folders
+        ? DocumentViewMode.flatList
+        : DocumentViewMode.folders;
+    if (_viewMode == DocumentViewMode.flatList) {
+      _carpetaSeleccionada = null;
+    }
+    notifyListeners();
+  }
+
+  void setViewMode(DocumentViewMode mode) {
+    if (_viewMode != mode) {
+      _viewMode = mode;
+      if (mode == DocumentViewMode.flatList) {
+        _carpetaSeleccionada = null; // OBLIGATORIO limpiar la carpeta activa
+      }
+      notifyListeners();
+    }
+  }
+
+  void entrarCarpeta(TipoDocumento tipo) {
+    _viewMode = DocumentViewMode.folders;
+    _carpetaSeleccionada = tipo;
+    notifyListeners();
+  }
+
+  void salirCarpeta() {
+    _carpetaSeleccionada = null;
+    notifyListeners();
+  }
+
   /// Carga la lista de documentos de un cliente (sin URLs temporales)
   Future<void> loadDocumentos(int idCliente, {bool silent = false}) async {
     if (_currentClienteId != idCliente) {
       documentos = [];
       _currentClienteId = idCliente;
+      _carpetaSeleccionada = null;
       isLoading = true;
     } else {
       if (documentos.isNotEmpty && !silent) {
@@ -65,6 +114,7 @@ class DocumentosProvider extends ChangeNotifier {
     required List<int> bytes,
     required String filename,
     required String tipoDocumento,
+    String? etiqueta,
     int? idCita,
     int? idPago,
     String? notas,
@@ -80,6 +130,9 @@ class DocumentosProvider extends ChangeNotifier {
 
       // El tipo y los meta-datos relacionales se pasan como query parameters
       String url = '$_baseUrl/documentos/clientes/$idCliente?tipo=$tipoDocumento';
+      if (etiqueta != null && etiqueta.trim().isNotEmpty) {
+        url += '&etiqueta=${Uri.encodeComponent(etiqueta.trim())}';
+      }
       if (idCita != null) url += '&idCita=$idCita';
       if (idPago != null) url += '&idPago=$idPago';
       if (notas != null && notas.isNotEmpty) url += '&notas=${Uri.encodeComponent(notas)}';

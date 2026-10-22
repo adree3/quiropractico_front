@@ -1,3 +1,5 @@
+import 'package:quiropractico_front/models/tipo_documento.dart';
+
 class Documento {
   final int idDocumento;
   final int? idCliente;
@@ -5,6 +7,7 @@ class Documento {
   final String? notasMedicas;
   final String nombreOriginal;
   final String tipoDocumento;
+  final String? etiqueta;
   final String? mimeType;
   final String estadoSubida;
   final int tamanyoBytes;
@@ -20,6 +23,7 @@ class Documento {
     this.notasMedicas,
     required this.nombreOriginal,
     required this.tipoDocumento,
+    this.etiqueta,
     this.mimeType,
     required this.estadoSubida,
     required this.tamanyoBytes,
@@ -29,6 +33,8 @@ class Documento {
     this.thumbnailUrl,
   });
 
+  TipoDocumento get tipo => TipoDocumento.fromString(tipoDocumento);
+
   factory Documento.fromJson(Map<String, dynamic> json) {
     return Documento(
       idDocumento: json['idDocumento'] ?? 0,
@@ -37,6 +43,7 @@ class Documento {
       notasMedicas: json['notasMedicas'],
       nombreOriginal: json['nombreOriginal'] ?? '',
       tipoDocumento: json['tipoDocumento'] ?? 'OTRO',
+      etiqueta: json['etiqueta'],
       mimeType: json['mimeType'],
       estadoSubida: json['estadoSubida'] ?? 'PENDIENTE',
       tamanyoBytes: json['tamanyoBytes'] ?? 0,
