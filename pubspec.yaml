@@ -30,6 +30,7 @@ dependencies:
   syncfusion_flutter_calendar: ^31.1.19
   syncfusion_flutter_datepicker: ^31.1.19
   syncfusion_flutter_charts: ^31.1.19
+  syncfusion_flutter_pdfviewer: ^31.1.19
   flutter_localizations:
     sdk: flutter
   dio_cache_interceptor: ^3.5.1
