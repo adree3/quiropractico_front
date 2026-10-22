@@ -1,9 +1,9 @@
 import 'dart:convert';
 import 'dart:typed_data';
-import 'dart:html' as html;
-import 'dart:ui' as ui;
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:signature/signature.dart';
+import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import 'package:quiropractico_front/config/api_config.dart';
 import 'package:quiropractico_front/config/theme/app_theme.dart';
 import 'package:quiropractico_front/services/api_service.dart';
@@ -24,9 +24,11 @@ class KioskView extends StatefulWidget {
 class _KioskViewState extends State<KioskView> {
   StompClient? _stompClient;
   bool _isSignatureMode = false;
+  bool _isLopdMode = false;
   int? _currentCitaId;
+  int? _currentClienteId;
   String? _pacienteNombre;
-  String? _pdfUrl;
+  Uint8List? _pdfBytes;
   String? _fecha;
   String? _horaInicio;
   String? _horaFin;
@@ -36,7 +38,6 @@ class _KioskViewState extends State<KioskView> {
   bool _isSending = false;
   bool _hasSignature = false;
   bool _isSuccessState = false;
-  String _pdfViewType = 'pdf-viewer-html';
 
   late Timer _timer;
   DateTime _currentTime = DateTime.now();
@@ -51,7 +52,6 @@ class _KioskViewState extends State<KioskView> {
   void initState() {
     super.initState();
     _signatureController.addListener(_onSignatureChanged);
-    _registerPdfFactory();
     _connectWebSocket();
     _startClock();
   }
@@ -74,17 +74,48 @@ class _KioskViewState extends State<KioskView> {
     }
   }
 
-  void _registerPdfFactory() {
-    // ignore: undefined_prefixed_name
-    ui.platformViewRegistry.registerViewFactory(
-      _pdfViewType,
-      (int viewId) =>
-          html.IFrameElement()
-            ..src = _pdfUrl ?? ''
-            ..style.border = 'none'
-            ..style.width = '100%'
-            ..style.height = '100%',
-    );
+  Future<void> _fetchBorradorPdf(int idCita) async {
+    try {
+      final response = await ApiService.dio.get(
+        '/citas/$idCita/borrador-pdf',
+        options: Options(responseType: ResponseType.bytes),
+      );
+      if (mounted) {
+        setState(() {
+          _pdfBytes = Uint8List.fromList(response.data);
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        CustomSnackBar.show(
+          context,
+          message: 'Error al cargar el borrador del documento: ${ErrorHandler.extractMessage(e)}',
+          type: SnackBarType.error,
+        );
+      }
+    }
+  }
+
+  Future<void> _fetchBorradorLopd(int idCliente) async {
+    try {
+      final response = await ApiService.dio.get(
+        '/clientes/$idCliente/borrador-lopd',
+        options: Options(responseType: ResponseType.bytes),
+      );
+      if (mounted) {
+        setState(() {
+          _pdfBytes = Uint8List.fromList(response.data);
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        CustomSnackBar.show(
+          context,
+          message: 'Error al cargar el borrador de la LOPD: ${ErrorHandler.extractMessage(e)}',
+          type: SnackBarType.error,
+        );
+      }
+    }
   }
 
   void _connectWebSocket() {
@@ -122,11 +153,16 @@ class _KioskViewState extends State<KioskView> {
           final action = data['action'];
 
           if (action == 'OPEN_SIGNATURE') {
+            final dynamic rawId = data['idCita'];
+            final int? idCita = rawId is int ? rawId : int.tryParse(rawId?.toString() ?? '');
+
             setState(() {
               _isSignatureMode = true;
-              _currentCitaId = data['idCita'];
+              _isLopdMode = false;
+              _currentCitaId = idCita;
+              _currentClienteId = null;
               _pacienteNombre = data['nombrePaciente'];
-              _pdfUrl = data['urlPdf'];
+              _pdfBytes = null;
               _fecha = data['fecha'];
               _horaInicio = data['horaInicio'];
               _horaFin = data['horaFin'];
@@ -136,14 +172,43 @@ class _KioskViewState extends State<KioskView> {
               _signatureController.clear();
               _hasSignature = false;
             });
-            _registerPdfFactory();
-          } else if (action == 'CLOSE_SIGNATURE') {
+
+            if (idCita != null) {
+              _fetchBorradorPdf(idCita);
+            }
+          } else if (action == 'OPEN_LOPD') {
+            final dynamic rawId = data['idCliente'] ?? data['clienteId'] ?? data['id'];
+            final int? idCliente = rawId is int ? rawId : int.tryParse(rawId?.toString() ?? '');
+
+            setState(() {
+              _isSignatureMode = true;
+              _isLopdMode = true;
+              _currentClienteId = idCliente;
+              _currentCitaId = null;
+              _pacienteNombre = data['nombrePaciente'] ?? data['pacienteNombre'] ?? data['nombre'];
+              _pdfBytes = null;
+              _fecha = data['fecha'] ?? DateFormat('dd/MM/yyyy').format(DateTime.now());
+              _horaInicio = null;
+              _horaFin = null;
+              _esBono = false;
+              _infoBono = null;
+              _idBono = null;
+              _signatureController.clear();
+              _hasSignature = false;
+            });
+
+            if (idCliente != null) {
+              _fetchBorradorLopd(idCliente);
+            }
+          } else if (action == 'CLOSE_SIGNATURE' || action == 'CLOSE_LOPD') {
             // Si ya estamos enviando la firma o mostrando el éxito localmente, ignoramos el mensaje global de cierre
             if (!_isSuccessState && !_isSending) {
               setState(() {
                 _isSignatureMode = false;
+                _isLopdMode = false;
                 _currentCitaId = null;
-                _pdfUrl = null;
+                _currentClienteId = null;
+                _pdfBytes = null;
                 _hasSignature = false;
               });
             }
@@ -155,6 +220,9 @@ class _KioskViewState extends State<KioskView> {
 
   Future<void> _enviarFirma() async {
     if (!_hasSignature) return;
+    if (!_isLopdMode && _currentCitaId == null) return;
+    if (_isLopdMode && _currentClienteId == null) return;
+
     setState(() => _isSending = true);
 
     try {
@@ -162,41 +230,63 @@ class _KioskViewState extends State<KioskView> {
       if (signatureData == null) return;
 
       final String base64Firma = base64Encode(signatureData);
-      final response = await ApiService.dio.post(
-        '/citas/$_currentCitaId/firmar',
-        data: {'firmaBase64': base64Firma},
-      );
+      
+      final Response response;
+      if (_isLopdMode) {
+        response = await ApiService.dio.post(
+          '/clientes/$_currentClienteId/firmar-lopd',
+          data: {'firmaBase64': base64Firma},
+        );
+      } else {
+        response = await ApiService.dio.post(
+          '/citas/$_currentCitaId/firmar',
+          data: {'firmaBase64': base64Firma},
+        );
+      }
 
-      // Extraer la URL del PDF ya firmado
-      final String? signedPdfUrl = response.data['signedPdfUrl'];
+      final String? signedPdfBase64 = response.data?['signedPdfBase64'];
+      final String? signedPdfUrl = response.data?['signedPdfUrl'];
+      Uint8List? signedBytes;
+
+      if (signedPdfBase64 != null && signedPdfBase64.isNotEmpty) {
+        signedBytes = base64Decode(signedPdfBase64);
+      } else if (signedPdfUrl != null && signedPdfUrl.isNotEmpty) {
+        // Fallback: usar una instancia limpia de Dio sin interceptores para no inyectar Authorization en Cloudflare R2
+        final cleanDio = Dio();
+        final pdfResponse = await cleanDio.get<List<int>>(
+          signedPdfUrl,
+          options: Options(responseType: ResponseType.bytes),
+        );
+        if (pdfResponse.data != null) {
+          signedBytes = Uint8List.fromList(pdfResponse.data!);
+        }
+      }
 
       if (mounted) {
         setState(() {
-          _isSuccessState = true;
-          if (signedPdfUrl != null) {
-            _pdfUrl = signedPdfUrl;
+          if (signedBytes != null) {
+            _pdfBytes = signedBytes;
           }
+          _isSuccessState = true;
         });
-        
-        // Refrescar el iFrame con el PDF firmado (Usando un nuevo ID de vista para forzar recarga)
-        _pdfViewType = 'pdf-viewer-html-${DateTime.now().millisecondsSinceEpoch}';
-        _registerPdfFactory();
 
-        // Esperar 5 segundos para que el paciente vea su firma estampada
+        // Esperar 5 segundos para que el paciente vea el documento firmado y la pantalla de agradecimiento
         await Future.delayed(const Duration(seconds: 5));
 
         if (mounted) {
           setState(() {
             _isSignatureMode = false;
+            _isLopdMode = false;
             _isSuccessState = false;
             _currentCitaId = null;
-            _pdfUrl = null;
+            _currentClienteId = null;
+            _pdfBytes = null;
             _hasSignature = false;
           });
         }
       }
     } catch (e) {
-      if (context.mounted) {
+      if (mounted) {
         CustomSnackBar.show(
           context,
           message: ErrorHandler.extractMessage(e),
@@ -204,7 +294,9 @@ class _KioskViewState extends State<KioskView> {
         );
       }
     } finally {
-      setState(() => _isSending = false);
+      if (mounted) {
+        setState(() => _isSending = false);
+      }
     }
   }
 
@@ -346,10 +438,11 @@ class _KioskViewState extends State<KioskView> {
             ),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(20),
-              child: HtmlElementView(
-                key: ValueKey(_pdfViewType),
-                viewType: _pdfViewType,
-              ),
+              child: _pdfBytes != null
+                  ? SfPdfViewer.memory(_pdfBytes!)
+                  : const Center(
+                      child: CircularProgressIndicator(),
+                    ),
             ),
           ),
         ),
@@ -417,10 +510,12 @@ class _KioskViewState extends State<KioskView> {
               ),
             ),
             const SizedBox(height: 15),
-            const Text(
-              'Documento firmado con éxito.\nYa puede cerrar la sesión.',
+            Text(
+              _isLopdMode
+                  ? 'Consentimiento LOPD firmado con éxito.\nYa puede cerrar la sesión.'
+                  : 'Documento firmado con éxito.\nYa puede cerrar la sesión.',
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 18,
                 color: Colors.grey,
                 height: 1.5,
@@ -454,14 +549,14 @@ class _KioskViewState extends State<KioskView> {
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(
-                  Icons.description_outlined,
+                  _isLopdMode ? Icons.verified_user_outlined : Icons.description_outlined,
                   color: AppTheme.primaryColor,
                 ),
               ),
               const SizedBox(width: 15),
-              const Text(
-                'Resumen de la Sesión',
-                style: TextStyle(
+              Text(
+                _isLopdMode ? 'Consentimiento LOPD' : 'Resumen de la Sesión',
+                style: const TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
                   color: Color(0xFF2C3E50),
@@ -475,64 +570,73 @@ class _KioskViewState extends State<KioskView> {
             'Paciente',
             _pacienteNombre ?? '---',
           ),
-          _buildInfoRow(
-            Icons.tag,
-            'ID Cita',
-            _currentCitaId?.toString() ?? '---',
-          ),
-          _buildInfoRow(Icons.event_available, 'Fecha', _fecha ?? '---'),
-          _buildInfoRow(
-            Icons.access_time,
-            'Horario',
-            '$_horaInicio - $_horaFin',
-          ),
-          if (_esBono)
-            Container(
-              margin: const EdgeInsets.only(top: 15),
-              padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
-              decoration: BoxDecoration(
-                color: Colors.blue.withOpacity(0.05),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.blue.withOpacity(0.2)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.credit_card,
-                        size: 20,
-                        color: Colors.blue,
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
+          if (_isLopdMode) ...[
+            _buildInfoRow(
+              Icons.badge_outlined,
+              'ID Paciente',
+              _currentClienteId?.toString() ?? '---',
+            ),
+            _buildInfoRow(Icons.event_available, 'Fecha', _fecha ?? '---'),
+          ] else ...[
+            _buildInfoRow(
+              Icons.tag,
+              'ID Cita',
+              _currentCitaId?.toString() ?? '---',
+            ),
+            _buildInfoRow(Icons.event_available, 'Fecha', _fecha ?? '---'),
+            _buildInfoRow(
+              Icons.access_time,
+              'Horario',
+              '$_horaInicio - $_horaFin',
+            ),
+            if (_esBono)
+              Container(
+                margin: const EdgeInsets.only(top: 15),
+                padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withOpacity(0.05),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.blue.withOpacity(0.2)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.credit_card,
+                          size: 20,
+                          color: Colors.blue,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            _infoBono ?? 'Bono Activo',
+                            style: const TextStyle(
+                              color: Colors.blue,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (_idBono != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 5, left: 30),
                         child: Text(
-                          _infoBono ?? 'Bono Activo',
-                          style: const TextStyle(
-                            color: Colors.blue,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 14,
+                          'Ref: #$_idBono',
+                          style: TextStyle(
+                            color: Colors.blue.withOpacity(0.7),
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
                       ),
-                    ],
-                  ),
-                  if (_idBono != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 5, left: 30),
-                      child: Text(
-                        'Ref: #$_idBono',
-                        style: TextStyle(
-                          color: Colors.blue.withOpacity(0.7),
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                ],
+                  ],
+                ),
               ),
-            ),
+          ],
         ],
       ),
     );
@@ -575,9 +679,11 @@ class _KioskViewState extends State<KioskView> {
       ),
       child: Column(
         children: [
-          const Text(
-            'Firma de Conformidad',
-            style: TextStyle(
+          Text(
+            _isLopdMode
+                ? 'Consentimiento de Tratamiento y LOPD'
+                : 'Firma de Conformidad',
+            style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
               color: Color(0xFF2C3E50),
@@ -585,7 +691,9 @@ class _KioskViewState extends State<KioskView> {
           ),
           const SizedBox(height: 10),
           Text(
-            'Al firmar debajo, confirmo mi asistencia a la cita #$_currentCitaId el día $_fecha y acepto el cargo del servicio.',
+            _isLopdMode
+                ? 'Al firmar debajo, confirmo que he leído y acepto la política de protección de datos (LOPD-GDD) y el consentimiento informado de tratamiento.'
+                : 'Al firmar debajo, confirmo mi asistencia a la cita #$_currentCitaId el día $_fecha y acepto el cargo del servicio.',
             textAlign: TextAlign.center,
             style: const TextStyle(fontSize: 14, color: Colors.grey),
           ),
@@ -647,9 +755,9 @@ class _KioskViewState extends State<KioskView> {
                             ),
                           )
                           : const Icon(Icons.draw_outlined),
-                  label: const Text(
-                    'CONFIRMAR ASISTENCIA',
-                    style: TextStyle(
+                  label: Text(
+                    _isLopdMode ? 'CONFIRMAR Y FIRMAR LOPD' : 'CONFIRMAR ASISTENCIA',
+                    style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       letterSpacing: 1.2,
                     ),

@@ -1,11 +1,20 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:stomp_dart_client/stomp_dart_client.dart';
+import 'package:quiropractico_front/config/api_config.dart';
 import 'package:quiropractico_front/config/theme/app_theme.dart';
+import 'package:quiropractico_front/models/cliente.dart';
+import 'package:quiropractico_front/models/documento.dart';
+import 'package:quiropractico_front/models/tipo_documento.dart';
 import 'package:quiropractico_front/providers/client_detail_provider.dart';
+import 'package:quiropractico_front/providers/documentos_provider.dart';
+import 'package:quiropractico_front/services/local_storage.dart';
+import 'package:quiropractico_front/utils/download_helper.dart';
 import 'package:quiropractico_front/ui/modals/client_modal.dart';
 import 'package:quiropractico_front/ui/modals/cita_detalle_modal.dart';
 import 'package:quiropractico_front/ui/modals/cita_modal.dart';
@@ -73,6 +82,7 @@ class _Content extends StatefulWidget {
 class _ContentState extends State<_Content>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  StompClient? _stompClient;
 
   @override
   void initState() {
@@ -82,11 +92,82 @@ class _ContentState extends State<_Content>
       vsync: this,
       initialIndex: widget.initialTab,
     );
+    _initWebSocket();
+  }
+
+  void _initWebSocket() {
+    final token = LocalStorage.getToken();
+    if (token == null) return;
+    final String wsUrl = ApiConfig.baseUrl
+        .replaceFirst('http', 'ws')
+        .replaceAll('/api', '/ws-kiosk');
+
+    _stompClient = StompClient(
+      config: StompConfig(
+        url: wsUrl,
+        onConnect: (frame) {
+          _stompClient?.subscribe(
+            destination: '/topic/clientes',
+            callback: _handleWsMessage,
+          );
+          _stompClient?.subscribe(
+            destination: '/topic/kiosk',
+            callback: _handleWsMessage,
+          );
+        },
+        reconnectDelay: const Duration(seconds: 5),
+        heartbeatIncoming: const Duration(milliseconds: 10000),
+        heartbeatOutgoing: const Duration(milliseconds: 10000),
+        stompConnectHeaders: {
+          'Authorization': 'Bearer $token',
+        },
+        onWebSocketError: (error) => debugPrint('WS Error en ClienteDetalleView: $error'),
+      ),
+    );
+    _stompClient?.activate();
+  }
+
+  void _handleWsMessage(StompFrame frame) {
+    if (frame.body == null || !mounted) return;
+    try {
+      final data = json.decode(frame.body!);
+      final action = data['action'];
+
+      if (action == 'LOPD_FIRMADA' || action == 'CLIENTE_LOPD_FIRMADA' || action == 'FIRMA_LOPD_EXITOSA') {
+        final dynamic rawId = data['idCliente'] ?? data['clienteId'] ?? data['id'];
+        final int? idClienteFirmado = rawId is int ? rawId : int.tryParse(rawId?.toString() ?? '');
+
+        final detailProvider = Provider.of<ClientDetailProvider>(context, listen: false);
+        final currentClienteId = detailProvider.cliente?.idCliente;
+
+        if (currentClienteId != null && (idClienteFirmado == null || idClienteFirmado == currentClienteId)) {
+          // 1. Inmediatamente marcar como firmada y refrescar el cliente
+          detailProvider.marcarLopdFirmada();
+          detailProvider.refreshCliente(silent: true);
+
+          // 2. Refrescar silenciosamente los documentos en memoria
+          final docProvider = Provider.of<DocumentosProvider>(context, listen: false);
+          docProvider.loadDocumentos(currentClienteId, silent: true);
+
+          // 3. Feedback visual para la recepcionista
+          if (mounted) {
+            CustomSnackBar.show(
+              context,
+              message: '¡El paciente ha firmado el documento LOPD!',
+              type: SnackBarType.success,
+            );
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Error procesando WS en ClienteDetalleView: $e');
+    }
   }
 
   @override
   void dispose() {
     _tabController.dispose();
+    _stompClient?.deactivate();
     super.dispose();
   }
 
@@ -198,6 +279,19 @@ class _ContentState extends State<_Content>
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
+                              if (cliente.dniNie != null && cliente.dniNie!.isNotEmpty) ...[
+                                const SizedBox(width: 8),
+                                Text(
+                                  'DNI: ${cliente.dniNie}',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey[600],
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                              const SizedBox(width: 12),
+                              _buildLopdChip(context, cliente),
                             ],
                           ),
                           const SizedBox(height: 4),
@@ -206,7 +300,7 @@ class _ContentState extends State<_Content>
                               Tooltip(
                                 message: "Abrir WhatsApp",
                                 child: InkWell(
-                                  onTap: () => _lanzarWhatsApp(context, cliente.telefono),
+                                  onTap: () => _lanzarWhatsApp(context, cliente.prefijoTelefono, cliente.telefono),
                                   borderRadius: BorderRadius.circular(4),
                                   child: Padding(
                                     padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
@@ -216,7 +310,7 @@ class _ContentState extends State<_Content>
                                         const FaIcon(FontAwesomeIcons.whatsapp, size: 14, color: Colors.green),
                                         const SizedBox(width: 6),
                                         Text(
-                                          cliente.telefono,
+                                          '${cliente.prefijoTelefono} ${cliente.telefono}',
                                           style: const TextStyle(color: Colors.blueGrey, fontWeight: FontWeight.w600, fontSize: 13),
                                         ),
                                       ],
@@ -302,8 +396,8 @@ class _ContentState extends State<_Content>
                               builder: (_) => CitaModal(preSelectedClient: cliente),
                             );
                             if (refresh == true) {
-                              provider.refreshCitas(silent: false);
-                              provider.refreshBonos(silent: false);
+                              provider.refreshCitas(silent: true);
+                              provider.refreshBonos(silent: true);
                             }
                           },
                           icon: const Icon(Icons.calendar_today, size: 16),
@@ -322,7 +416,7 @@ class _ContentState extends State<_Content>
                               builder: (_) => VentaBonoModal(cliente: cliente),
                             );
                             if (refresh == true) {
-                              provider.refreshBonos(silent: false);
+                              provider.refreshBonos(silent: true);
                             }
                           },
                           icon: const Icon(Icons.card_membership, size: 16),
@@ -488,7 +582,7 @@ class _ContentState extends State<_Content>
                           borderRadius: BorderRadius.circular(8),
                           onTap: () {
                             if (cliente.deudaPendiente > 0) {
-                              final impagados = provider.bonos.where((b) => !(b.pagado ?? true)).toList();
+                              final impagados = provider.bonos.where((b) => !(b.pagado)).toList();
                               if (impagados.length == 1 && cliente.pagosPendientesCount <= 1) {
                                 BonoDetalleModal.show(context, bono: impagados.first).then((_) {
                                   provider.refreshCliente(silent: true);
@@ -607,11 +701,12 @@ class _ContentState extends State<_Content>
     );
   }
 
-  void _lanzarWhatsApp(BuildContext context, String telefono) async {
+  void _lanzarWhatsApp(BuildContext context, String prefijo, String telefono) async {
     final cleanPhone = telefono.replaceAll(RegExp(r'[^0-9]'), '');
+    final cleanPrefijo = prefijo.replaceAll(RegExp(r'[^0-9]'), '');
     if (cleanPhone.isEmpty) return;
 
-    final url = Uri.parse("https://wa.me/$cleanPhone");
+    final url = Uri.parse("https://wa.me/$cleanPrefijo$cleanPhone");
     try {
       if (await canLaunchUrl(url)) {
         await launchUrl(url, mode: LaunchMode.externalApplication);
@@ -632,6 +727,240 @@ class _ContentState extends State<_Content>
           type: SnackBarType.error,
         );
       }
+    }
+  }
+
+  Widget _buildLopdChip(BuildContext context, Cliente cliente) {
+    if (cliente.lopdFirmada) {
+      return Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _mostrarOpcionesLopdFirmada(context, cliente),
+          borderRadius: BorderRadius.circular(20),
+          hoverColor: Colors.green.withValues(alpha: 0.12),
+          child: Tooltip(
+            message: 'LOPD Firmada · Clic para previsualizar o gestionar',
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+              decoration: BoxDecoration(
+                color: Colors.green.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.green.shade400),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.verified_user_rounded, size: 14, color: Colors.green),
+                  SizedBox(width: 5),
+                  Text(
+                    'LOPD Firmada',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.green,
+                    ),
+                  ),
+                  SizedBox(width: 4),
+                  Icon(Icons.arrow_drop_down_rounded, size: 16, color: Colors.green),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => _solicitarFirmaLopd(context, cliente.idCliente),
+        borderRadius: BorderRadius.circular(20),
+        hoverColor: Colors.deepOrange.withValues(alpha: 0.08),
+        child: Tooltip(
+          message: 'Pulsar para solicitar firma LOPD en el Kiosco',
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+            decoration: BoxDecoration(
+              color: Colors.deepOrange.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.deepOrange.shade300),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.pending_actions_rounded, size: 14, color: Colors.deepOrange.shade700),
+                const SizedBox(width: 5),
+                Text(
+                  'LOPD Pendiente',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.deepOrange.shade800,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Icon(Icons.touch_app_rounded, size: 12, color: Colors.deepOrange.shade600),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _solicitarFirmaLopd(BuildContext context, int idCliente) async {
+    final provider = Provider.of<ClientDetailProvider>(context, listen: false);
+    CustomSnackBar.show(
+      context,
+      message: 'Enviando documento LOPD a la tablet...',
+      type: SnackBarType.info,
+    );
+    final error = await provider.solicitarFirmaLopd(idCliente);
+    if (context.mounted) {
+      if (error == null) {
+        CustomSnackBar.show(
+          context,
+          message: '¡Documento LOPD enviado a la tablet para su firma!',
+          type: SnackBarType.success,
+        );
+      } else {
+        CustomSnackBar.show(
+          context,
+          message: 'Error al enviar LOPD a la tablet: $error',
+          type: SnackBarType.error,
+        );
+      }
+    }
+  }
+
+  Future<void> _mostrarOpcionesLopdFirmada(BuildContext context, Cliente cliente) async {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.green.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.verified_user_rounded, color: Colors.green, size: 24),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Consentimiento LOPD', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  Text('Documento legal firmado y en vigor', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                ],
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.visibility_outlined, color: AppTheme.primaryColor),
+              ),
+              title: const Text('Previsualizar / Descargar PDF', style: TextStyle(fontWeight: FontWeight.w600)),
+              subtitle: const Text('Abrir el documento firmado'),
+              trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
+              onTap: () async {
+                Navigator.of(ctx).pop();
+                await _abrirDocumentoLopd(context, cliente.idCliente);
+              },
+            ),
+            const Divider(height: 1),
+            ListTile(
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.folder_open_outlined, color: Colors.blue),
+              ),
+              title: const Text('Ver en pestaña Archivos', style: TextStyle(fontWeight: FontWeight.w600)),
+              subtitle: const Text('Ir a carpeta Consentimiento LOPD'),
+              trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
+              onTap: () {
+                Navigator.of(ctx).pop();
+                _tabController.animateTo(3); // Tab 3: Archivos
+                final docProvider = Provider.of<DocumentosProvider>(context, listen: false);
+                docProvider.entrarCarpeta(TipoDocumento.consentimientoLopd);
+              },
+            ),
+            const Divider(height: 1),
+            ListTile(
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.deepOrange.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.tablet_mac_rounded, color: Colors.deepOrange),
+              ),
+              title: const Text('Re-enviar a la Tablet', style: TextStyle(fontWeight: FontWeight.w600, color: Colors.deepOrange)),
+              subtitle: const Text('Solicitar una nueva firma en el Kiosco'),
+              trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
+              onTap: () {
+                Navigator.of(ctx).pop();
+                _solicitarFirmaLopd(context, cliente.idCliente);
+              },
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cerrar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _abrirDocumentoLopd(BuildContext context, int idCliente) async {
+    final docProvider = Provider.of<DocumentosProvider>(context, listen: false);
+    CustomSnackBar.show(context, message: 'Localizando documento LOPD firmado...', type: SnackBarType.info);
+
+    if (docProvider.documentos.isEmpty) {
+      await docProvider.loadDocumentos(idCliente, silent: true);
+    }
+
+    Documento? lopdDoc;
+    try {
+      lopdDoc = docProvider.documentos.firstWhere(
+        (d) => d.tipo == TipoDocumento.consentimientoLopd,
+      );
+    } catch (_) {
+      lopdDoc = null;
+    }
+
+    if (lopdDoc != null) {
+      final url = await docProvider.obtenerUrlTemporal(lopdDoc.idDocumento, download: false);
+      if (url != null) {
+        DownloadHelper.viewFile(url);
+        return;
+      }
+    }
+
+    if (context.mounted) {
+      CustomSnackBar.show(
+        context,
+        message: 'No se encontró el archivo firmado en la lista de documentos.',
+        type: SnackBarType.info,
+      );
     }
   }
 }

@@ -22,6 +22,8 @@ class _ClientModalState extends State<ClientModal> {
   final telefonoCtrl = TextEditingController();
   final emailCtrl = TextEditingController();
   final direccionCtrl = TextEditingController();
+  final dniNieCtrl = TextEditingController();
+  final prefijoCtrl = TextEditingController(text: '+34');
 
   bool get isEditing => widget.clienteExistente != null;
 
@@ -35,6 +37,8 @@ class _ClientModalState extends State<ClientModal> {
       telefonoCtrl.text = c.telefono;
       emailCtrl.text = c.email ?? '';
       direccionCtrl.text = c.direccion ?? '';
+      dniNieCtrl.text = c.dniNie ?? '';
+      prefijoCtrl.text = c.prefijoTelefono;
     }
   }
 
@@ -60,6 +64,15 @@ class _ClientModalState extends State<ClientModal> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 const SizedBox(height: 10),
+                // DNI / NIE
+                TextFormField(
+                  controller: dniNieCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'DNI / NIE (Opcional)',
+                    prefixIcon: Icon(Icons.badge_outlined),
+                  ),
+                ),
+                const SizedBox(height: 15),
                 // Nombre
                 TextFormField(
                   controller: nombreCtrl,
@@ -88,25 +101,44 @@ class _ClientModalState extends State<ClientModal> {
                               : null,
                 ),
                 const SizedBox(height: 15),
-                // Teléfono
-                TextFormField(
-                  controller: telefonoCtrl,
-                  keyboardType: TextInputType.phone,
-                  decoration: const InputDecoration(
-                    labelText: 'Teléfono *',
-                    prefixIcon: Icon(Icons.phone_outlined),
-                    hintText: 'ej. 600123456',
-                  ),
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty)
-                      return 'El teléfono es obligatorio';
-                    final phoneRegex = RegExp(r'^\+?[0-9]{9,15}$');
+                // Teléfono con prefijo
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(
+                      width: 100,
+                      child: TextFormField(
+                        controller: prefijoCtrl,
+                        decoration: const InputDecoration(
+                          labelText: 'Prefijo',
+                          prefixIcon: Icon(Icons.public),
+                        ),
+                        validator: (v) => (v == null || v.isEmpty) ? 'Requerido' : null,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: TextFormField(
+                        controller: telefonoCtrl,
+                        keyboardType: TextInputType.phone,
+                        decoration: const InputDecoration(
+                          labelText: 'Teléfono *',
+                          prefixIcon: Icon(Icons.phone_outlined),
+                          hintText: 'ej. 600123456',
+                        ),
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty)
+                            return 'El teléfono es obligatorio';
+                          final phoneRegex = RegExp(r'^\+?[0-9]{9,15}$');
 
-                    if (!phoneRegex.hasMatch(value.trim())) {
-                      return 'Formato inválido (Mínimo 9 dígitos)';
-                    }
-                    return null;
-                  },
+                          if (!phoneRegex.hasMatch(value.trim())) {
+                            return 'Formato inválido (Mínimo 9 dígitos)';
+                          }
+                          return null;
+                        },
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 15),
                 // Email
@@ -164,30 +196,104 @@ class _ClientModalState extends State<ClientModal> {
                   widget.clienteExistente!.idCliente,
                   nombreCtrl.text.trim(),
                   apellidosCtrl.text.trim(),
-                  telefonoCtrl.text.trim(),
+                  telefonoCtrl.text.trim().replaceAll(' ', ''),
                   emailCtrl.text.isEmpty ? null : emailCtrl.text.trim(),
                   direccionCtrl.text.isEmpty ? null : direccionCtrl.text.trim(),
+                  dniNieCtrl.text.isEmpty ? null : dniNieCtrl.text.trim(),
+                  prefijoCtrl.text.trim().isEmpty ? '+34' : prefijoCtrl.text.trim().replaceAll(' ', ''),
                 );
               } else {
                 // CREAR
                 error = await clientsProvider.createClient(
                   nombreCtrl.text.trim(),
                   apellidosCtrl.text.trim(),
-                  telefonoCtrl.text.trim(),
+                  telefonoCtrl.text.trim().replaceAll(' ', ''),
                   emailCtrl.text.isEmpty ? null : emailCtrl.text.trim(),
                   direccionCtrl.text.isEmpty ? null : direccionCtrl.text.trim(),
+                  dniNieCtrl.text.isEmpty ? null : dniNieCtrl.text.trim(),
+                  prefijoCtrl.text.trim().isEmpty ? '+34' : prefijoCtrl.text.trim().replaceAll(' ', ''),
                 );
               }
 
               if (context.mounted) {
                 if (error == null) {
-                  Navigator.of(context).pop(true);
                   if (!isEditing) {
+                    final nuevoCliente = clientsProvider.lastCreatedClient;
+                    if (nuevoCliente != null && nuevoCliente.idCliente > 0) {
+                      final bool? enviarLopd = await showDialog<bool>(
+                        context: context,
+                        barrierDismissible: false,
+                        builder: (ctx) => AlertDialog(
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          title: const Row(
+                            children: [
+                              Icon(Icons.assignment_turned_in_rounded, color: AppTheme.primaryColor),
+                              SizedBox(width: 8),
+                              Text('Paciente registrado'),
+                            ],
+                          ),
+                          content: const Text(
+                            '¿Desea enviar el documento LOPD a la tablet para su firma ahora?',
+                            style: TextStyle(fontSize: 14),
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.of(ctx).pop(false),
+                              child: const Text('Más tarde', style: TextStyle(color: Colors.grey)),
+                            ),
+                            ElevatedButton.icon(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppTheme.primaryColor,
+                                foregroundColor: Colors.white,
+                              ),
+                              onPressed: () => Navigator.of(ctx).pop(true),
+                              icon: const Icon(Icons.tablet_mac_rounded, size: 18),
+                              label: const Text('Enviar a Tablet'),
+                            ),
+                          ],
+                        ),
+                      );
+
+                      if (enviarLopd == true && context.mounted) {
+                        final errorLopd = await clientsProvider.solicitarFirmaLopd(nuevoCliente.idCliente);
+                        if (context.mounted) {
+                          if (errorLopd == null) {
+                            CustomSnackBar.show(
+                              context,
+                              message: 'Documento LOPD enviado a la tablet para su firma',
+                              type: SnackBarType.success,
+                            );
+                          } else {
+                            CustomSnackBar.show(
+                              context,
+                              message: 'Paciente registrado, pero hubo un error al avisar a la tablet: $errorLopd',
+                              type: SnackBarType.error,
+                            );
+                          }
+                        }
+                      } else if (context.mounted) {
+                        CustomSnackBar.show(
+                          context,
+                          message: 'Paciente registrado con éxito',
+                          type: SnackBarType.success,
+                        );
+                      }
+                    } else if (context.mounted) {
+                      CustomSnackBar.show(
+                        context,
+                        message: 'Paciente registrado con éxito',
+                        type: SnackBarType.success,
+                      );
+                    }
+                  } else if (context.mounted) {
                     CustomSnackBar.show(
                       context,
-                      message: 'Paciente creado',
+                      message: 'Paciente actualizado con éxito',
                       type: SnackBarType.success,
                     );
+                  }
+                  if (context.mounted) {
+                    Navigator.of(context).pop(true);
                   }
                 } else {
                   CustomSnackBar.show(

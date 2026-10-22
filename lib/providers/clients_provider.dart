@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:quiropractico_front/services/api_service.dart';
 import 'package:flutter/material.dart';
 import 'package:quiropractico_front/config/api_config.dart';
@@ -40,25 +41,51 @@ class ClientsProvider extends ChangeNotifier {
   }
 
 
-  Future<String?> createClient(String nombre, String apellidos, String telefono, String? email, String? direccion) async {
+  Cliente? lastCreatedClient;
+
+  Future<String?> createClient(String nombre, String apellidos, String telefono, String? email, String? direccion, String? dniNie, String prefijoTelefono) async {
+    lastCreatedClient = null;
     try {
-      
       final data = {
         "nombre": nombre,
         "apellidos": apellidos,
         "telefono": telefono,
         "email": email,
-        "direccion": direccion
+        "direccion": direccion,
+        "dniNie": dniNie,
+        "prefijoTelefono": prefijoTelefono
       };
 
-      await ApiService.dio.post(
+      final response = await ApiService.dio.post(
         '$_baseUrl/clientes',
         data: data
       );
 
+      if (response.data != null && response.data is Map) {
+        lastCreatedClient = Cliente.fromJson(Map<String, dynamic>.from(response.data));
+      }
+
       getPaginatedClients(page: 0);
       return null;
     } catch (e) {
+      return ErrorHandler.extractMessage(e);
+    }
+  }
+
+  /// Solicita la firma del documento LOPD en el Kiosco
+  Future<String?> solicitarFirmaLopd(int idCliente) async {
+    try {
+      await ApiService.dio.post('$_baseUrl/clientes/$idCliente/solicitar-firma-lopd');
+      return null;
+    } catch (e) {
+      if (e is DioException && e.response?.statusCode == 404) {
+        try {
+          await ApiService.dio.post('$_baseUrl/clientes/$idCliente/solicitar-lopd');
+          return null;
+        } catch (inner) {
+          return ErrorHandler.extractMessage(inner);
+        }
+      }
       return ErrorHandler.extractMessage(e);
     }
   }
@@ -226,9 +253,9 @@ class ClientsProvider extends ChangeNotifier {
   }
   
   // Editar Cliente
-  Future<String?> updateClient(int id, String nombre, String apellidos, String telefono, String? email, String? direccion) async {
+  Future<String?> updateClient(int id, String nombre, String apellidos, String telefono, String? email, String? direccion, String? dniNie, String prefijoTelefono) async {
     try {
-      final data = { "nombre": nombre, "apellidos": apellidos, "telefono": telefono, "email": email, "direccion": direccion };
+      final data = { "nombre": nombre, "apellidos": apellidos, "telefono": telefono, "email": email, "direccion": direccion, "dniNie": dniNie, "prefijoTelefono": prefijoTelefono };
 
       final response = await ApiService.dio.put( 
         '$_baseUrl/clientes/$id',

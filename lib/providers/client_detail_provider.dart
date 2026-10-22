@@ -23,6 +23,7 @@ class ClientDetailProvider extends ChangeNotifier {
   bool isLoadingCitas = false;
   bool isLoadingMoreCitas = false;
   bool hasMoreCitas = false;
+  int _citasPage = 0;
   
   DateTime? fechaInicio;
   DateTime? fechaFin;
@@ -32,16 +33,45 @@ class ClientDetailProvider extends ChangeNotifier {
     fechaInicio = start;
     fechaFin = end;
     notifyListeners();
+    refreshCitas(silent: true);
   }
 
   void setFiltroEstado(String? estado) {
     filtroEstado = estado;
     notifyListeners();
+    refreshCitas(silent: true);
   }
 
   Future<void> loadMoreCitas() async {
-    isLoadingMoreCitas = false;
+    if (isLoadingMoreCitas || !hasMoreCitas) return;
+    isLoadingMoreCitas = true;
     notifyListeners();
+    await refreshCitas(silent: true, isLoadMore: true);
+  }
+
+  List<Cita> get filteredCitas {
+    return historialCitas.where((cita) {
+      bool matchesEstado = true;
+      if (filtroEstado != null) {
+        matchesEstado = cita.estado.toLowerCase() == filtroEstado!.toLowerCase();
+      }
+
+      bool matchesFecha = true;
+      if (fechaInicio != null) {
+        final citaDate = DateTime(cita.fechaHoraInicio.year, cita.fechaHoraInicio.month, cita.fechaHoraInicio.day);
+        final start = DateTime(fechaInicio!.year, fechaInicio!.month, fechaInicio!.day);
+        
+        if (fechaFin != null) {
+          final end = DateTime(fechaFin!.year, fechaFin!.month, fechaFin!.day);
+          matchesFecha = (citaDate.isAtSameMomentAs(start) || citaDate.isAfter(start)) && 
+                         (citaDate.isAtSameMomentAs(end) || citaDate.isBefore(end));
+        } else {
+          matchesFecha = citaDate.isAtSameMomentAs(start);
+        }
+      }
+
+      return matchesEstado && matchesFecha;
+    }).toList();
   }
 
 
@@ -63,23 +93,51 @@ class ClientDetailProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> refreshCitas({bool silent = true}) async {
+  Future<void> refreshCitas({bool silent = true, bool isLoadMore = false}) async {
     if (cliente == null) return;
-    if (!silent) {
+    if (!silent && !isLoadMore) {
       isLoading = true;
       notifyListeners();
     }
     try {
-      final respCitas = await ApiService.dio.get('$_baseUrl/citas/cliente/${cliente!.idCliente}');
-      final dataCitas = respCitas.data is Map ? (respCitas.data['content'] ?? []) : respCitas.data;
-      historialCitas = (dataCitas as List).map((e) => Cita.fromJson(e)).toList();
+      if (!isLoadMore) {
+        _citasPage = 0;
+      }
+      final Map<String, dynamic> params = {
+        'page': _citasPage,
+        'size': 15,
+        'sort': 'fechaHoraInicio,desc',
+      };
+      if (filtroEstado != null) params['estado'] = filtroEstado;
+      if (fechaInicio != null) params['fechaInicio'] = fechaInicio!.toIso8601String().split('T')[0];
+      if (fechaFin != null) params['fechaFin'] = fechaFin!.toIso8601String().split('T')[0];
+
+      final respCitas = await ApiService.dio.get('$_baseUrl/citas/cliente/${cliente!.idCliente}', queryParameters: params);
+      
+      final dataCitasMap = respCitas.data is Map ? respCitas.data : {};
+      final List dataCitas = dataCitasMap['content'] ?? (respCitas.data is List ? respCitas.data : []);
+      
+      final isLast = dataCitasMap['last'] ?? (dataCitas.length < 15);
+      hasMoreCitas = !isLast;
+
+      final nuevasCitas = dataCitas.map((e) => Cita.fromJson(e)).toList();
+      
+      if (isLoadMore) {
+        historialCitas.addAll(nuevasCitas);
+      } else {
+        historialCitas = nuevasCitas;
+      }
+
+      if (!isLast) {
+        _citasPage++;
+      }
+
     } catch (e) {
       debugPrint('Error refreshCitas: $e');
     } finally {
       if (!silent) isLoading = false;
+      if (isLoadMore) isLoadingMoreCitas = false;
       notifyListeners();
-      // Refrescamos silenciosamente el cliente para que se sincronicen los KPIs de cabecera (como próximas citas)
-      refreshCliente(silent: true);
     }
   }
 
@@ -238,5 +296,31 @@ class ClientDetailProvider extends ChangeNotifier {
   // Helper para no repetir codigo de la recarga de familiares
   Future<void> _recargarFamiliares() async {
     await refreshFamiliares();
+  }
+
+  /// Solicita la firma del documento LOPD en el Kiosco
+  Future<String?> solicitarFirmaLopd(int idCliente) async {
+    try {
+      await ApiService.dio.post('$_baseUrl/clientes/$idCliente/solicitar-firma-lopd');
+      return null;
+    } catch (e) {
+      if (e is DioException && e.response?.statusCode == 404) {
+        try {
+          await ApiService.dio.post('$_baseUrl/clientes/$idCliente/solicitar-lopd');
+          return null;
+        } catch (inner) {
+          return ErrorHandler.extractMessage(inner);
+        }
+      }
+      return ErrorHandler.extractMessage(e);
+    }
+  }
+
+  /// Marca localmente la LOPD como firmada de forma reactiva
+  void marcarLopdFirmada() {
+    if (cliente != null && !cliente!.lopdFirmada) {
+      cliente = cliente!.copyWith(lopdFirmada: true);
+      notifyListeners();
+    }
   }
 }

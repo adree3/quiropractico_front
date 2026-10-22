@@ -2,8 +2,10 @@ import 'package:quiropractico_front/models/cita.dart';
 
 class Cliente {
   final int idCliente;
+  final String? dniNie;
   final String nombre;
   final String apellidos;
+  final String prefijoTelefono;
   final String telefono;
   final String? email;
   final String? direccion;
@@ -22,11 +24,14 @@ class Cliente {
   final double deudaPendiente;
   final int pagosPendientesCount;
   final Cita? proximaCita;
+  final bool lopdFirmada;
 
   Cliente({
     required this.idCliente,
+    this.dniNie,
     required this.nombre,
     required this.apellidos,
+    this.prefijoTelefono = '+34',
     required this.telefono,
     this.email,
     this.direccion,
@@ -41,12 +46,15 @@ class Cliente {
     this.deudaPendiente = 0.0,
     this.pagosPendientesCount = 0,
     this.proximaCita,
+    this.lopdFirmada = false,
   });
   factory Cliente.fromJson(Map<String, dynamic> json) {
     return Cliente(
       idCliente: json['idCliente'],
+      dniNie: json['dniNie'],
       nombre: json['nombre'] ?? '',
       apellidos: json['apellidos'] ?? '',
+      prefijoTelefono: json['prefijoTelefono'] ?? '+34',
       telefono: json['telefono'] ?? '',
       email: json['email'],
       direccion: json['direccion'],
@@ -64,13 +72,16 @@ class Cliente {
       deudaPendiente: (json['deudaPendiente'] ?? 0.0).toDouble(),
       pagosPendientesCount: json['pagosPendientesCount'] ?? 0,
       proximaCita: json['proximaCita'] != null ? Cita.fromJson(json['proximaCita']) : null,
+      lopdFirmada: json['lopdFirmada'] ?? false,
     );
   }
 
   Cliente copyWith({
     int? idCliente,
+    String? dniNie,
     String? nombre,
     String? apellidos,
+    String? prefijoTelefono,
     String? telefono,
     String? email,
     String? direccion,
@@ -85,11 +96,14 @@ class Cliente {
     double? deudaPendiente,
     int? pagosPendientesCount,
     Cita? proximaCita,
+    bool? lopdFirmada,
   }) {
     return Cliente(
       idCliente: idCliente ?? this.idCliente,
+      dniNie: dniNie ?? this.dniNie,
       nombre: nombre ?? this.nombre,
       apellidos: apellidos ?? this.apellidos,
+      prefijoTelefono: prefijoTelefono ?? this.prefijoTelefono,
       telefono: telefono ?? this.telefono,
       email: email ?? this.email,
       direccion: direccion ?? this.direccion,
@@ -104,6 +118,7 @@ class Cliente {
       deudaPendiente: deudaPendiente ?? this.deudaPendiente,
       pagosPendientesCount: pagosPendientesCount ?? this.pagosPendientesCount,
       proximaCita: proximaCita ?? this.proximaCita,
+      lopdFirmada: lopdFirmada ?? this.lopdFirmada,
     );
   }
 
@@ -126,6 +141,7 @@ class Cliente {
       'deudaPendiente': deudaPendiente,
       'pagosPendientesCount': pagosPendientesCount,
       'proximaCita': proximaCita?.toJson(),
+      'lopdFirmada': lopdFirmada,
     };
   }
 }
