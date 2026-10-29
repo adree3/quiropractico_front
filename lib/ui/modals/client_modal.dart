@@ -4,6 +4,7 @@ import 'package:quiropractico_front/config/theme/app_theme.dart';
 import 'package:quiropractico_front/models/cliente.dart';
 import 'package:quiropractico_front/providers/clients_provider.dart';
 import 'package:quiropractico_front/ui/widgets/custom_snackbar.dart';
+import 'package:quiropractico_front/ui/modals/lopd_firma_waiting_dialog.dart';
 
 class ClientModal extends StatefulWidget {
   final Cliente? clienteExistente;
@@ -255,19 +256,26 @@ class _ClientModalState extends State<ClientModal> {
                       );
 
                       if (enviarLopd == true && context.mounted) {
-                        final errorLopd = await clientsProvider.solicitarFirmaLopd(nuevoCliente.idCliente);
+                        final bool? firmado = await showDialog<bool>(
+                          context: context,
+                          barrierDismissible: false,
+                          builder: (ctx) => LopdFirmaWaitingDialog(
+                            idCliente: nuevoCliente.idCliente,
+                            nombreCliente: '${nuevoCliente.nombre} ${nuevoCliente.apellidos}',
+                          ),
+                        );
                         if (context.mounted) {
-                          if (errorLopd == null) {
+                          if (firmado == true) {
                             CustomSnackBar.show(
                               context,
-                              message: 'Documento LOPD enviado a la tablet para su firma',
+                              message: '¡Documento LOPD firmado con éxito!',
                               type: SnackBarType.success,
                             );
                           } else {
                             CustomSnackBar.show(
                               context,
-                              message: 'Paciente registrado, pero hubo un error al avisar a la tablet: $errorLopd',
-                              type: SnackBarType.error,
+                              message: 'Paciente registrado. La firma LOPD quedó pendiente.',
+                              type: SnackBarType.info,
                             );
                           }
                         }

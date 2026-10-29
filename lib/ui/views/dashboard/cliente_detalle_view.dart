@@ -16,6 +16,7 @@ import 'package:quiropractico_front/providers/documentos_provider.dart';
 import 'package:quiropractico_front/services/local_storage.dart';
 import 'package:quiropractico_front/utils/download_helper.dart';
 import 'package:quiropractico_front/ui/modals/client_modal.dart';
+import 'package:quiropractico_front/ui/modals/lopd_firma_waiting_dialog.dart';
 import 'package:quiropractico_front/ui/modals/cita_detalle_modal.dart';
 import 'package:quiropractico_front/ui/modals/cita_modal.dart';
 import 'package:quiropractico_front/ui/modals/venta_bono_modal.dart';
@@ -771,7 +772,7 @@ class _ContentState extends State<_Content>
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: () => _solicitarFirmaLopd(context, cliente.idCliente),
+        onTap: () => _solicitarFirmaLopd(context, cliente.idCliente, '${cliente.nombre} ${cliente.apellidos}'),
         borderRadius: BorderRadius.circular(20),
         hoverColor: Colors.deepOrange.withValues(alpha: 0.08),
         child: Tooltip(
@@ -806,28 +807,22 @@ class _ContentState extends State<_Content>
     );
   }
 
-  Future<void> _solicitarFirmaLopd(BuildContext context, int idCliente) async {
-    final provider = Provider.of<ClientDetailProvider>(context, listen: false);
-    CustomSnackBar.show(
-      context,
-      message: 'Enviando documento LOPD a la tablet...',
-      type: SnackBarType.info,
+  Future<void> _solicitarFirmaLopd(BuildContext context, int idCliente, [String? nombreCliente]) async {
+    final bool? firmado = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => LopdFirmaWaitingDialog(
+        idCliente: idCliente,
+        nombreCliente: nombreCliente,
+      ),
     );
-    final error = await provider.solicitarFirmaLopd(idCliente);
-    if (context.mounted) {
-      if (error == null) {
-        CustomSnackBar.show(
-          context,
-          message: '¡Documento LOPD enviado a la tablet para su firma!',
-          type: SnackBarType.success,
-        );
-      } else {
-        CustomSnackBar.show(
-          context,
-          message: 'Error al enviar LOPD a la tablet: $error',
-          type: SnackBarType.error,
-        );
-      }
+
+    if (context.mounted && firmado == true) {
+      final detailProvider = Provider.of<ClientDetailProvider>(context, listen: false);
+      detailProvider.marcarLopdFirmada();
+      detailProvider.refreshCliente(silent: true);
+      final docProvider = Provider.of<DocumentosProvider>(context, listen: false);
+      docProvider.loadDocumentos(idCliente, silent: true);
     }
   }
 
@@ -913,7 +908,7 @@ class _ContentState extends State<_Content>
               trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
               onTap: () {
                 Navigator.of(ctx).pop();
-                _solicitarFirmaLopd(context, cliente.idCliente);
+                _mostrarAdvertenciaRenovarLopd(context, cliente);
               },
             ),
           ],
@@ -926,6 +921,175 @@ class _ContentState extends State<_Content>
         ],
       ),
     );
+  }
+
+  Future<void> _mostrarAdvertenciaRenovarLopd(BuildContext context, Cliente cliente) async {
+    final bool? confirmar = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        clipBehavior: Clip.antiAlias,
+        elevation: 10,
+        backgroundColor: Colors.white,
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 450),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Header superior sutil con tono naranja/rojo y warning icon grande
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                decoration: BoxDecoration(
+                  color: Colors.deepOrange.shade50,
+                  border: Border(
+                    bottom: BorderSide(color: Colors.deepOrange.shade100, width: 1),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.deepOrange.withOpacity(0.15),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.warning_amber_rounded,
+                        color: Colors.deepOrange,
+                        size: 32,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Renovar Consentimiento',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.deepOrange.shade900,
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            'Acción legal importante',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.deepOrange.shade700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Cuerpo con advertencia detallada
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Este paciente ya cuenta con un documento LOPD firmado y en vigor.',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.blueGrey.shade800,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFFBEB),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: const Color(0xFFFDE68A)),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(Icons.archive_outlined, size: 20, color: Colors.amber.shade900),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'Si procedes, el documento anterior se archivará en el histórico y se solicitará una nueva firma en la tablet.',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.amber.shade900,
+                                height: 1.35,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      '¿Deseas continuar y abrir el Kiosco ahora?',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.grey.shade700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Acciones corporativas
+              Container(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade50,
+                  border: Border(top: BorderSide(color: Colors.grey.shade200)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.grey.shade700,
+                        side: BorderSide(color: Colors.grey.shade300),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      ),
+                      onPressed: () => Navigator.of(ctx).pop(false),
+                      child: const Text('Cancelar'),
+                    ),
+                    const SizedBox(width: 12),
+                    ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.deepOrange.shade600,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                      ),
+                      onPressed: () => Navigator.of(ctx).pop(true),
+                      icon: const Icon(Icons.tablet_mac_rounded, size: 16),
+                      label: const Text(
+                        'Continuar y Renovar',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (confirmar == true && context.mounted) {
+      _solicitarFirmaLopd(context, cliente.idCliente, '${cliente.nombre} ${cliente.apellidos}');
+    }
   }
 
   Future<void> _abrirDocumentoLopd(BuildContext context, int idCliente) async {
