@@ -5,6 +5,8 @@ import 'package:quiropractico_front/providers/auth_provider.dart';
 import 'package:quiropractico_front/services/local_storage.dart';
 import 'package:quiropractico_front/services/navigation_service.dart';
 
+import 'package:quiropractico_front/utils/error_handler.dart';
+
 class ApiService {
   static final Dio _dio = Dio();
 
@@ -43,5 +45,31 @@ class ApiService {
   static Map<String, String> getAuthHeaders() {
     final token = LocalStorage.getToken();
     return token != null ? {'Authorization': 'Bearer $token'} : {};
+  }
+
+  /// Obtiene la URL prefirmada de la factura asociada a un pago
+  static Future<String?> obtenerUrlFactura(int idPago) async {
+    try {
+      final response = await _dio.get('/facturas/pagos/$idPago/url');
+      if (response.statusCode == 200 && response.data != null) {
+        return response.data.toString();
+      }
+      throw Exception('No se recibió una URL válida para la factura.');
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 409) {
+        String msg = 'Procesando documento en segundo plano...';
+        if (e.response?.data != null) {
+          if (e.response!.data is Map && e.response!.data['message'] != null) {
+            msg = e.response!.data['message'].toString();
+          } else if (e.response!.data is String && e.response!.data.toString().isNotEmpty) {
+            msg = e.response!.data.toString();
+          }
+        }
+        throw Exception(msg);
+      }
+      throw Exception(ErrorHandler.extractMessage(e));
+    } catch (e) {
+      throw Exception(e.toString());
+    }
   }
 }

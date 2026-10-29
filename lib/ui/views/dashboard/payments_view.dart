@@ -13,6 +13,8 @@ import 'package:quiropractico_front/ui/widgets/custom_date_range_picker.dart';
 import 'package:quiropractico_front/ui/widgets/avatar_widget.dart';
 import 'package:quiropractico_front/ui/widgets/premium_data_table.dart';
 import 'package:quiropractico_front/ui/widgets/financial_kpi_card.dart';
+import 'package:quiropractico_front/services/api_service.dart';
+import 'package:quiropractico_front/utils/download_helper.dart';
 
 class PaymentsView extends StatefulWidget {
   const PaymentsView({super.key});
@@ -97,8 +99,22 @@ class _PaymentsViewState extends State<PaymentsView> {
 
       if (picked == null) return;
 
-      inicio = DateTime(picked.start.year, picked.start.month, picked.start.day, 0, 0, 0);
-      fin = DateTime(picked.end.year, picked.end.month, picked.end.day, 23, 59, 59);
+      inicio = DateTime(
+        picked.start.year,
+        picked.start.month,
+        picked.start.day,
+        0,
+        0,
+        0,
+      );
+      fin = DateTime(
+        picked.end.year,
+        picked.end.month,
+        picked.end.day,
+        23,
+        59,
+        59,
+      );
       label =
           "${DateFormat('dd/MM/yyyy').format(inicio)} - ${DateFormat('dd/MM/yyyy').format(fin)}";
       contexto =
@@ -113,7 +129,14 @@ class _PaymentsViewState extends State<PaymentsView> {
           break;
         case 'SEMANA':
           final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
-          inicio = DateTime(startOfWeek.year, startOfWeek.month, startOfWeek.day, 0, 0, 0);
+          inicio = DateTime(
+            startOfWeek.year,
+            startOfWeek.month,
+            startOfWeek.day,
+            0,
+            0,
+            0,
+          );
           fin = DateTime(now.year, now.month, now.day, 23, 59, 59);
           label = "Esta Semana";
           contexto = "(Semana)";
@@ -149,9 +172,10 @@ class _PaymentsViewState extends State<PaymentsView> {
     final authProvider = Provider.of<AuthProvider>(context);
     final bool esJefe = authProvider.isGestor;
 
-    final int cantidadVentas = provider.totalVentas > 0
-        ? provider.totalVentas
-        : provider.totalHistorialCount;
+    final int cantidadVentas =
+        provider.totalVentas > 0
+            ? provider.totalVentas
+            : provider.totalHistorialCount;
 
     return DefaultTabController(
       length: 2,
@@ -251,17 +275,19 @@ class _PaymentsViewState extends State<PaymentsView> {
                                         suffixIcon:
                                             _searchCtrl.text.isNotEmpty
                                                 ? IconButton(
-                                                    icon: const Icon(
-                                                      Icons.clear,
-                                                      size: 18,
-                                                      color: Colors.grey,
-                                                    ),
-                                                    onPressed: () {
-                                                      _searchCtrl.clear();
-                                                      _searchDebounce?.cancel();
-                                                      provider.onSearchChanged('');
-                                                    },
-                                                  )
+                                                  icon: const Icon(
+                                                    Icons.clear,
+                                                    size: 18,
+                                                    color: Colors.grey,
+                                                  ),
+                                                  onPressed: () {
+                                                    _searchCtrl.clear();
+                                                    _searchDebounce?.cancel();
+                                                    provider.onSearchChanged(
+                                                      '',
+                                                    );
+                                                  },
+                                                )
                                                 : null,
                                       ),
                                       onChanged: _onSearchChanged,
@@ -331,14 +357,16 @@ class _PaymentsViewState extends State<PaymentsView> {
                 // KPI 1: Cobrado (General)
                 Expanded(
                   child: FinancialKpiCard(
-                    title: esJefe
-                        ? "Cobrado $_kpiContexto"
-                        : "Ventas $_kpiContexto",
+                    title:
+                        esJefe
+                            ? "Cobrado $_kpiContexto"
+                            : "Ventas $_kpiContexto",
                     importeText:
                         "${provider.totalCobrado.toStringAsFixed(2)} €",
-                    countText: esJefe
-                        ? "$cantidadVentas ventas registradas"
-                        : "$cantidadVentas",
+                    countText:
+                        esJefe
+                            ? "$cantidadVentas ventas registradas"
+                            : "$cantidadVentas",
                     countLabel: esJefe ? null : "ventas realizadas",
                     isGestor: esJefe,
                     accentColor: const Color(0xFF10B981),
@@ -353,9 +381,10 @@ class _PaymentsViewState extends State<PaymentsView> {
                     title: "Efectivo $_kpiContexto",
                     importeText:
                         "${provider.totalEfectivo.toStringAsFixed(2)} €",
-                    countText: esJefe
-                        ? "${provider.cantidadEfectivo} cobros en efectivo"
-                        : "${provider.cantidadEfectivo}",
+                    countText:
+                        esJefe
+                            ? "${provider.cantidadEfectivo} cobros en efectivo"
+                            : "${provider.cantidadEfectivo}",
                     countLabel: esJefe ? null : "cobros en efectivo",
                     isGestor: esJefe,
                     accentColor: const Color(0xFF0D9488),
@@ -368,11 +397,11 @@ class _PaymentsViewState extends State<PaymentsView> {
                 Expanded(
                   child: FinancialKpiCard(
                     title: "Ventas en Bonos",
-                    importeText:
-                        "${provider.totalBonos.toStringAsFixed(2)} €",
-                    countText: esJefe
-                        ? "${provider.porcentajeBonos.toStringAsFixed(1)}% total (${provider.cantidadBonos} bonos)"
-                        : "${provider.cantidadBonos}",
+                    importeText: "${provider.totalBonos.toStringAsFixed(2)} €",
+                    countText:
+                        esJefe
+                            ? "${provider.porcentajeBonos.toStringAsFixed(1)}% total (${provider.cantidadBonos} bonos)"
+                            : "${provider.cantidadBonos}",
                     countLabel: esJefe ? null : "bonos vendidos",
                     isGestor: esJefe,
                     accentColor: const Color(0xFF8B5CF6),
@@ -384,14 +413,16 @@ class _PaymentsViewState extends State<PaymentsView> {
                 // KPI 4: Deuda Pendiente (Global)
                 Expanded(
                   child: FinancialKpiCard(
-                    title: esJefe
-                        ? "Deuda Pendiente (Global)"
-                        : "Pagos Pendientes (Global)",
+                    title:
+                        esJefe
+                            ? "Deuda Pendiente (Global)"
+                            : "Pagos Pendientes (Global)",
                     importeText:
                         "${provider.totalPendiente.toStringAsFixed(2)} €",
-                    countText: esJefe
-                        ? "${provider.totalPendientesCount} pagos pendientes"
-                        : "${provider.totalPendientesCount}",
+                    countText:
+                        esJefe
+                            ? "${provider.totalPendientesCount} pagos pendientes"
+                            : "${provider.totalPendientesCount}",
                     countLabel: esJefe ? null : "pagos pendientes",
                     isGestor: esJefe,
                     accentColor: const Color(0xFFF59E0B),
@@ -453,7 +484,10 @@ class _PaymentsViewState extends State<PaymentsView> {
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                const Icon(Icons.warning_amber_rounded, size: 18),
+                                const Icon(
+                                  Icons.warning_amber_rounded,
+                                  size: 18,
+                                ),
                                 const SizedBox(width: 8),
                                 Text(
                                   "PAGOS PENDIENTES (${provider.totalPendientesCount})",
@@ -520,11 +554,13 @@ class _PaymentsViewState extends State<PaymentsView> {
         _buildHeaderCell("Importe", alignment: Alignment.centerRight),
         _buildHeaderCell("Acción", alignment: Alignment.centerRight),
       ],
-      emptyStateBuilder: (_) => _buildEmptyState(
-        icon: Icons.check_circle_outline,
-        title: "¡Todo al día!",
-        subtitle: "No se encontraron pagos pendientes con los filtros aplicados.",
-      ),
+      emptyStateBuilder:
+          (_) => _buildEmptyState(
+            icon: Icons.check_circle_outline,
+            title: "¡Todo al día!",
+            subtitle:
+                "No se encontraron pagos pendientes con los filtros aplicados.",
+          ),
       rowBuilder: (context, pago, index) {
         return InkWell(
           key: ValueKey('row-p-${pago.idPago}'),
@@ -533,10 +569,7 @@ class _PaymentsViewState extends State<PaymentsView> {
             decoration: BoxDecoration(
               color: Colors.transparent,
               border: Border(
-                left: BorderSide(
-                  color: Colors.orange.shade600,
-                  width: 4.0,
-                ),
+                left: BorderSide(color: Colors.orange.shade600, width: 4.0),
               ),
             ),
             padding: const EdgeInsets.symmetric(
@@ -581,7 +614,8 @@ class _PaymentsViewState extends State<PaymentsView> {
                     child: Tooltip(
                       message: "Ver paciente: ${pago.nombreCliente}",
                       child: InkWell(
-                        onTap: () => context.push('/pacientes/${pago.idCliente}'),
+                        onTap:
+                            () => context.push('/pacientes/${pago.idCliente}'),
                         borderRadius: BorderRadius.circular(6),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
@@ -659,11 +693,8 @@ class _PaymentsViewState extends State<PaymentsView> {
   }
 
   /// Construye la tabla de Historial de Movimientos con [PremiumDataTable] y scroll infinito
-  Widget _buildHistorialTable(
-    BuildContext context,
-    PaymentsProvider provider,
-  ) {
-    const columnFlexes = [1, 2, 3, 2, 2, 1, 1];
+  Widget _buildHistorialTable(BuildContext context, PaymentsProvider provider) {
+    const columnFlexes = [1, 2, 3, 2, 2, 1, 1, 1];
 
     return PremiumDataTable<Pago>(
       items: provider.historial,
@@ -681,12 +712,15 @@ class _PaymentsViewState extends State<PaymentsView> {
         _buildHeaderCell("Método", alignment: Alignment.centerLeft),
         _buildHeaderCell("Estado", alignment: Alignment.centerLeft),
         _buildHeaderCell("Importe", alignment: Alignment.centerRight),
+        _buildHeaderCell("Factura", alignment: Alignment.center),
       ],
-      emptyStateBuilder: (_) => _buildEmptyState(
-        icon: Icons.history,
-        title: "Sin movimientos",
-        subtitle: "No se encontraron movimientos registrados en este periodo.",
-      ),
+      emptyStateBuilder:
+          (_) => _buildEmptyState(
+            icon: Icons.history,
+            title: "Sin movimientos",
+            subtitle:
+                "No se encontraron movimientos registrados en este periodo.",
+          ),
       rowBuilder: (context, pago, index) {
         final bool isPaid = pago.pagado;
         final Color leftBorderColor =
@@ -699,10 +733,7 @@ class _PaymentsViewState extends State<PaymentsView> {
             decoration: BoxDecoration(
               color: Colors.transparent,
               border: Border(
-                left: BorderSide(
-                  color: leftBorderColor,
-                  width: 4.0,
-                ),
+                left: BorderSide(color: leftBorderColor, width: 4.0),
               ),
             ),
             padding: const EdgeInsets.symmetric(
@@ -747,7 +778,8 @@ class _PaymentsViewState extends State<PaymentsView> {
                     child: Tooltip(
                       message: "Ver paciente: ${pago.nombreCliente}",
                       child: InkWell(
-                        onTap: () => context.push('/pacientes/${pago.idCliente}'),
+                        onTap:
+                            () => context.push('/pacientes/${pago.idCliente}'),
                         borderRadius: BorderRadius.circular(6),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
@@ -832,14 +864,16 @@ class _PaymentsViewState extends State<PaymentsView> {
                         vertical: 2,
                       ),
                       decoration: BoxDecoration(
-                        color: isPaid
-                            ? Colors.green.shade50
-                            : Colors.orange.shade50,
+                        color:
+                            isPaid
+                                ? Colors.green.shade50
+                                : Colors.orange.shade50,
                         borderRadius: BorderRadius.circular(4),
                         border: Border.all(
-                          color: isPaid
-                              ? Colors.green.shade300
-                              : Colors.orange.shade300,
+                          color:
+                              isPaid
+                                  ? Colors.green.shade300
+                                  : Colors.orange.shade300,
                           width: 0.8,
                         ),
                       ),
@@ -851,9 +885,10 @@ class _PaymentsViewState extends State<PaymentsView> {
                           fontSize: 9,
                           fontWeight: FontWeight.w800,
                           letterSpacing: 0.2,
-                          color: isPaid
-                              ? Colors.green.shade700
-                              : Colors.orange.shade800,
+                          color:
+                              isPaid
+                                  ? Colors.green.shade700
+                                  : Colors.orange.shade800,
                         ),
                       ),
                     ),
@@ -873,6 +908,19 @@ class _PaymentsViewState extends State<PaymentsView> {
                     ),
                   ),
                 ),
+                Expanded(
+                  flex: columnFlexes[7],
+                  child: Align(
+                    alignment: Alignment.center,
+                    child:
+                        pago.pagado
+                            ? _FacturaIconButton(
+                              key: ValueKey('factura-btn-${pago.idPago}'),
+                              idPago: pago.idPago,
+                            )
+                            : const SizedBox.shrink(),
+                  ),
+                ),
               ],
             ),
           ),
@@ -880,8 +928,6 @@ class _PaymentsViewState extends State<PaymentsView> {
       },
     );
   }
-
-
 
   Widget _buildHeaderCell(
     String title, {
@@ -932,10 +978,7 @@ class _PaymentsViewState extends State<PaymentsView> {
             const SizedBox(height: 4),
             Text(
               subtitle,
-              style: TextStyle(
-                fontSize: 13,
-                color: Colors.grey.shade500,
-              ),
+              style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
             ),
           ],
         ),
@@ -995,64 +1038,141 @@ class _CobrarButtonState extends State<_CobrarButton> {
     }
 
     return ElevatedButton.icon(
-      onPressed: _isSubmitting
-          ? null
-          : () async {
-              setState(() => _isSubmitting = true);
-              final error = await Provider.of<PaymentsProvider>(
-                context,
-                listen: false,
-              ).confirmarPago(widget.pago.idPago);
-
-              if (!context.mounted) return;
-
-              if (error == null) {
-                setState(() {
-                  _isSubmitting = false;
-                  _isSuccess = true;
-                });
-                final fechaFormat = DateFormat(
-                  'dd/MM/yyyy',
-                ).format(widget.pago.fechaPago!);
-                CustomSnackBar.show(
+      onPressed:
+          _isSubmitting
+              ? null
+              : () async {
+                setState(() => _isSubmitting = true);
+                final error = await Provider.of<PaymentsProvider>(
                   context,
-                  message:
-                      "Pago de ${widget.pago.nombreCliente} ($fechaFormat) cobrado correctamente",
-                  type: SnackBarType.success,
-                );
-              } else {
-                setState(() => _isSubmitting = false);
-                CustomSnackBar.show(
-                  context,
-                  message: error,
-                  type: SnackBarType.error,
-                );
-              }
-            },
-      icon: _isSubmitting
-          ? const SizedBox(
-              width: 12,
-              height: 12,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: Colors.white,
-              ),
-            )
-          : const Icon(Icons.check, size: 14),
+                  listen: false,
+                ).confirmarPago(widget.pago.idPago);
+
+                if (!context.mounted) return;
+
+                if (error == null) {
+                  setState(() {
+                    _isSubmitting = false;
+                    _isSuccess = true;
+                  });
+                  final fechaFormat = DateFormat(
+                    'dd/MM/yyyy',
+                  ).format(widget.pago.fechaPago!);
+                  CustomSnackBar.show(
+                    context,
+                    message:
+                        "Pago de ${widget.pago.nombreCliente} ($fechaFormat) cobrado correctamente",
+                    type: SnackBarType.success,
+                  );
+                } else {
+                  setState(() => _isSubmitting = false);
+                  CustomSnackBar.show(
+                    context,
+                    message: error,
+                    type: SnackBarType.error,
+                  );
+                }
+              },
+      icon:
+          _isSubmitting
+              ? const SizedBox(
+                width: 12,
+                height: 12,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
+              )
+              : const Icon(Icons.check, size: 14),
       label: Text(_isSubmitting ? "COBRANDO..." : "COBRAR"),
       style: ElevatedButton.styleFrom(
         backgroundColor: Colors.green.shade600,
         foregroundColor: Colors.white,
         elevation: 0,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(6),
-        ),
-        textStyle: const TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.bold,
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+        textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
       ),
+    );
+  }
+}
+
+/// Botón interactivo para descargar la factura o ticket de un pago liquidado
+class _FacturaIconButton extends StatefulWidget {
+  final int idPago;
+  const _FacturaIconButton({super.key, required this.idPago});
+
+  @override
+  State<_FacturaIconButton> createState() => _FacturaIconButtonState();
+}
+
+class _FacturaIconButtonState extends State<_FacturaIconButton> {
+  bool _isLoading = false;
+
+  Future<void> _descargar() async {
+    setState(() => _isLoading = true);
+    try {
+      final url = await ApiService.obtenerUrlFactura(widget.idPago);
+      if (url != null && url.isNotEmpty) {
+        DownloadHelper.viewFile(url);
+      } else {
+        if (mounted) {
+          CustomSnackBar.show(
+            context,
+            message: 'No se pudo obtener la factura del pago #${widget.idPago}',
+            type: SnackBarType.error,
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        final errorMsg = e.toString().toLowerCase();
+        if (errorMsg.contains('procesando') ||
+            errorMsg.contains('segundo plano')) {
+          CustomSnackBar.show(
+            context,
+            message:
+                'La factura se está generando, vuelve a intentarlo en unos segundos.',
+            type: SnackBarType.info,
+          );
+        } else {
+          final cleanMsg = e.toString().replaceFirst('Exception: ', '');
+          CustomSnackBar.show(
+            context,
+            message: 'Error al descargar la factura: $cleanMsg',
+            type: SnackBarType.error,
+          );
+        }
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const SizedBox(
+        width: 24,
+        height: 24,
+        child: Padding(
+          padding: EdgeInsets.all(4.0),
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+      );
+    }
+
+    return IconButton(
+      tooltip: 'Descargar Ticket/Factura',
+      icon: const Icon(
+        Icons.receipt_long_outlined,
+        size: 20,
+        color: Colors.blueGrey,
+      ),
+      hoverColor: AppTheme.primaryColor.withOpacity(0.08),
+      onPressed: _descargar,
     );
   }
 }

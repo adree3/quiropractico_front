@@ -90,6 +90,7 @@ enum TipoDocumento {
         return TipoDocumento.informeMedico;
 
       case 'FACTURACION':
+      case 'FACTURA':
       case 'JUSTIFICANTE_PAGO':
       case 'JUSTIFICANTEPAGO':
       case 'PAGO':

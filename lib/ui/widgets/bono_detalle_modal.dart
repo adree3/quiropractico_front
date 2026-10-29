@@ -16,6 +16,7 @@ import 'package:quiropractico_front/models/cita.dart';
 import 'package:quiropractico_front/ui/modals/cita_detalle_modal.dart';
 import 'package:quiropractico_front/ui/modals/venta_bono_modal.dart';
 import 'package:quiropractico_front/ui/widgets/custom_snackbar.dart';
+import 'package:quiropractico_front/utils/download_helper.dart';
 
 class BonoDetalleModal extends StatefulWidget {
   final BonoHistorico bono;
@@ -81,6 +82,7 @@ class _BonoDetalleModalState extends State<BonoDetalleModal> {
   String? _errorMessage;
   late BonoHistorico _bono;
   bool _isConfirmingPayment = false;
+  bool _isDownloadingInvoice = false;
   bool _isLoadingCita = false;
 
   final ScrollController _scrollController = ScrollController();
@@ -210,6 +212,47 @@ class _BonoDetalleModalState extends State<BonoDetalleModal> {
           message: 'Error al confirmar el cobro.', 
           type: SnackBarType.error,
         );
+      }
+    }
+  }
+
+  Future<void> _descargarFactura() async {
+    if (_bono.idPago == null) return;
+    setState(() => _isDownloadingInvoice = true);
+    try {
+      final url = await ApiService.obtenerUrlFactura(_bono.idPago!);
+      if (url != null && url.isNotEmpty) {
+        DownloadHelper.viewFile(url);
+      } else {
+        if (mounted) {
+          CustomSnackBar.show(
+            context,
+            message: 'No se pudo generar o recuperar la factura.',
+            type: SnackBarType.error,
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        final errorMsg = e.toString().toLowerCase();
+        if (errorMsg.contains('procesando') || errorMsg.contains('segundo plano')) {
+          CustomSnackBar.show(
+            context,
+            message: 'La factura se está generando, vuelve a intentarlo en unos segundos.',
+            type: SnackBarType.info,
+          );
+        } else {
+          final cleanMsg = e.toString().replaceFirst('Exception: ', '');
+          CustomSnackBar.show(
+            context,
+            message: 'Error al obtener la factura: $cleanMsg',
+            type: SnackBarType.error,
+          );
+        }
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isDownloadingInvoice = false);
       }
     }
   }
@@ -541,6 +584,19 @@ class _BonoDetalleModalState extends State<BonoDetalleModal> {
                           ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
                           : const Icon(Icons.check_circle_outline, size: 18),
                       label: const Text("Confirmar Cobro"),
+                    ),
+                  if (_bono.pagado && _bono.idPago != null)
+                    OutlinedButton.icon(
+                      onPressed: _isDownloadingInvoice ? null : _descargarFactura,
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.green.shade800,
+                        side: BorderSide(color: Colors.green.shade300),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      icon: _isDownloadingInvoice
+                          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                          : const Icon(Icons.receipt_long, size: 18),
+                      label: const Text("Descargar Ticket/Factura"),
                     ),
                 ],
               ),
