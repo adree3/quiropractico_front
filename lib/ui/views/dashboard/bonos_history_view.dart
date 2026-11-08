@@ -136,41 +136,45 @@ class _BonosHistoryViewState extends State<BonosHistoryView> {
 
   @override
   Widget build(BuildContext context) {
-    final bonosProvider = Provider.of<BonosProvider>(context);
-    final bonosVisualizados = _filtrarBonos(bonosProvider.bonos);
+    final bonosProvider = Provider.of<BonosProvider>(context, listen: false);
 
     return Container(
       padding: const EdgeInsets.fromLTRB(0, 0, 0, 10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // 1. HEADER ESTÁNDAR (FLAT DESKTOP)
+          // 1. HEADER ESTÁNDAR (FLAT DESKTOP - Inmune a reconstrucciones)
           _buildHeader(bonosProvider),
 
           const SizedBox(height: 16),
 
-          // 2. TABLA ENTERPRISE PREMIUMN
+          // 2. TABLA ENTERPRISE PREMIUMN (Aislada reactivamente)
           Expanded(
-            child: PremiumDataTable<BonoHistorico>(
-              items: bonosVisualizados,
-              isLoading: bonosProvider.isLoading && bonosProvider.bonos.isEmpty,
-              hasMore: bonosProvider.hasMore,
-              loadMoreThreshold: 200.0,
-              onLoadMore: () => bonosProvider.getHistorial(),
-              scrollController: _scrollController,
-              columnFlexes: _columnFlexes,
-              wrapInCard: true,
-              columnHeaders: [
-                _buildHeaderColumn('ID', Alignment.centerLeft),
-                _buildHeaderColumn('Fecha Compra', Alignment.centerLeft),
-                _buildHeaderColumn('Paciente', Alignment.centerLeft),
-                _buildHeaderColumn('Servicio', Alignment.centerLeft),
-                _buildHeaderColumn('Saldo de Sesiones', Alignment.centerLeft),
-                _buildHeaderColumn('Estado / Pago', Alignment.centerLeft),
-                _buildHeaderColumn('Acciones', Alignment.centerRight),
-              ],
-              rowBuilder: (context, bono, index) {
-                return _buildRow(context, bono, index);
+            child: Consumer<BonosProvider>(
+              builder: (context, provider, _) {
+                final bonosVisualizados = _filtrarBonos(provider.bonos);
+                return PremiumDataTable<BonoHistorico>(
+                  items: bonosVisualizados,
+                  isLoading: provider.isLoading && provider.bonos.isEmpty,
+                  hasMore: provider.hasMore,
+                  loadMoreThreshold: 200.0,
+                  onLoadMore: () => provider.getHistorial(),
+                  scrollController: _scrollController,
+                  columnFlexes: _columnFlexes,
+                  wrapInCard: true,
+                  columnHeaders: [
+                    _buildHeaderColumn('ID', Alignment.centerLeft),
+                    _buildHeaderColumn('Fecha Compra', Alignment.centerLeft),
+                    _buildHeaderColumn('Paciente', Alignment.centerLeft),
+                    _buildHeaderColumn('Servicio', Alignment.centerLeft),
+                    _buildHeaderColumn('Saldo de Sesiones', Alignment.centerLeft),
+                    _buildHeaderColumn('Estado / Pago', Alignment.centerLeft),
+                    _buildHeaderColumn('Acciones', Alignment.centerRight),
+                  ],
+                  rowBuilder: (context, bono, index) {
+                    return _buildRow(context, bono, index);
+                  },
+                );
               },
             ),
           ),

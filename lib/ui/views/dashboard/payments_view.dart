@@ -15,6 +15,7 @@ import 'package:quiropractico_front/ui/widgets/premium_data_table.dart';
 import 'package:quiropractico_front/ui/widgets/financial_kpi_card.dart';
 import 'package:quiropractico_front/services/api_service.dart';
 import 'package:quiropractico_front/utils/download_helper.dart';
+import 'package:quiropractico_front/ui/widgets/arqueo_caja_dialog.dart';
 
 class PaymentsView extends StatefulWidget {
   const PaymentsView({super.key});
@@ -168,14 +169,9 @@ class _PaymentsViewState extends State<PaymentsView> {
 
   @override
   Widget build(BuildContext context) {
-    final provider = Provider.of<PaymentsProvider>(context);
-    final authProvider = Provider.of<AuthProvider>(context);
+    final provider = Provider.of<PaymentsProvider>(context, listen: false);
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final bool esJefe = authProvider.isGestor;
-
-    final int cantidadVentas =
-        provider.totalVentas > 0
-            ? provider.totalVentas
-            : provider.totalHistorialCount;
 
     return DefaultTabController(
       length: 2,
@@ -337,6 +333,36 @@ class _PaymentsViewState extends State<PaymentsView> {
                                       ),
                                     ],
                                   ),
+
+                                  const SizedBox(width: 15),
+
+                                  // Botón destacado: Arqueo de Caja
+                                  ElevatedButton.icon(
+                                    onPressed: () {
+                                      showDialog(
+                                        context: context,
+                                        builder: (_) => const ArqueoCajaDialog(),
+                                      );
+                                    },
+                                    icon: const Icon(Icons.point_of_sale, size: 18),
+                                    label: const Text("Arqueo de Caja"),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: AppTheme.primaryColor,
+                                      foregroundColor: Colors.white,
+                                      elevation: 0,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 16,
+                                        vertical: 12,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      textStyle: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  ),
                                 ],
                               ),
                             ],
@@ -351,85 +377,94 @@ class _PaymentsViewState extends State<PaymentsView> {
 
             const SizedBox(height: 14),
 
-            // 2. HEADER FINANCIERO: GRID HORIZONTAL DE 4 KPI CARDS (Flat Desktop + RBAC)
-            Row(
-              children: [
-                // KPI 1: Cobrado (General)
-                Expanded(
-                  child: FinancialKpiCard(
-                    title:
-                        esJefe
-                            ? "Cobrado $_kpiContexto"
-                            : "Ventas $_kpiContexto",
-                    importeText:
-                        "${provider.totalCobrado.toStringAsFixed(2)} €",
-                    countText:
-                        esJefe
-                            ? "$cantidadVentas ventas registradas"
-                            : "$cantidadVentas",
-                    countLabel: esJefe ? null : "ventas realizadas",
-                    isGestor: esJefe,
-                    accentColor: const Color(0xFF10B981),
-                    icon: Icons.account_balance_wallet_outlined,
-                  ),
-                ),
-                const SizedBox(width: 12),
+            // 2. HEADER FINANCIERO: GRID HORIZONTAL DE 4 KPI CARDS (Aislado reactivamente)
+            Consumer<PaymentsProvider>(
+              builder: (context, pProv, _) {
+                final int cantidadVentas =
+                    pProv.totalVentas > 0
+                        ? pProv.totalVentas
+                        : pProv.totalHistorialCount;
 
-                // KPI 2: Efectivo (Filtro de periodo)
-                Expanded(
-                  child: FinancialKpiCard(
-                    title: "Efectivo $_kpiContexto",
-                    importeText:
-                        "${provider.totalEfectivo.toStringAsFixed(2)} €",
-                    countText:
-                        esJefe
-                            ? "${provider.cantidadEfectivo} cobros en efectivo"
-                            : "${provider.cantidadEfectivo}",
-                    countLabel: esJefe ? null : "cobros en efectivo",
-                    isGestor: esJefe,
-                    accentColor: const Color(0xFF0D9488),
-                    icon: Icons.point_of_sale_outlined,
-                  ),
-                ),
-                const SizedBox(width: 12),
+                return Row(
+                  children: [
+                    // KPI 1: Cobrado (General)
+                    Expanded(
+                      child: FinancialKpiCard(
+                        title:
+                            esJefe
+                                ? "Cobrado $_kpiContexto"
+                                : "Ventas $_kpiContexto",
+                        importeText:
+                            "${pProv.totalCobrado.toStringAsFixed(2)} €",
+                        countText:
+                            esJefe
+                                ? "$cantidadVentas ventas registradas"
+                                : "$cantidadVentas",
+                        countLabel: esJefe ? null : "ventas realizadas",
+                        isGestor: esJefe,
+                        accentColor: const Color(0xFF10B981),
+                        icon: Icons.account_balance_wallet_outlined,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
 
-                // KPI 3: Ventas en Bonos (Fidelización)
-                Expanded(
-                  child: FinancialKpiCard(
-                    title: "Ventas en Bonos",
-                    importeText: "${provider.totalBonos.toStringAsFixed(2)} €",
-                    countText:
-                        esJefe
-                            ? "${provider.porcentajeBonos.toStringAsFixed(1)}% total (${provider.cantidadBonos} bonos)"
-                            : "${provider.cantidadBonos}",
-                    countLabel: esJefe ? null : "bonos vendidos",
-                    isGestor: esJefe,
-                    accentColor: const Color(0xFF8B5CF6),
-                    icon: Icons.card_membership_outlined,
-                  ),
-                ),
-                const SizedBox(width: 12),
+                    // KPI 2: Efectivo (Filtro de periodo)
+                    Expanded(
+                      child: FinancialKpiCard(
+                        title: "Efectivo $_kpiContexto",
+                        importeText:
+                            "${pProv.totalEfectivo.toStringAsFixed(2)} €",
+                        countText:
+                            esJefe
+                                ? "${pProv.cantidadEfectivo} cobros en efectivo"
+                                : "${pProv.cantidadEfectivo}",
+                        countLabel: esJefe ? null : "cobros en efectivo",
+                        isGestor: esJefe,
+                        accentColor: const Color(0xFF0D9488),
+                        icon: Icons.point_of_sale_outlined,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
 
-                // KPI 4: Deuda Pendiente (Global)
-                Expanded(
-                  child: FinancialKpiCard(
-                    title:
-                        esJefe
-                            ? "Deuda Pendiente (Global)"
-                            : "Pagos Pendientes (Global)",
-                    importeText:
-                        "${provider.totalPendiente.toStringAsFixed(2)} €",
-                    countText:
-                        esJefe
-                            ? "${provider.totalPendientesCount} pagos pendientes"
-                            : "${provider.totalPendientesCount}",
-                    countLabel: esJefe ? null : "pagos pendientes",
-                    isGestor: esJefe,
-                    accentColor: const Color(0xFFF59E0B),
-                    icon: Icons.pending_actions_outlined,
-                  ),
-                ),
-              ],
+                    // KPI 3: Ventas en Bonos (Fidelización)
+                    Expanded(
+                      child: FinancialKpiCard(
+                        title: "Ventas en Bonos",
+                        importeText: "${pProv.totalBonos.toStringAsFixed(2)} €",
+                        countText:
+                            esJefe
+                                ? "${pProv.porcentajeBonos.toStringAsFixed(1)}% total (${pProv.cantidadBonos} bonos)"
+                                : "${pProv.cantidadBonos}",
+                        countLabel: esJefe ? null : "bonos vendidos",
+                        isGestor: esJefe,
+                        accentColor: const Color(0xFF8B5CF6),
+                        icon: Icons.card_membership_outlined,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+
+                    // KPI 4: Deuda Pendiente (Global)
+                    Expanded(
+                      child: FinancialKpiCard(
+                        title:
+                            esJefe
+                                ? "Deuda Pendiente (Global)"
+                                : "Pagos Pendientes (Global)",
+                        importeText:
+                            "${pProv.totalPendiente.toStringAsFixed(2)} €",
+                        countText:
+                            esJefe
+                                ? "${pProv.totalPendientesCount} pagos pendientes"
+                                : "${pProv.totalPendientesCount}",
+                        countLabel: esJefe ? null : "pagos pendientes",
+                        isGestor: esJefe,
+                        accentColor: const Color(0xFFF59E0B),
+                        icon: Icons.pending_actions_outlined,
+                      ),
+                    ),
+                  ],
+                );
+              },
             ),
 
             const SizedBox(height: 14),
@@ -464,61 +499,69 @@ class _PaymentsViewState extends State<PaymentsView> {
                           ),
                         ),
                       ),
-                      child: TabBar(
-                        indicatorColor: AppTheme.primaryColor,
-                        indicatorWeight: 3,
-                        indicatorSize: TabBarIndicatorSize.tab,
-                        labelColor: AppTheme.primaryColor,
-                        unselectedLabelColor: Colors.grey.shade600,
-                        dividerColor: Colors.transparent,
-                        labelStyle: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 13.5,
-                        ),
-                        unselectedLabelStyle: const TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 13.5,
-                        ),
-                        tabs: [
-                          Tab(
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Icon(
-                                  Icons.warning_amber_rounded,
-                                  size: 18,
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  "PAGOS PENDIENTES (${provider.totalPendientesCount})",
-                                ),
-                              ],
+                      child: Consumer<PaymentsProvider>(
+                        builder: (context, pProv, _) {
+                          return TabBar(
+                            indicatorColor: AppTheme.primaryColor,
+                            indicatorWeight: 3,
+                            indicatorSize: TabBarIndicatorSize.tab,
+                            labelColor: AppTheme.primaryColor,
+                            unselectedLabelColor: Colors.grey.shade600,
+                            dividerColor: Colors.transparent,
+                            labelStyle: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13.5,
                             ),
-                          ),
-                          Tab(
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Icon(Icons.history, size: 18),
-                                const SizedBox(width: 8),
-                                Text(
-                                  "HISTORIAL DE MOVIMIENTOS (${provider.totalHistorialCount})",
-                                ),
-                              ],
+                            unselectedLabelStyle: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13.5,
                             ),
-                          ),
-                        ],
+                            tabs: [
+                              Tab(
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Icon(
+                                      Icons.warning_amber_rounded,
+                                      size: 18,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      "PAGOS PENDIENTES (${pProv.totalPendientesCount})",
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Tab(
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Icon(Icons.history, size: 18),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      "HISTORIAL DE MOVIMIENTOS (${pProv.totalHistorialCount})",
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          );
+                        },
                       ),
                     ),
 
-                    // Cuerpo de la tabla con paginación delegada estricta
+                    // Cuerpo de la tabla con paginación delegada estricta (Aislado reactivamente)
                     Expanded(
-                      child: TabBarView(
-                        physics: const NeverScrollableScrollPhysics(),
-                        children: [
-                          _buildPendientesTable(context, provider),
-                          _buildHistorialTable(context, provider),
-                        ],
+                      child: Consumer<PaymentsProvider>(
+                        builder: (context, pProv, _) {
+                          return TabBarView(
+                            physics: const NeverScrollableScrollPhysics(),
+                            children: [
+                              _buildPendientesTable(context, pProv),
+                              _buildHistorialTable(context, pProv),
+                            ],
+                          );
+                        },
                       ),
                     ),
                   ],
@@ -1171,7 +1214,7 @@ class _FacturaIconButtonState extends State<_FacturaIconButton> {
         size: 20,
         color: Colors.blueGrey,
       ),
-      hoverColor: AppTheme.primaryColor.withOpacity(0.08),
+      hoverColor: AppTheme.primaryColor.withValues(alpha: 0.08),
       onPressed: _descargar,
     );
   }
