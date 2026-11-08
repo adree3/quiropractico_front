@@ -8,9 +8,15 @@ import 'package:quiropractico_front/providers/agenda_bloqueo_provider.dart';
 import 'package:quiropractico_front/ui/widgets/fecha_picker_dialog.dart';
 import 'package:syncfusion_flutter_calendar/calendar.dart';
 import 'package:quiropractico_front/ui/widgets/user_avatar_widget.dart';
+import 'package:quiropractico_front/ui/views/dashboard/agenda_utils.dart';
 
 class AgendaHeader extends StatelessWidget {
-  const AgendaHeader({super.key});
+  final CalendarController? calendarController;
+
+  const AgendaHeader({
+    super.key,
+    this.calendarController,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -100,11 +106,16 @@ class AgendaHeader extends StatelessWidget {
                 ),
               ),
 
-              // CENTRO: Título y Botón Hoy
+              // CENTRO: Título, Flechas de Navegación (todas las vistas) y Botón Hoy
               Expanded(
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
+                    IconButton(
+                      icon: const Icon(Icons.chevron_left, color: AppTheme.primaryColor),
+                      tooltip: _getPrevTooltip(provider.currentView),
+                      onPressed: () => _navegarAtras(provider, horariosProvider, bloqueoProvider, fechaActual),
+                    ),
                     Tooltip(
                       message: "Seleccionar fecha específica",
                       child: InkWell(
@@ -120,14 +131,20 @@ class AgendaHeader extends StatelessWidget {
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Text(
-                                tituloMes,
-                                style: const TextStyle(
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.w900,
-                                  color: AppTheme.primaryColor,
-                                  letterSpacing: 0.5,
-                                ),
+                              Selector<AgendaProvider, DateTime>(
+                                selector: (_, p) => p.selectedDate,
+                                builder: (context, fecha, _) {
+                                  final titulo = DateFormat('MMMM yyyy', 'es_ES').format(fecha).toUpperCase();
+                                  return Text(
+                                    titulo,
+                                    style: const TextStyle(
+                                      fontSize: 22,
+                                      fontWeight: FontWeight.w900,
+                                      color: AppTheme.primaryColor,
+                                      letterSpacing: 0.5,
+                                    ),
+                                  );
+                                },
                               ),
                               const SizedBox(width: 8),
                               const Icon(Icons.edit_calendar_outlined, size: 20, color: AppTheme.primaryColor),
@@ -135,6 +152,11 @@ class AgendaHeader extends StatelessWidget {
                           ),
                         ),
                       ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.chevron_right, color: AppTheme.primaryColor),
+                      tooltip: _getNextTooltip(provider.currentView),
+                      onPressed: () => _navegarAdelante(provider, horariosProvider, bloqueoProvider, fechaActual),
                     ),
                     if (mostrarBotonHoy) ...[
                       const SizedBox(width: 8),
@@ -320,6 +342,94 @@ class AgendaHeader extends StatelessWidget {
     if (picked != null && picked != provider.selectedDate) {
       provider.updateSelectedDate(picked);
     }
+  }
+
+  String _getPrevTooltip(CalendarView view) {
+    switch (view) {
+      case CalendarView.day:
+        return "Día anterior";
+      case CalendarView.month:
+        return "Mes anterior";
+      default:
+        return "Semana anterior";
+    }
+  }
+
+  String _getNextTooltip(CalendarView view) {
+    switch (view) {
+      case CalendarView.day:
+        return "Día siguiente";
+      case CalendarView.month:
+        return "Mes siguiente";
+      default:
+        return "Semana siguiente";
+    }
+  }
+
+  void _navegarAtras(
+    AgendaProvider provider,
+    HorariosProvider horariosProvider,
+    AgendaBloqueoProvider bloqueoProvider,
+    DateTime fechaActual,
+  ) {
+    if (provider.currentView == CalendarView.day) {
+      final nuevaFecha = AgendaUtils.findNextWorkDay(
+        fechaActual,
+        horariosProvider.horariosGlobales,
+        bloqueoProvider.bloqueos,
+        forward: false,
+        idQuiropratico: provider.filterDoctorId,
+      );
+      if (calendarController != null) {
+        calendarController!.displayDate = nuevaFecha;
+      }
+      provider.updateSelectedDate(nuevaFecha);
+      return;
+    }
+
+    if (calendarController != null) {
+      try {
+        calendarController!.backward!();
+        return;
+      } catch (_) {}
+    }
+    final nuevaFecha = provider.currentView == CalendarView.month
+        ? DateTime(fechaActual.year, fechaActual.month - 1, 15)
+        : fechaActual.subtract(const Duration(days: 7));
+    provider.updateSelectedDate(nuevaFecha);
+  }
+
+  void _navegarAdelante(
+    AgendaProvider provider,
+    HorariosProvider horariosProvider,
+    AgendaBloqueoProvider bloqueoProvider,
+    DateTime fechaActual,
+  ) {
+    if (provider.currentView == CalendarView.day) {
+      final nuevaFecha = AgendaUtils.findNextWorkDay(
+        fechaActual,
+        horariosProvider.horariosGlobales,
+        bloqueoProvider.bloqueos,
+        forward: true,
+        idQuiropratico: provider.filterDoctorId,
+      );
+      if (calendarController != null) {
+        calendarController!.displayDate = nuevaFecha;
+      }
+      provider.updateSelectedDate(nuevaFecha);
+      return;
+    }
+
+    if (calendarController != null) {
+      try {
+        calendarController!.forward!();
+        return;
+      } catch (_) {}
+    }
+    final nuevaFecha = provider.currentView == CalendarView.month
+        ? DateTime(fechaActual.year, fechaActual.month + 1, 15)
+        : fechaActual.add(const Duration(days: 7));
+    provider.updateSelectedDate(nuevaFecha);
   }
 
   bool isSameDay(DateTime a, DateTime b) {

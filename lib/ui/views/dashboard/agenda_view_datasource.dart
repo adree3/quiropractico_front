@@ -9,30 +9,25 @@ class AgendaDataSource extends CalendarDataSource {
     List<BloqueoAgenda> bloqueos,
     DateTime currentDate,
   ) {
-    // Solo usamos bloqueos útiles para hoy, o todos
-    appointments = [];
-    appointments!.addAll(citas);
-    appointments!.addAll(
-      bloqueos.where((b) {
-        // Filtramos para no meter historial entero
-        return !currentDate.isBefore(
-              DateTime(
-                b.fechaInicio.year,
-                b.fechaInicio.month,
-                b.fechaInicio.day,
-              ),
-            ) &&
-            !currentDate.isAfter(
-              DateTime(
-                b.fechaFin.year,
-                b.fechaFin.month,
-                b.fechaFin.day,
-                23,
-                59,
-              ),
-            );
-      }),
-    );
+    updateAppointments(citas, bloqueos, currentDate, notify: false);
+  }
+
+  /// Actualización reactiva sin reinstanciar el DataSource para mantener vivas las vistas internas
+  void updateAppointments(
+    List<Cita> citas,
+    List<BloqueoAgenda> bloqueos,
+    DateTime currentDate, {
+    bool notify = true,
+  }) {
+    final windowStart = currentDate.subtract(const Duration(days: 45));
+    final windowEnd = currentDate.add(const Duration(days: 45));
+    appointments = <Object>[
+      ...citas,
+      ...bloqueos.where((b) => !b.fechaFin.isBefore(windowStart) && !b.fechaInicio.isAfter(windowEnd)),
+    ];
+    if (notify) {
+      notifyListeners(CalendarDataSourceAction.reset, appointments!);
+    }
   }
 
   @override
@@ -82,5 +77,39 @@ class AgendaDataSource extends CalendarDataSource {
       return Colors.grey.shade300;
     }
     return Colors.blue;
+  }
+
+  @override
+  bool isAllDay(int index) => false;
+
+  @override
+  Object? getId(int index) {
+    final item = appointments![index];
+    if (item is Cita) return item.idCita;
+    if (item is BloqueoAgenda) return item.idBloqueo;
+    return null;
+  }
+
+  /// Requerido por SfCalendar cuando se usan objetos de negocio personalizados con Drag & Drop y Resize.
+  /// Mapea el Appointment temporal que genera el motor interno de nuevo a la entidad Cita / BloqueoAgenda.
+  @override
+  Object? convertAppointmentToObject(Object? customData, Appointment appointment) {
+    if (customData is Cita) {
+      return customData.copyWith(
+        fechaHoraInicio: appointment.startTime,
+        fechaHoraFin: appointment.endTime,
+      );
+    }
+    if (customData is BloqueoAgenda) {
+      return BloqueoAgenda(
+        idBloqueo: customData.idBloqueo,
+        idQuiropractico: customData.idQuiropractico,
+        nombreQuiropractico: customData.nombreQuiropractico,
+        fechaInicio: appointment.startTime,
+        fechaFin: appointment.endTime,
+        motivo: customData.motivo,
+      );
+    }
+    return customData ?? appointment;
   }
 }

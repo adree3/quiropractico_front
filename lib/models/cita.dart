@@ -11,6 +11,9 @@ class Cita {
   final String? notas;
   final String infoPago;
   final int? idBonoCliente;
+  final bool pagada;
+  final String? tipoPagoTag;
+  final bool esPrimeraVisita;
   final bool firmada;
   final String? rutaJustificante;
   final bool confirmadaWhatsapp;
@@ -29,6 +32,9 @@ class Cita {
     this.notas,
     required this.infoPago,
     this.idBonoCliente,
+    this.pagada = false,
+    this.tipoPagoTag,
+    this.esPrimeraVisita = false,
     this.firmada = false,
     this.rutaJustificante,
     this.confirmadaWhatsapp = false,
@@ -49,6 +55,9 @@ class Cita {
       notas: json['notasRecepcion'],
       infoPago: json['infoPago'] ?? 'Desconocido',
       idBonoCliente: json['idBonoCliente'],
+      pagada: json['pagada'] ?? false,
+      tipoPagoTag: json['tipoPagoTag'],
+      esPrimeraVisita: json['esPrimeraVisita'] ?? false,
       firmada: json['firmada'] ?? false,
       rutaJustificante: json['rutaJustificante'],
       confirmadaWhatsapp: json['confirmadaWhatsapp'] ?? false,
@@ -69,6 +78,9 @@ class Cita {
     String? notas,
     String? infoPago,
     int? idBonoCliente,
+    bool? pagada,
+    String? tipoPagoTag,
+    bool? esPrimeraVisita,
     bool? firmada,
     String? rutaJustificante,
     bool? confirmadaWhatsapp,
@@ -87,6 +99,9 @@ class Cita {
       notas: notas ?? this.notas,
       infoPago: infoPago ?? this.infoPago,
       idBonoCliente: idBonoCliente ?? this.idBonoCliente,
+      pagada: pagada ?? this.pagada,
+      tipoPagoTag: tipoPagoTag ?? this.tipoPagoTag,
+      esPrimeraVisita: esPrimeraVisita ?? this.esPrimeraVisita,
       firmada: firmada ?? this.firmada,
       rutaJustificante: rutaJustificante ?? this.rutaJustificante,
       confirmadaWhatsapp: confirmadaWhatsapp ?? this.confirmadaWhatsapp,
@@ -108,6 +123,9 @@ class Cita {
       'notasRecepcion': notas,
       'infoPago': infoPago,
       'idBonoCliente': idBonoCliente,
+      'pagada': pagada,
+      'tipoPagoTag': tipoPagoTag,
+      'esPrimeraVisita': esPrimeraVisita,
       'firmada': firmada,
       'rutaJustificante': rutaJustificante,
       'confirmadaWhatsapp': confirmadaWhatsapp,

@@ -62,6 +62,7 @@ class _CitaModalState extends State<CitaModal> {
   late DateTime fechaSeleccionada;
   late TimeOfDay horaInicio;
   late TimeOfDay horaFin;
+  late int _duracionSeleccionada; // Duración dinámica de la sesión (15, 30, 45, 60, 90 min)
 
   String _estadoSeleccionado = 'programada';
   bool get isEditing => widget.citaExistente != null;
@@ -71,6 +72,13 @@ class _CitaModalState extends State<CitaModal> {
     super.initState();
 
     final settingsProv = Provider.of<SettingsProvider>(context, listen: false);
+
+    _duracionSeleccionada = isEditing
+        ? widget.citaExistente!.fechaHoraFin.difference(widget.citaExistente!.fechaHoraInicio).inMinutes
+        : settingsProv.duracionCitaMinutos;
+    if (_duracionSeleccionada <= 0) {
+      _duracionSeleccionada = settingsProv.duracionCitaMinutos > 0 ? settingsProv.duracionCitaMinutos : 30;
+    }
 
     // INICIALIZAR VARIABLES BÁSICAS
     if (isEditing) {
@@ -92,7 +100,7 @@ class _CitaModalState extends State<CitaModal> {
 
       fechaSeleccionada = baseDate;
       horaInicio = TimeOfDay.fromDateTime(baseDate);
-      horaFin = TimeOfDay.fromDateTime(baseDate.add(Duration(minutes: settingsProv.duracionCitaMinutos)));
+      horaFin = TimeOfDay.fromDateTime(baseDate.add(Duration(minutes: _duracionSeleccionada)));
     }
 
     fechaCtrl.text = DateFormat('dd/MM/yyyy').format(fechaSeleccionada);
@@ -141,6 +149,7 @@ class _CitaModalState extends State<CitaModal> {
         await agendaProv.cargarHuecos(
           doctorInicial.idUsuario,
           fechaSeleccionada,
+          duracionMinutos: _duracionSeleccionada,
           idCitaExcluir: isEditing ? widget.citaExistente!.idCita : null,
         );
       }
@@ -269,6 +278,9 @@ class _CitaModalState extends State<CitaModal> {
                         _buildHeader(colorTema),
 
                         const SizedBox(height: 15),
+                        // SECCIÓN: DURACIÓN DE LA SESIÓN
+                        _buildDuracionSelector(agendaProvider),
+                        const SizedBox(height: 10),
                         // SECCIÓN: FECHA Y HORARIO
                         _buildDateAndTimeSelector(
                           context,
@@ -358,6 +370,54 @@ class _CitaModalState extends State<CitaModal> {
     );
   }
 
+  Widget _buildDuracionSelector(AgendaProvider agendaProvider) {
+    final opcionesDuracion = <int>{15, 30, 45, 60, 90, _duracionSeleccionada}.toList()..sort();
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(22, 0, 22, 0),
+      child: DropdownButtonFormField<int>(
+        value: _duracionSeleccionada,
+        decoration: const InputDecoration(
+          labelText: 'Duración de la sesión',
+          prefixIcon: Icon(Icons.timer_outlined),
+        ),
+        dropdownColor: Colors.white,
+        items: opcionesDuracion.map((duracion) {
+          final String label;
+          if (duracion == 60) {
+            label = '60 minutos (1 hora)';
+          } else if (duracion == 90) {
+            label = '90 minutos (1.5 horas)';
+          } else {
+            label = '$duracion minutos';
+          }
+          return DropdownMenuItem<int>(
+            value: duracion,
+            child: Text(label),
+          );
+        }).toList(),
+        onChanged: (nuevaDuracion) {
+          if (nuevaDuracion == null || nuevaDuracion == _duracionSeleccionada) return;
+          setState(() {
+            _duracionSeleccionada = nuevaDuracion;
+            selectedHueco = null;
+            horaFin = TimeOfDay.fromDateTime(
+              _joinDateTime(fechaSeleccionada, horaInicio).add(Duration(minutes: nuevaDuracion)),
+            );
+          });
+          if (selectedQuiro != null) {
+            agendaProvider.cargarHuecos(
+              selectedQuiro!.idUsuario,
+              fechaSeleccionada,
+              duracionMinutos: nuevaDuracion,
+              idCitaExcluir: isEditing ? widget.citaExistente!.idCita : null,
+            );
+          }
+        },
+      ),
+    );
+  }
+
   Widget _buildDateAndTimeSelector(
     BuildContext context,
     Color colorTema,
@@ -407,6 +467,7 @@ class _CitaModalState extends State<CitaModal> {
                     agendaProvider.cargarHuecos(
                       selectedQuiro!.idUsuario,
                       picked,
+                      duracionMinutos: _duracionSeleccionada,
                       idCitaExcluir:
                           isEditing ? widget.citaExistente!.idCita : null,
                     );
@@ -540,6 +601,7 @@ class _CitaModalState extends State<CitaModal> {
               agendaProvider.cargarHuecos(
                 val.idUsuario,
                 fechaSeleccionada,
+                duracionMinutos: _duracionSeleccionada,
                 idCitaExcluir: isEditing ? widget.citaExistente!.idCita : null,
               );
             }

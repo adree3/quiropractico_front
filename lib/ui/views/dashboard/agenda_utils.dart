@@ -68,21 +68,94 @@ class AgendaUtils {
     return globals.any((g) => g.diaSemana == date.weekday);
   }
 
-  /// Comprueba si el día tiene un bloqueo global
+  /// Comprueba si el día tiene un bloqueo global (festivo o cierre de clínica completo)
   static bool isGlobalBlocked(DateTime date, List<BloqueoAgenda> bloqueos) {
+    final checkDay = DateTime(date.year, date.month, date.day);
     return bloqueos.any(
-      (b) => b.idQuiropractico == null && DateUtils.isSameDay(date, b.fechaInicio),
+      (b) {
+        if (b.idQuiropractico != null) return false;
+        final startDay = DateTime(b.fechaInicio.year, b.fechaInicio.month, b.fechaInicio.day);
+        final endDay = DateTime(b.fechaFin.year, b.fechaFin.month, b.fechaFin.day);
+        return !checkDay.isBefore(startDay) && !checkDay.isAfter(endDay);
+      },
     );
   }
 
-  /// Calcular horas límite dinámicas para un conjunto de días
+  /// Comprueba si una fecha concreta es hábil y asignable (considerando clínica y quiropráctico opcional)
+  static bool isDateWorkable(
+    DateTime date,
+    List<Horario> horariosGlobales,
+    List<BloqueoAgenda> bloqueos, {
+    int? idQuiropratico,
+  }) {
+    // 1. Debe haber turnos globales para este día de la semana
+    if (!isDayWorkable(date, horariosGlobales)) return false;
+
+    // 2. No debe estar bloqueado a nivel global (festivo o cierre de clínica)
+    if (isGlobalBlocked(date, bloqueos)) return false;
+
+    // 3. Si se especifica un quiropráctico, debe tener turno ese día y no estar bloqueado
+    if (idQuiropratico != null) {
+      final bool doctorTieneTurno = horariosGlobales.any(
+        (h) => h.idQuiropractico == idQuiropratico && h.diaSemana == date.weekday,
+      );
+      if (!doctorTieneTurno) return false;
+
+      final checkDay = DateTime(date.year, date.month, date.day);
+      final bool doctorBloqueado = bloqueos.any((b) {
+        if (b.idQuiropractico != idQuiropratico) return false;
+        final startDay = DateTime(b.fechaInicio.year, b.fechaInicio.month, b.fechaInicio.day);
+        final endDay = DateTime(b.fechaFin.year, b.fechaFin.month, b.fechaFin.day);
+        return !checkDay.isBefore(startDay) && !checkDay.isAfter(endDay);
+      });
+      if (doctorBloqueado) return false;
+    }
+
+    return true;
+  }
+
+  /// Busca el siguiente o anterior día laborable válido saltando fines de semana,
+  /// festivos y días en los que el doctor no trabaje o esté de vacaciones.
+  static DateTime findNextWorkDay(
+    DateTime fromDate,
+    List<Horario> horariosGlobales,
+    List<BloqueoAgenda> bloqueos, {
+    required bool forward,
+    int? idQuiropratico,
+  }) {
+    DateTime checkDate = fromDate;
+    int iterations = 0;
+    while (iterations < 30) {
+      checkDate = forward
+          ? checkDate.add(const Duration(days: 1))
+          : checkDate.subtract(const Duration(days: 1));
+      iterations++;
+
+      if (isDateWorkable(
+        checkDate,
+        horariosGlobales,
+        bloqueos,
+        idQuiropratico: idQuiropratico,
+      )) {
+        return checkDate;
+      }
+    }
+    return fromDate; // Fallback de seguridad si no hay días laborables en 30 iteraciones
+  }
+
+  /// Calcular horas límite dinámicas para un conjunto de días (o globales de la clínica si dates es null)
   static Map<String, double> calculateHourBoundaries(
     List<Horario> horarios,
-    List<DateTime> dates,
+    List<DateTime>? dates,
   ) {
-    final weekDays = dates.map((d) => d.weekday).toSet();
-    final horariosVisibles =
-        horarios.where((h) => weekDays.contains(h.diaSemana)).toList();
+    List<Horario> horariosVisibles;
+    if (dates != null && dates.isNotEmpty) {
+      final weekDays = dates.map((d) => d.weekday).toSet();
+      horariosVisibles =
+          horarios.where((h) => weekDays.contains(h.diaSemana)).toList();
+    } else {
+      horariosVisibles = horarios;
+    }
 
     if (horariosVisibles.isEmpty) {
       return {'min': 8.0, 'max': 21.0};
@@ -124,11 +197,15 @@ class AgendaUtils {
     if (currentView == CalendarView.month) return []; // En mes se usa monthCellBuilder
 
     if (currentView == CalendarView.day) {
-      visibleDates.add(focusDate);
+      // Pre-calcular día actual y adyacentes (±1 día) para swipe fluido
+      for (int i = -1; i <= 1; i++) {
+        visibleDates.add(focusDate.add(Duration(days: i)));
+      }
     } else {
-      // Semana (Lunes a Domingo)
+      // Semana: Pre-calcular semana actual + semana anterior y siguiente (21 días)
+      // para evitar repintado brusco de zonas grises durante el deslizamiento
       final monday = focusDate.subtract(Duration(days: focusDate.weekday - 1));
-      for (int i = 0; i < 7; i++) {
+      for (int i = -7; i < 14; i++) {
         visibleDates.add(monday.add(Duration(days: i)));
       }
     }
@@ -149,7 +226,7 @@ class AgendaUtils {
           startTime: baseDate,
           endTime: baseDate.add(const Duration(hours: 23, minutes: 59)),
           enablePointerInteraction: false,
-          color: Colors.grey.withOpacity(0.12),
+          color: Colors.grey.withValues(alpha: 0.25),
           text: currentView == CalendarView.day ? 'Clínica Cerrada' : '',
         ));
         continue; // No pintamos horarios si está cerrado
@@ -170,7 +247,8 @@ class AgendaUtils {
           startTime: baseDate,
           endTime: baseDate.add(const Duration(hours: 23, minutes: 59)),
           enablePointerInteraction: false,
-          color: Colors.grey.withOpacity(0.12),
+          color: Colors.grey.withValues(alpha: 0.25),
+          text: currentView == CalendarView.day ? 'No laborable' : '',
         ));
       } else {
         // Pintamos los huecos entre turnos (mañana y tarde p.ej)
@@ -184,7 +262,7 @@ class AgendaUtils {
           startTime: baseDate,
           endTime: DateTime(baseDate.year, baseDate.month, baseDate.day, firstStart.hour, firstStart.minute),
           enablePointerInteraction: false,
-          color: Colors.grey.withOpacity(0.1),
+          color: Colors.grey.withValues(alpha: 0.18),
         ));
 
         // Huecos entre turnos
@@ -196,7 +274,7 @@ class AgendaUtils {
               startTime: DateTime(baseDate.year, baseDate.month, baseDate.day, endCurrent.hour, endCurrent.minute),
               endTime: DateTime(baseDate.year, baseDate.month, baseDate.day, startNext.hour, startNext.minute),
               enablePointerInteraction: false,
-              color: Colors.grey.withOpacity(0.1),
+              color: Colors.grey.withValues(alpha: 0.18),
             ));
           }
         }
@@ -207,7 +285,7 @@ class AgendaUtils {
           startTime: DateTime(baseDate.year, baseDate.month, baseDate.day, lastEnd.hour, lastEnd.minute),
           endTime: baseDate.add(const Duration(hours: 23, minutes: 59)),
           enablePointerInteraction: false,
-          color: Colors.grey.withOpacity(0.1),
+          color: Colors.grey.withValues(alpha: 0.18),
         ));
       }
 
@@ -224,12 +302,20 @@ class AgendaUtils {
             startTime: b.fechaInicio,
             endTime: b.fechaFin,
             enablePointerInteraction: false,
-            color: Colors.grey.withOpacity(0.15),
+            color: Colors.grey.withValues(alpha: 0.22),
           ));
         }
       }
     }
 
     return regions;
+  }
+
+  /// Redondea una hora al múltiplo de intervalo más cercano evitando errores de cambio de día
+  static DateTime roundToNearestInterval(DateTime time, int intervalMinutes) {
+    if (intervalMinutes <= 0) return time;
+    final int totalMinutes = time.hour * 60 + time.minute;
+    final int roundedMinutes = ((totalMinutes / intervalMinutes).round() * intervalMinutes);
+    return DateTime(time.year, time.month, time.day).add(Duration(minutes: roundedMinutes));
   }
 }
