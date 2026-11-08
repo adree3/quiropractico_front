@@ -90,4 +90,10 @@ class AgendaBloqueoProvider extends ChangeNotifier {
       return "Error de conexión";
     }
   }
+
+  void clearAllData() {
+    bloqueos = [];
+    isLoading = false;
+    // Purgado silencioso: no se notifica para evitar refetches en cascada
+  }
 }

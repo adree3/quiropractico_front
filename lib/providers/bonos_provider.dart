@@ -75,6 +75,18 @@ class BonosProvider extends ChangeNotifier {
     });
   }
 
+  void clearAllData() {
+    bonos = [];
+    isLoading = false;
+    isLoadingMore = false;
+    hasMore = true;
+    currentPage = 0;
+    totalElements = 0;
+    lastSearch = null;
+    _debounce?.cancel();
+    // Purgado silencioso: no se notifica para evitar refetches en cascada
+  }
+
   @override
   void dispose() {
     _debounce?.cancel();

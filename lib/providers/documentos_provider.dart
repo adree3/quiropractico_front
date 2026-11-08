@@ -245,4 +245,16 @@ class DocumentosProvider extends ChangeNotifier {
     final data = response.data as List;
     return data.map((e) => Documento.fromJson(e)).toList();
   }
+
+  void clearAllData() {
+    documentos = [];
+    isLoading = false;
+    isUploading = false;
+    uploadProgress = 0.0;
+    errorMessage = null;
+    _currentClienteId = null;
+    _carpetaSeleccionada = null;
+    _viewMode = DocumentViewMode.folders;
+    // Purgado silencioso: no se notifica para evitar refetches en cascada
+  }
 }

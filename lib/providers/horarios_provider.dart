@@ -15,6 +15,7 @@ class HorariosProvider extends ChangeNotifier {
   List<Horario> horariosGlobales = [];
   Usuario? selectedDoctor;
   bool isLoading = false;
+  bool isBackgroundFetching = false;
 
   List<int> get diasActivosSemana {
     if (horariosGlobales.isEmpty) return [1, 2, 3, 4, 5];
@@ -48,7 +49,7 @@ class HorariosProvider extends ChangeNotifier {
   }
 
   // Obtiene todos los horarios de los quiropracticos
-  Future<void> loadAllHorariosGlobales() async {
+  Future<void> loadAllHorariosGlobales({bool silent = false}) async {
     try {
       final response = await ApiService.dio.get(
         '$_baseUrl/horarios/global'
@@ -91,9 +92,13 @@ class HorariosProvider extends ChangeNotifier {
     loadHorarios(doctor.idUsuario);
   }
 
-  Future<void> loadHorarios(int idQuiro) async {
-    isLoading = true;
-    notifyListeners();
+  Future<void> loadHorarios(int idQuiro, {bool silent = false}) async {
+    if (!silent) {
+      isLoading = true;
+      notifyListeners();
+    } else {
+      isBackgroundFetching = true;
+    }
     try {
       final response = await ApiService.dio.get(
         '$_baseUrl/horarios/quiro/$idQuiro'
@@ -103,9 +108,36 @@ class HorariosProvider extends ChangeNotifier {
     } catch (e) {
       print('Error cargando horarios: ${ErrorHandler.extractMessage(e)}');
     } finally {
-      isLoading = false;
+      if (!silent) {
+        isLoading = false;
+      } else {
+        isBackgroundFetching = false;
+      }
       notifyListeners();
     }
+  }
+
+  /// Inserción o actualización atómica en memoria local y global sin recarga brusca de la UI
+  void upsertHorarioLocal(Horario nuevoHorario) {
+    // 1. Inserción/actualización en la lista local del doctor seleccionado (si coincide)
+    if (selectedDoctor != null && nuevoHorario.idQuiropractico == selectedDoctor!.idUsuario) {
+      final idx = horarios.indexWhere((h) => h.idHorario == nuevoHorario.idHorario);
+      if (idx != -1) {
+        horarios[idx] = nuevoHorario;
+      } else {
+        horarios.add(nuevoHorario);
+      }
+    }
+
+    // 2. Inserción/actualización en la lista global
+    final globalIdx = horariosGlobales.indexWhere((h) => h.idHorario == nuevoHorario.idHorario);
+    if (globalIdx != -1) {
+      horariosGlobales[globalIdx] = nuevoHorario;
+    } else {
+      horariosGlobales.add(nuevoHorario);
+    }
+
+    notifyListeners();
   }
 
   // Crear Horario
@@ -126,10 +158,16 @@ class HorariosProvider extends ChangeNotifier {
         }
       );
       if (response.statusCode == 200 || response.statusCode == 201) {
-        if (targetQuiro != null) {
-          await loadHorarios(targetQuiro);
+        if (response.data != null && response.data is Map<String, dynamic>) {
+          try {
+            final nuevo = Horario.fromJson(response.data);
+            upsertHorarioLocal(nuevo);
+          } catch (_) {}
         }
-        await loadAllHorariosGlobales();
+        if (targetQuiro != null) {
+          loadHorarios(targetQuiro, silent: true);
+        }
+        loadAllHorariosGlobales(silent: true);
         return {"success": true, "data": response.data};
       }
       return {"success": false, "error": "Error al crear horario"};
@@ -148,6 +186,7 @@ class HorariosProvider extends ChangeNotifier {
       );
       
       horarios.removeWhere((h) => h.idHorario == idHorario);
+      horariosGlobales.removeWhere((h) => h.idHorario == idHorario);
       notifyListeners();
       return null;
     } catch (e) {
@@ -174,9 +213,17 @@ class HorariosProvider extends ChangeNotifier {
       
       if (response.statusCode == 200 || response.statusCode == 204) {
         if (targetQuiro != null) {
-          await loadHorarios(targetQuiro);
+          final actualizado = Horario(
+            idHorario: idHorario,
+            idQuiropractico: targetQuiro,
+            diaSemana: diaSemana,
+            horaInicio: horaInicio,
+            horaFin: horaFin,
+          );
+          upsertHorarioLocal(actualizado);
+          loadHorarios(targetQuiro, silent: true);
         }
-        await loadAllHorariosGlobales();
+        loadAllHorariosGlobales(silent: true);
         return {"success": true};
       }
       return {"success": false, "error": "Error al actualizar"};
@@ -193,6 +240,6 @@ class HorariosProvider extends ChangeNotifier {
     horariosGlobales = [];
     selectedDoctor = null;
     isLoading = false;
-    notifyListeners();
+    // Purgado silencioso: no se notifica para evitar refetches en cascada
   }
 }

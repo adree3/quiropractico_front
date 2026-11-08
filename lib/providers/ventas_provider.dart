@@ -100,4 +100,12 @@ class VentasProvider extends ChangeNotifier {
       print('Error cargando bonos usables: ${ErrorHandler.extractMessage(e)}');
     }
   }
+
+  void clearAllData() {
+    bonosUsables = [];
+    bonosDisponibles = [];
+    listaServicios = [];
+    isLoading = false;
+    // Purgado silencioso: no se notifica para evitar refetches en cascada
+  }
 }

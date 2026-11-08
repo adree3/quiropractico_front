@@ -314,6 +314,6 @@ class ClientsProvider extends ChangeNotifier {
     totalPages = 0;
     totalElements = 0;
     errorMessage = null;
-    notifyListeners();
+    // Purgado silencioso: no se notifica para evitar refetches en cascada
   }
 }

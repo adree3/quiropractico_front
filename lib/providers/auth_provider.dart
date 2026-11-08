@@ -4,13 +4,20 @@ import 'package:provider/provider.dart';
 import 'package:quiropractico_front/services/auth_service.dart';
 import 'package:quiropractico_front/models/api_error.dart';
 import 'package:quiropractico_front/services/local_storage.dart';
+import 'package:quiropractico_front/providers/agenda_bloqueo_provider.dart';
+import 'package:quiropractico_front/providers/agenda_provider.dart';
+import 'package:quiropractico_front/providers/auditoria_provider.dart';
+import 'package:quiropractico_front/providers/bonos_provider.dart';
 import 'package:quiropractico_front/providers/citas_provider.dart';
-import 'package:quiropractico_front/providers/users_provider.dart';
 import 'package:quiropractico_front/providers/clients_provider.dart';
+import 'package:quiropractico_front/providers/documentos_provider.dart';
+import 'package:quiropractico_front/providers/horarios_provider.dart';
 import 'package:quiropractico_front/providers/payments_provider.dart';
 import 'package:quiropractico_front/providers/services_provider.dart';
-import 'package:quiropractico_front/providers/horarios_provider.dart';
+import 'package:quiropractico_front/providers/settings_provider.dart';
 import 'package:quiropractico_front/providers/stats_provider.dart';
+import 'package:quiropractico_front/providers/users_provider.dart';
+import 'package:quiropractico_front/providers/ventas_provider.dart';
 
 enum AuthStatus { checking, authenticated, notAuthenticated, locked }
 
@@ -106,31 +113,39 @@ class AuthProvider extends ChangeNotifier {
   }
   
   // Cerrar sesión
-  void logout(BuildContext context) {
-    // 1. Cambiamos el estado y NOTIFICAMOS inmediatamente.
-    authStatus = AuthStatus.notAuthenticated;
-    notifyListeners();
+  void logout(BuildContext context) async {
+    // 1. Purgado de disco físico
+    await LocalStorage.deleteToken();
+    role = null;
 
-    // 2. Purgar toda la RAM de los providers de negocio (ahora que ya no hay widgets escuchando)
+    // 2. Purgado profundo silencioso de toda la RAM de providers
     try {
       importProviders(context);
     } catch (e) {
       debugPrint('Error purgando providers: $e');
     }
 
-    // 3. Limpiar almacenamiento físico
-    LocalStorage.deleteToken();
+    // 3. Cambio de estado final: expulsa al usuario desmontando el Dashboard de memoria
+    authStatus = AuthStatus.notAuthenticated;
+    notifyListeners();
   }
 
   void importProviders(BuildContext context) {
-    // Purgamos la memoria de todos los providers de negocio
+    // Purgado silencioso de la memoria de todos los providers de negocio sin disparar notifyListeners()
+    context.read<AgendaProvider>().clearAllData();
+    context.read<AgendaBloqueoProvider>().clearAllData();
+    context.read<BonosProvider>().clearAllData();
     context.read<CitasProvider>().clearAllData();
-    context.read<UsersProvider>().clearAllData();
     context.read<ClientsProvider>().clearAllData();
+    context.read<DocumentosProvider>().clearAllData();
+    context.read<HorariosProvider>().clearAllData();
     context.read<PaymentsProvider>().clearAllData();
     context.read<ServicesProvider>().clearAllData();
-    context.read<HorariosProvider>().clearAllData();
+    context.read<SettingsProvider>().clearAllData();
     context.read<StatsProvider>().clearAllData();
+    context.read<UsersProvider>().clearAllData();
+    context.read<VentasProvider>().clearAllData();
+    context.read<AuditoriaProvider>().clearAllData();
   }
 
   void refreshGlobalData(BuildContext context) {

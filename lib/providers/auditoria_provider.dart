@@ -102,4 +102,17 @@ class AuditoriaProvider extends ChangeNotifier {
     filtroAccion = accion;
     getLogs(page: 0);
   }
+
+  void clearAllData() {
+    logs = [];
+    isLoading = false;
+    currentPage = 0;
+    totalElements = 0;
+    filtroEntidad = null;
+    filtroAccion = null;
+    search = '';
+    fechaInicio = null;
+    fechaFin = null;
+    // Purgado silencioso: no se notifica para evitar refetches en cascada
+  }
 }

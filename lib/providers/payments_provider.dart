@@ -397,6 +397,6 @@ class PaymentsProvider extends ChangeNotifier {
     totalVentas = 0;
     globalPendingCount = 0;
     isLoading = false;
-    notifyListeners();
+    // Purgado silencioso: no se notifica para evitar refetches en cascada
   }
 }

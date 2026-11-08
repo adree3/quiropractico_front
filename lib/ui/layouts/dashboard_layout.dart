@@ -73,10 +73,17 @@ class DashboardLayout extends StatelessWidget {
                       Consumer<UsersProvider>(
                         builder: (context, usersProvider, child) {
                           final user = usersProvider.currentUser;
-                          if (user == null && !usersProvider.isLoading && !usersProvider.hasError) {
+                          final auth = context.read<AuthProvider>();
+                          if (user == null &&
+                              !usersProvider.isLoading &&
+                              !usersProvider.hasError &&
+                              auth.authStatus == AuthStatus.authenticated) {
                             WidgetsBinding.instance.addPostFrameCallback((_) {
-                              usersProvider.getMe();
-                              context.read<AuthProvider>().refreshGlobalData(context);
+                              if (context.mounted &&
+                                  context.read<AuthProvider>().authStatus == AuthStatus.authenticated) {
+                                usersProvider.getMe();
+                                context.read<AuthProvider>().refreshGlobalData(context);
+                              }
                             });
                           }
                           return Container(

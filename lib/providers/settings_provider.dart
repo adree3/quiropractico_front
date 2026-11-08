@@ -88,4 +88,17 @@ class SettingsProvider extends ChangeNotifier {
     successMessage = null;
     notifyListeners();
   }
+
+  void clearAllData() {
+    nombre = '';
+    cifNif = '';
+    telefono = '';
+    emailContacto = '';
+    direccion = '';
+    errorMessage = null;
+    successMessage = null;
+    isLoading = false;
+    isSaving = false;
+    // Purgado silencioso: no se notifica para evitar refetches en cascada
+  }
 }

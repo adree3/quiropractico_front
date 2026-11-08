@@ -272,6 +272,6 @@ class CitasProvider extends ChangeNotifier {
     _stompClient = null;
 
     isLoading = false;
-    notifyListeners();
+    // Purgado silencioso: no se notifica para evitar refetches en cascada
   }
 }

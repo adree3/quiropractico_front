@@ -38,6 +38,6 @@ class StatsProvider extends ChangeNotifier {
   void clearAllData() {
     stats = null;
     isLoading = false;
-    notifyListeners();
+    // Purgado silencioso: no se notifica para evitar refetches en cascada
   }
 }
