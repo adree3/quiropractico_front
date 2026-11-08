@@ -25,6 +25,32 @@ class UsersProvider extends ChangeNotifier {
   int currentPage = 0;
   int pageSize = 10;
   int totalElements = 0;
+  int _getRolPriority(String rol) {
+    switch (rol.toLowerCase()) {
+      case 'admin':
+      case 'super_admin':
+        return 1;
+      case 'doctor':
+        return 2;
+      case 'recepcion':
+        return 3;
+      default:
+        return 4;
+    }
+  }
+
+  void _sortUsuarios() {
+    usuarios.sort((a, b) {
+      final priorityA = _getRolPriority(a.rol);
+      final priorityB = _getRolPriority(b.rol);
+
+      if (priorityA != priorityB) {
+        return priorityA.compareTo(priorityB);
+      }
+      return b.idUsuario.compareTo(a.idUsuario);
+    });
+  }
+
   int profilePictureVersion = 0;
 
   UsersProvider() {
@@ -125,6 +151,7 @@ class UsersProvider extends ChangeNotifier {
 
       final List<dynamic> data = response.data['content'];
       usuarios = data.map((e) => Usuario.fromJson(e)).toList();
+      _sortUsuarios();
       totalElements = response.data['totalElements'] ?? 0;
       await _checkNotifications();
 
@@ -277,6 +304,6 @@ class UsersProvider extends ChangeNotifier {
     blockedCount = 0;
     currentPage = 0;
     totalElements = 0;
-    notifyListeners();
+    // Purgado silencioso: no se notifica para evitar refetches en cascada
   }
 }

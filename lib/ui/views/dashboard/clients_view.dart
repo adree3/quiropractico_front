@@ -60,29 +60,41 @@ class _ClientsViewState extends State<ClientsView> {
 
   @override
   Widget build(BuildContext context) {
-    final clientsProvider = Provider.of<ClientsProvider>(context);
-    final clientes = clientsProvider.clients;
+    final clientsProvider = Provider.of<ClientsProvider>(context, listen: false);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 10.0),
-      child: PremiumDataTable<Cliente>(
-        items: clientes,
-        isLoading: clientsProvider.isLoading,
-        wrapInCard: true,
-        columnFlexes: const [1, 4, 3, 2, 2],
-        columnHeaders: [
-          _buildHeaderCell("ID", alignment: Alignment.centerLeft),
-          _buildHeaderCell("Paciente", alignment: Alignment.centerLeft),
-          _buildHeaderCell("Contacto", alignment: Alignment.centerLeft),
-          _buildHeaderCell("Teléfono", alignment: Alignment.centerLeft),
-          _buildHeaderCell("Acciones", alignment: Alignment.centerRight),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buildHeaderTopControls(context, clientsProvider),
+          const SizedBox(height: 20),
+          Expanded(
+            child: Consumer<ClientsProvider>(
+              builder: (context, provider, _) {
+                final clientes = provider.clients;
+                return PremiumDataTable<Cliente>(
+                  items: clientes,
+                  isLoading: provider.isLoading,
+                  wrapInCard: true,
+                  columnFlexes: const [1, 4, 3, 2, 2],
+                  columnHeaders: [
+                    _buildHeaderCell("ID", alignment: Alignment.centerLeft),
+                    _buildHeaderCell("Paciente", alignment: Alignment.centerLeft),
+                    _buildHeaderCell("Contacto", alignment: Alignment.centerLeft),
+                    _buildHeaderCell("Teléfono", alignment: Alignment.centerLeft),
+                    _buildHeaderCell("Acciones", alignment: Alignment.centerRight),
+                  ],
+                  bottomContent: _buildPaginationControls(context, provider),
+                  emptyStateBuilder: (_) => _buildEmptyState(provider),
+                  rowBuilder: (context, cliente, index) {
+                    return _buildRowItem(context, provider, cliente);
+                  },
+                );
+              },
+            ),
+          ),
         ],
-        topContent: _buildHeaderTopControls(context, clientsProvider),
-        bottomContent: _buildPaginationControls(context, clientsProvider),
-        emptyStateBuilder: (_) => _buildEmptyState(clientsProvider),
-        rowBuilder: (context, cliente, index) {
-          return _buildRowItem(context, clientsProvider, cliente);
-        },
       ),
     );
   }
@@ -631,8 +643,11 @@ class _ClientsViewState extends State<ClientsView> {
   }
 
   Widget _buildStatusDropdown(ClientsProvider provider) {
-    return DashboardDropdown<bool?>(
-      selectedValue: provider.filterActive,
+    return Selector<ClientsProvider, bool?>(
+      selector: (_, p) => p.filterActive,
+      builder: (context, filterActive, _) {
+        return DashboardDropdown<bool?>(
+          selectedValue: filterActive,
       tooltip: "Filtrar estado",
       onSelected: (val) => provider.toggleFilter(val),
       options: const [
@@ -656,11 +671,16 @@ class _ClientsViewState extends State<ClientsView> {
         ),
       ],
     );
+      },
+    );
   }
 
   Widget _buildActivityDropdown(ClientsProvider provider) {
-    return DashboardDropdown<int?>(
-      selectedValue: provider.lastActivityDays,
+    return Selector<ClientsProvider, int?>(
+      selector: (_, p) => p.lastActivityDays,
+      builder: (context, lastActivityDays, _) {
+        return DashboardDropdown<int?>(
+          selectedValue: lastActivityDays,
       tooltip: "Filtrar por última visita",
       onSelected: (val) => provider.setActivityFilter(val),
       options: const [
@@ -683,6 +703,8 @@ class _ClientsViewState extends State<ClientsView> {
           color: Colors.green,
         ),
       ],
+    );
+      },
     );
   }
 

@@ -329,7 +329,7 @@ class _CitasViewState extends State<CitasView> {
                           _buildHeaderCell("ID"),
                           _buildHeaderCell("Fecha y Hora"),
                           _buildHeaderCell("Paciente"),
-                          _buildHeaderCell("Forma de Pago"),
+                          _buildHeaderCell("Servicio"),
                           _buildHeaderCell(
                             "Estado",
                             alignment: Alignment.centerLeft,

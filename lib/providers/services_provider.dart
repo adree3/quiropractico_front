@@ -15,6 +15,29 @@ class ServicesProvider extends ChangeNotifier {
   int currentPage = 0;
   int pageSize = 10;
   int totalElements = 0;
+  void _sortServicios(List<Servicio> list) {
+    list.sort((a, b) {
+      final esBonoA = a.tipo.toLowerCase() == 'bono';
+      final esBonoB = b.tipo.toLowerCase() == 'bono';
+
+      if (esBonoA && !esBonoB) return -1;
+      if (!esBonoA && esBonoB) return 1;
+      int comparacionPrecio = b.precio.compareTo(a.precio);
+      if (comparacionPrecio != 0) return comparacionPrecio;
+      return b.idServicio.compareTo(a.idServicio);
+    });
+  }
+
+  List<Servicio> get serviciosPaginados {
+    final int start = currentPage * pageSize;
+    final int end = (start + pageSize < servicios.length) 
+        ? start + pageSize 
+        : servicios.length;
+    return servicios.length > pageSize 
+        ? servicios.sublist(start, end)
+        : servicios;
+  }
+
 
   ServicesProvider() {
     loadServices();
@@ -56,16 +79,7 @@ class ServicesProvider extends ChangeNotifier {
 
       List<Servicio> tempList = listData.map((e) => Servicio.fromJson(e)).toList();
       
-      tempList.sort((a, b) {
-        bool aEsSesion = a.sesiones == null;
-        bool bEsSesion = b.sesiones == null;
-        
-        if (aEsSesion && !bEsSesion) return -1;
-        if (!aEsSesion && bEsSesion) return 1;
-
-        return b.idServicio.compareTo(a.idServicio);
-      });
-      
+      _sortServicios(tempList);
       servicios = tempList;
     } catch (e) {
       print('Error cargando servicios: ${ErrorHandler.extractMessage(e)}');
@@ -156,6 +170,6 @@ class ServicesProvider extends ChangeNotifier {
     isLoading = false;
     currentPage = 0;
     totalElements = 0;
-    notifyListeners();
+    // Purgado silencioso: no se notifica para evitar refetches en cascada
   }
 }
