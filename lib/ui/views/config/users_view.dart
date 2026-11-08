@@ -40,20 +40,6 @@ class _UsersViewState extends State<UsersView> {
     super.dispose();
   }
 
-  // Metodo para ordenar los usuarios
-  int _getRolPriority(String rol) {
-    switch (rol.toLowerCase()) {
-      case 'admin':
-      case 'super_admin':
-        return 1;
-      case 'doctor':
-        return 2;
-      case 'recepcion':
-        return 3;
-      default:
-        return 4;
-    }
-  }
 
   Color _getRoleColor(String rol) {
     switch (rol.toLowerCase()) {
@@ -70,49 +56,49 @@ class _UsersViewState extends State<UsersView> {
 
   @override
   Widget build(BuildContext context) {
-    final provider = Provider.of<UsersProvider>(context);
-
-    String mensajeVacio;
-    if (provider.filterActive == true) {
-      mensajeVacio = "No hay usuarios activos";
-    } else if (provider.filterActive == false) {
-      mensajeVacio = "No hay usuarios eliminados";
-    } else {
-      mensajeVacio = "No hay usuarios registrados";
-    }
-
-    final List<Usuario> usuariosOrdenados = List.from(provider.usuarios);
-
-    usuariosOrdenados.sort((a, b) {
-      final priorityA = _getRolPriority(a.rol);
-      final priorityB = _getRolPriority(b.rol);
-
-      if (priorityA != priorityB) {
-        return priorityA.compareTo(priorityB);
-      }
-      return b.idUsuario.compareTo(a.idUsuario);
-    });
+    final provider = Provider.of<UsersProvider>(context, listen: false);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 10.0),
-      child: PremiumDataTable<Usuario>(
-        items: usuariosOrdenados,
-        isLoading: provider.isLoading,
-        wrapInCard: true,
-        columnFlexes: const [1, 4, 3, 2, 2],
-        columnHeaders: [
-          _buildHeaderCell("ID", alignment: Alignment.centerLeft),
-          _buildHeaderCell("Usuario", alignment: Alignment.centerLeft),
-          _buildHeaderCell("Credencial", alignment: Alignment.centerLeft),
-          _buildHeaderCell("Rol", alignment: Alignment.centerLeft),
-          _buildHeaderCell("Acciones", alignment: Alignment.centerRight),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buildHeaderTopControls(context, provider),
+          const SizedBox(height: 20),
+          Expanded(
+            child: Consumer<UsersProvider>(
+              builder: (context, uProv, _) {
+                String mensajeVacio;
+                if (uProv.filterActive == true) {
+                  mensajeVacio = "No hay usuarios activos";
+                } else if (uProv.filterActive == false) {
+                  mensajeVacio = "No hay usuarios eliminados";
+                } else {
+                  mensajeVacio = "No hay usuarios registrados";
+                }
+
+                return PremiumDataTable<Usuario>(
+                  items: uProv.usuarios,
+                  isLoading: uProv.isLoading,
+                  wrapInCard: true,
+                  columnFlexes: const [1, 4, 3, 2, 2],
+                  columnHeaders: [
+                    _buildHeaderCell("ID", alignment: Alignment.centerLeft),
+                    _buildHeaderCell("Usuario", alignment: Alignment.centerLeft),
+                    _buildHeaderCell("Credencial", alignment: Alignment.centerLeft),
+                    _buildHeaderCell("Rol", alignment: Alignment.centerLeft),
+                    _buildHeaderCell("Acciones", alignment: Alignment.centerRight),
+                  ],
+                  bottomContent: _buildPaginationControls(context, uProv),
+                  emptyStateBuilder: (_) => _buildEmptyState(uProv, mensajeVacio),
+                  rowBuilder: (context, usuario, index) {
+                    return _buildRowItem(context, uProv, usuario);
+                  },
+                );
+              },
+            ),
+          ),
         ],
-        topContent: _buildHeaderTopControls(context, provider),
-        bottomContent: _buildPaginationControls(context, provider),
-        emptyStateBuilder: (_) => _buildEmptyState(provider, mensajeVacio),
-        rowBuilder: (context, usuario, index) {
-          return _buildRowItem(context, provider, usuario);
-        },
       ),
     );
   }
@@ -191,30 +177,35 @@ class _UsersViewState extends State<UsersView> {
                       Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          DashboardDropdown<bool?>(
-                            tooltip: "Filtrar estado",
-                            selectedValue: provider.filterActive,
-                            onSelected: (val) => provider.setFilter(val),
-                            options: const [
-                              DropdownOption(
-                                value: true,
-                                label: "Activos",
-                                icon: Icons.check_circle_outline,
-                                color: Colors.green,
-                              ),
-                              DropdownOption(
-                                value: false,
-                                label: "Eliminados",
-                                icon: Icons.delete_outline,
-                                color: Colors.redAccent,
-                              ),
-                              DropdownOption(
-                                value: null,
-                                label: "Todos",
-                                icon: Icons.list,
-                                color: Colors.grey,
-                              ),
-                            ],
+                          Selector<UsersProvider, bool?>(
+                            selector: (_, p) => p.filterActive,
+                            builder: (context, filterActive, _) {
+                              return DashboardDropdown<bool?>(
+                                tooltip: "Filtrar estado",
+                                selectedValue: filterActive,
+                                onSelected: (val) => provider.setFilter(val),
+                                options: const [
+                                  DropdownOption(
+                                    value: true,
+                                    label: "Activos",
+                                    icon: Icons.check_circle_outline,
+                                    color: Colors.green,
+                                  ),
+                                  DropdownOption(
+                                    value: false,
+                                    label: "Eliminados",
+                                    icon: Icons.delete_outline,
+                                    color: Colors.redAccent,
+                                  ),
+                                  DropdownOption(
+                                    value: null,
+                                    label: "Todos",
+                                    icon: Icons.list,
+                                    color: Colors.grey,
+                                  ),
+                                ],
+                              );
+                            },
                           ),
 
                           const SizedBox(width: 15),

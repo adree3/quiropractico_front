@@ -297,9 +297,7 @@ class _VacacionesCalendarViewState extends State<VacacionesCalendarView> {
 
   @override
   Widget build(BuildContext context) {
-    final provider = Provider.of<AgendaBloqueoProvider>(context);
-    final bloqueosDelDia = _getBloqueosDelDia(_selectedDay!, provider.bloqueos);
-    final bloqueosAcumulados = _getBloqueosAcumulados(provider.bloqueos);
+    final provider = Provider.of<AgendaBloqueoProvider>(context, listen: false);
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -310,7 +308,7 @@ class _VacacionesCalendarViewState extends State<VacacionesCalendarView> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // HEADER
+              // HEADER (Estático e Inmutable)
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
@@ -364,16 +362,21 @@ class _VacacionesCalendarViewState extends State<VacacionesCalendarView> {
 
                       // Botones Acción
                       if (_diasSeleccionados.isNotEmpty)
-                        ElevatedButton.icon(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.red,
-                            foregroundColor: Colors.white,
-                          ),
-                          onPressed: () => _eliminarLote(provider),
-                          icon: const Icon(Icons.delete, size: 18),
-                          label: Text(
-                            "Eliminar (${bloqueosAcumulados.length})",
-                          ),
+                        Consumer<AgendaBloqueoProvider>(
+                          builder: (context, bProv, _) {
+                            final bloqueosAcumulados = _getBloqueosAcumulados(bProv.bloqueos);
+                            return ElevatedButton.icon(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.red,
+                                foregroundColor: Colors.white,
+                              ),
+                              onPressed: () => _eliminarLote(provider),
+                              icon: const Icon(Icons.delete, size: 18),
+                              label: Text(
+                                "Eliminar (${bloqueosAcumulados.length})",
+                              ),
+                            );
+                          },
                         ),
                       const SizedBox(width: 10),
 
@@ -431,219 +434,225 @@ class _VacacionesCalendarViewState extends State<VacacionesCalendarView> {
 
               const SizedBox(height: 20),
 
-              // CALENDARIO + DETALLES
+              // CALENDARIO + DETALLES (Aislado reactivamente)
               Expanded(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Expanded(
-                      flex: 3,
-                      child: Card(
-                        elevation: 0,
-                        margin: EdgeInsets.zero,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          side: BorderSide(color: Colors.grey.shade300),
-                        ),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(10),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.1),
-                                blurRadius: 10,
-                                offset: const Offset(0, 5),
+                child: Consumer<AgendaBloqueoProvider>(
+                  builder: (context, bProv, _) {
+                    final bloqueosDelDia = _getBloqueosDelDia(_selectedDay!, bProv.bloqueos);
+                    final bloqueosAcumulados = _getBloqueosAcumulados(bProv.bloqueos);
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Expanded(
+                          flex: 3,
+                          child: Card(
+                            elevation: 0,
+                            margin: EdgeInsets.zero,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                              side: BorderSide(color: Colors.grey.shade300),
+                            ),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(10),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.1),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 5),
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(10),
-                            child: Column(
-                              children: [
-                                Padding(
-                                  padding: const EdgeInsets.all(15.0),
-                                  child: Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      IconButton(
-                                        tooltip: "Mes anterior",
-                                        icon: const Icon(Icons.chevron_left),
-                                        onPressed:
-                                          () => setState(
-                                            () =>
-                                                _focusedDay = DateTime(
-                                                  _focusedDay.year,
-                                                  _focusedDay.month - 1,
-                                                ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(10),
+                                child: Column(
+                                  children: [
+                                    Padding(
+                                      padding: const EdgeInsets.all(15.0),
+                                      child: Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          IconButton(
+                                            tooltip: "Mes anterior",
+                                            icon: const Icon(Icons.chevron_left),
+                                            onPressed:
+                                              () => setState(
+                                                () =>
+                                                    _focusedDay = DateTime(
+                                                      _focusedDay.year,
+                                                      _focusedDay.month - 1,
+                                                    ),
+                                              ),
                                           ),
-                                      ),
 
-                                      InkWell(
-                                        onTap: _seleccionarMesAnio,
-                                        borderRadius: BorderRadius.circular(20),
-                                        child: Tooltip(
-                                          message: "Seleccionar mes",
-                                          child: Padding(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 16,
-                                              vertical: 8,
-                                            ),
-                                            child: Row(
-                                              children: [
-                                                Text(
-                                                  DateFormat(
-                                                        'MMMM yyyy',
-                                                        'es_ES',
-                                                      )
-                                                      .format(_focusedDay)
-                                                      .toUpperCase(),
-                                                  style: const TextStyle(
-                                                    fontSize: 20,
-                                                    fontWeight: FontWeight.bold,
-                                                    color:
-                                                        AppTheme.primaryColor,
-                                                  ),
+                                          InkWell(
+                                            onTap: _seleccionarMesAnio,
+                                            borderRadius: BorderRadius.circular(20),
+                                            child: Tooltip(
+                                              message: "Seleccionar mes",
+                                              child: Padding(
+                                                padding: const EdgeInsets.symmetric(
+                                                  horizontal: 16,
+                                                  vertical: 8,
                                                 ),
-                                                const SizedBox(width: 8),
-                                                const Icon(
-                                                  Icons.edit_calendar,
-                                                  size: 18,
-                                                  color: AppTheme.primaryColor,
+                                                child: Row(
+                                                  children: [
+                                                    Text(
+                                                      DateFormat(
+                                                            'MMMM yyyy',
+                                                            'es_ES',
+                                                          )
+                                                          .format(_focusedDay)
+                                                          .toUpperCase(),
+                                                      style: const TextStyle(
+                                                        fontSize: 20,
+                                                        fontWeight: FontWeight.bold,
+                                                        color:
+                                                            AppTheme.primaryColor,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(width: 8),
+                                                    const Icon(
+                                                      Icons.edit_calendar,
+                                                      size: 18,
+                                                      color: AppTheme.primaryColor,
+                                                    ),
+                                                  ],
                                                 ),
-                                              ],
+                                              ),
                                             ),
                                           ),
+
+                                          IconButton(
+                                            tooltip: "Mes siguiente",
+                                            icon: const Icon(Icons.chevron_right),
+                                            onPressed:
+                                              () => setState(
+                                                () =>
+                                                    _focusedDay = DateTime(
+                                                      _focusedDay.year,
+                                                      _focusedDay.month + 1,
+                                                    ),
+                                                ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+
+                                    const Divider(height: 1),
+
+                                    Expanded(
+                                      child: TableCalendar<BloqueoAgenda>(
+                                        locale: 'es_ES',
+                                        firstDay: DateTime(1990),
+                                        lastDay: DateTime(2100),
+                                        focusedDay: _focusedDay,
+                                        startingDayOfWeek: StartingDayOfWeek.monday,
+                                        headerVisible: false,
+                                        shouldFillViewport: true,
+                                        daysOfWeekHeight: 40,
+                                        selectedDayPredicate:
+                                          (day) =>
+                                            _isSelectionMode
+                                              ? _diasSeleccionados.any(
+                                                (d) => isSameDay(d, day),
+                                              )
+                                              : isSameDay(_selectedDay, day),
+                                        eventLoader: (day) => _getBloqueosDelDia(day, provider.bloqueos),
+                                        onDaySelected:
+                                          (selected, focused) =>
+                                            _handleDaySelected(
+                                              selected,
+                                              focused,
+                                                  provider.bloqueos,
+                                                  isLargeScreen,
+                                                ),
+                                        onPageChanged: (focused) => _focusedDay = focused,
+                                        calendarBuilders: CalendarBuilders(
+                                          defaultBuilder:
+                                              (context, day, focusedDay) =>
+                                                  _buildCell(
+                                                    day,
+                                                    provider.bloqueos,
+                                                    isSelected: false,
+                                                    isToday: false,
+                                                  ),
+                                          selectedBuilder:
+                                              (context, day, focusedDay) =>
+                                                  _buildCell(
+                                                    day,
+                                                    provider.bloqueos,
+                                                    isSelected: true,
+                                                    isToday: isSameDay(
+                                                      day,
+                                                      DateTime.now(),
+                                                    ),
+                                                  ),
+                                          todayBuilder:
+                                              (context, day, focusedDay) =>
+                                                  _buildCell(
+                                                    day,
+                                                    provider.bloqueos,
+                                                    isSelected: false,
+                                                    isToday: true,
+                                                  ),
+                                          outsideBuilder:
+                                              (context, day, focusedDay) =>
+                                                  _buildCell(
+                                                    day,
+                                                    provider.bloqueos,
+                                                    isSelected: false,
+                                                    isToday: false,
+                                                    isOutside: true,
+                                                  ),
+                                          markerBuilder:
+                                              (context, day, events) =>
+                                                  const SizedBox(),
                                         ),
                                       ),
-
-                                      IconButton(
-                                        tooltip: "Mes siguiente",
-                                        icon: const Icon(Icons.chevron_right),
-                                        onPressed:
-                                          () => setState(
-                                            () =>
-                                                _focusedDay = DateTime(
-                                                  _focusedDay.year,
-                                                  _focusedDay.month + 1,
-                                                ),
-                                            ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-
-                                const Divider(height: 1),
-
-                                Expanded(
-                                  child: TableCalendar<BloqueoAgenda>(
-                                    locale: 'es_ES',
-                                    firstDay: DateTime(1990),
-                                    lastDay: DateTime(2100),
-                                    focusedDay: _focusedDay,
-                                    startingDayOfWeek: StartingDayOfWeek.monday,
-                                    headerVisible: false,
-                                    shouldFillViewport: true,
-                                    daysOfWeekHeight: 40,
-                                    selectedDayPredicate:
-                                      (day) =>
-                                        _isSelectionMode
-                                          ? _diasSeleccionados.any(
-                                            (d) => isSameDay(d, day),
-                                          )
-                                          : isSameDay(_selectedDay, day),
-                                    eventLoader: (day) => _getBloqueosDelDia(day, provider.bloqueos),
-                                    onDaySelected:
-                                      (selected, focused) =>
-                                        _handleDaySelected(
-                                          selected,
-                                          focused,
-                                              provider.bloqueos,
-                                              isLargeScreen,
-                                            ),
-                                    onPageChanged: (focused) => _focusedDay = focused,
-                                    calendarBuilders: CalendarBuilders(
-                                      defaultBuilder:
-                                          (context, day, focusedDay) =>
-                                              _buildCell(
-                                                day,
-                                                provider.bloqueos,
-                                                isSelected: false,
-                                                isToday: false,
-                                              ),
-                                      selectedBuilder:
-                                          (context, day, focusedDay) =>
-                                              _buildCell(
-                                                day,
-                                                provider.bloqueos,
-                                                isSelected: true,
-                                                isToday: isSameDay(
-                                                  day,
-                                                  DateTime.now(),
-                                                ),
-                                              ),
-                                      todayBuilder:
-                                          (context, day, focusedDay) =>
-                                              _buildCell(
-                                                day,
-                                                provider.bloqueos,
-                                                isSelected: false,
-                                                isToday: true,
-                                              ),
-                                      outsideBuilder:
-                                          (context, day, focusedDay) =>
-                                              _buildCell(
-                                                day,
-                                                provider.bloqueos,
-                                                isSelected: false,
-                                                isToday: false,
-                                                isOutside: true,
-                                              ),
-                                      markerBuilder:
-                                          (context, day, events) =>
-                                              const SizedBox(),
                                     ),
-                                  ),
+                                  ],
                                 ),
-                              ],
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ),
 
-                    if (isLargeScreen) ...[
-                      const SizedBox(width: 20),
-                      // PANEL LATERAL
-                      Flexible(
-                        flex: 1,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: Colors.grey.shade300),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.05),
-                                blurRadius: 10,
-                                offset: const Offset(0, 5),
+                        if (isLargeScreen) ...[
+                          const SizedBox(width: 20),
+                          // PANEL LATERAL
+                          Flexible(
+                            flex: 1,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: Colors.grey.shade300),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.05),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 5),
+                                  ),
+                                ],
                               ),
-                            ],
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(10),
+                                child:
+                                  _isSelectionMode
+                                      ? _buildSelectionSummaryPanel(
+                                        bloqueosAcumulados,
+                                      )
+                                      : _buildSidePanel(bloqueosDelDia),
+                              ),
+                            ),
                           ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(10),
-                            child:
-                              _isSelectionMode
-                                  ? _buildSelectionSummaryPanel(
-                                    bloqueosAcumulados,
-                                  )
-                                  : _buildSidePanel(bloqueosDelDia),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
+                        ],
+                      ],
+                    );
+                  },
                 ),
               ),
             ],

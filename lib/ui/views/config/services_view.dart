@@ -40,67 +40,50 @@ class _ServicesViewState extends State<ServicesView> {
 
   @override
   Widget build(BuildContext context) {
-    final provider = Provider.of<ServicesProvider>(context);
-    String mensajeVacio;
-    if (provider.filterActive == true) {
-      mensajeVacio = "No hay servicios activos";
-    } else if (provider.filterActive == false) {
-      mensajeVacio = "No hay servicios inactivos";
-    } else {
-      mensajeVacio = "No hay servicios registrados";
-    }
-
-    // Ordenar lista
-    final List<Servicio> serviciosOrdenados = List.from(provider.servicios);
-
-    serviciosOrdenados.sort((a, b) {
-      final esBonoA = a.tipo.toLowerCase() == 'bono';
-      final esBonoB = b.tipo.toLowerCase() == 'bono';
-
-      if (esBonoA && !esBonoB) {
-        return -1;
-      }
-      if (!esBonoA && esBonoB) {
-        return 1;
-      }
-      int comparacionPrecio = b.precio.compareTo(a.precio);
-      if (comparacionPrecio != 0) {
-        return comparacionPrecio;
-      }
-      return b.idServicio.compareTo(a.idServicio);
-    });
-
-    // Slicing local para client-side pagination
-    final int start = provider.currentPage * provider.pageSize;
-    final int end = (start + provider.pageSize < serviciosOrdenados.length) 
-        ? start + provider.pageSize 
-        : serviciosOrdenados.length;
-        
-    final List<Servicio> serviciosPaginados = serviciosOrdenados.length > provider.pageSize 
-        ? serviciosOrdenados.sublist(start, end)
-        : serviciosOrdenados;
+    final provider = Provider.of<ServicesProvider>(context, listen: false);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 10.0),
-      child: PremiumDataTable<Servicio>(
-        items: serviciosPaginados,
-        isLoading: provider.isLoading,
-        wrapInCard: true,
-        columnFlexes: const [1, 4, 2, 2, 1, 2],
-        columnHeaders: [
-          _buildHeaderCell("ID", alignment: Alignment.centerLeft),
-          _buildHeaderCell("Nombre", alignment: Alignment.centerLeft),
-          _buildHeaderCell("Tipo", alignment: Alignment.centerLeft),
-          _buildHeaderCell("Precio", alignment: Alignment.center),
-          _buildHeaderCell("Sesiones", alignment: Alignment.center),
-          _buildHeaderCell("Acciones", alignment: Alignment.centerRight),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buildHeaderTopControls(context, provider),
+          const SizedBox(height: 20),
+          Expanded(
+            child: Consumer<ServicesProvider>(
+              builder: (context, sProv, _) {
+                String mensajeVacio;
+                if (sProv.filterActive == true) {
+                  mensajeVacio = "No hay servicios activos";
+                } else if (sProv.filterActive == false) {
+                  mensajeVacio = "No hay servicios inactivos";
+                } else {
+                  mensajeVacio = "No hay servicios registrados";
+                }
+
+                return PremiumDataTable<Servicio>(
+                  items: sProv.serviciosPaginados,
+                  isLoading: sProv.isLoading,
+                  wrapInCard: true,
+                  columnFlexes: const [1, 4, 2, 2, 1, 2],
+                  columnHeaders: [
+                    _buildHeaderCell("ID", alignment: Alignment.centerLeft),
+                    _buildHeaderCell("Nombre", alignment: Alignment.centerLeft),
+                    _buildHeaderCell("Tipo", alignment: Alignment.centerLeft),
+                    _buildHeaderCell("Precio", alignment: Alignment.center),
+                    _buildHeaderCell("Sesiones", alignment: Alignment.center),
+                    _buildHeaderCell("Acciones", alignment: Alignment.centerRight),
+                  ],
+                  bottomContent: _buildPaginationControls(context, sProv),
+                  emptyStateBuilder: (_) => _buildEmptyState(sProv, mensajeVacio),
+                  rowBuilder: (context, servicio, index) {
+                    return _buildRowItem(context, sProv, servicio);
+                  },
+                );
+              },
+            ),
+          ),
         ],
-        topContent: _buildHeaderTopControls(context, provider),
-        bottomContent: _buildPaginationControls(context, provider),
-        emptyStateBuilder: (_) => _buildEmptyState(provider, mensajeVacio),
-        rowBuilder: (context, servicio, index) {
-          return _buildRowItem(context, provider, servicio);
-        },
       ),
     );
   }
@@ -179,30 +162,35 @@ class _ServicesViewState extends State<ServicesView> {
                       Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          DashboardDropdown<bool?>(
-                            tooltip: "Estado",
-                            selectedValue: provider.filterActive,
-                            onSelected: (val) => provider.setFilter(val),
-                            options: const [
-                              DropdownOption(
-                                value: true,
-                                label: "Activos",
-                                icon: Icons.check_circle_outline,
-                                color: Colors.green,
-                              ),
-                              DropdownOption(
-                                value: false,
-                                label: "Eliminados",
-                                icon: Icons.delete_outline,
-                                color: Colors.redAccent,
-                              ),
-                              DropdownOption(
-                                value: null,
-                                label: "Todos",
-                                icon: Icons.list,
-                                color: Colors.grey,
-                              ),
-                            ],
+                          Selector<ServicesProvider, bool?>(
+                            selector: (_, p) => p.filterActive,
+                            builder: (context, filterActive, _) {
+                              return DashboardDropdown<bool?>(
+                                tooltip: "Estado",
+                                selectedValue: filterActive,
+                                onSelected: (val) => provider.setFilter(val),
+                                options: const [
+                                  DropdownOption(
+                                    value: true,
+                                    label: "Activos",
+                                    icon: Icons.check_circle_outline,
+                                    color: Colors.green,
+                                  ),
+                                  DropdownOption(
+                                    value: false,
+                                    label: "Eliminados",
+                                    icon: Icons.delete_outline,
+                                    color: Colors.redAccent,
+                                  ),
+                                  DropdownOption(
+                                    value: null,
+                                    label: "Todos",
+                                    icon: Icons.list,
+                                    color: Colors.grey,
+                                  ),
+                                ],
+                              );
+                            },
                           ),
 
                           const SizedBox(width: 15),

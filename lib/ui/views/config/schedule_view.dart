@@ -5,6 +5,7 @@ import 'package:quiropractico_front/config/theme/app_theme.dart';
 import 'package:quiropractico_front/models/usuario.dart';
 import 'package:quiropractico_front/models/bloqueo_agenda.dart';
 import 'package:table_calendar/table_calendar.dart';
+import 'package:shimmer/shimmer.dart';
 import 'package:quiropractico_front/providers/agenda_bloqueo_provider.dart';
 import 'package:quiropractico_front/providers/horarios_provider.dart';
 import 'package:quiropractico_front/ui/modals/horario_modal.dart';
@@ -63,15 +64,6 @@ class _ScheduleViewState extends State<ScheduleView> {
 
   @override
   Widget build(BuildContext context) {
-    final provider = Provider.of<HorariosProvider>(context);
-    final bloqueosProvider = Provider.of<AgendaBloqueoProvider>(context);
-    final List<Usuario> doctoresList = provider.doctores;
-    final Usuario? currentDoctor = provider.selectedDoctor;
-    final mesesAfectados = _getMesesConBloqueos(
-      bloqueosProvider.bloqueos,
-      currentDoctor?.idUsuario,
-    );
-
     return Container(
       padding: const EdgeInsets.fromLTRB(0, 0, 0, 10),
       child: Column(
@@ -111,62 +103,72 @@ class _ScheduleViewState extends State<ScheduleView> {
                 Container(width: 1, height: 30, color: Colors.grey.shade300),
                 const SizedBox(width: 20),
 
-                // Selector del quiropractico
-                if (doctoresList.isEmpty)
-                  const Text(
-                    "Sin quiroprácticos activos",
-                    style: TextStyle(
-                      color: Colors.grey,
-                      fontStyle: FontStyle.italic,
-                    ),
-                  )
-                else
-                  DashboardDropdown<Usuario?>(
-                    selectedValue: currentDoctor,
-                    tooltip: "Seleccionar quiropráctico",
-                    customLabel:
-                        currentDoctor == null
-                            ? "Seleccionar Doctor"
-                            : currentDoctor.nombreCompleto,
-                    onSelected: (val) {
-                      if (val != null) provider.selectDoctor(val);
-                    },
-                    options:
-                        doctoresList
-                            .map(
-                              (u) => DropdownOption<Usuario?>(
-                                value: u,
-                                label: u.nombreCompleto,
-                                iconWidget: UserAvatarWidget(
-                                  usuario: u,
-                                  radius: 10,
-                                  fontSize: 10,
-                                ),
+                // Selector del quiropractico (Aislado reactivamente)
+                Consumer<HorariosProvider>(
+                  builder: (context, hProv, _) {
+                    final doctoresList = hProv.doctores;
+                    final currentDoctor = hProv.selectedDoctor;
+
+                    if (doctoresList.isEmpty) {
+                      return const Text(
+                        "Sin quiroprácticos activos",
+                        style: TextStyle(
+                          color: Colors.grey,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      );
+                    }
+
+                    return DashboardDropdown<Usuario?>(
+                      selectedValue: currentDoctor,
+                      tooltip: "Seleccionar quiropráctico",
+                      customLabel: currentDoctor == null
+                          ? "Seleccionar Doctor"
+                          : currentDoctor.nombreCompleto,
+                      onSelected: (val) {
+                        if (val != null) hProv.selectDoctor(val);
+                      },
+                      options: doctoresList
+                          .map(
+                            (u) => DropdownOption<Usuario?>(
+                              value: u,
+                              label: u.nombreCompleto,
+                              iconWidget: UserAvatarWidget(
+                                usuario: u,
+                                radius: 10,
+                                fontSize: 10,
                               ),
-                            )
-                            .toList(),
-                  ),
+                            ),
+                          )
+                          .toList(),
+                    );
+                  },
+                ),
 
                 const Spacer(),
                 const SizedBox(width: 20),
 
-                HoverableActionButton(
-                  label: "Turno",
-                  icon: Icons.add_alarm,
-                  isPrimary: true,
-                  tooltip: "Crear nuevo turno",
-                  onTap:
-                      currentDoctor == null
+                Consumer<HorariosProvider>(
+                  builder: (context, hProv, _) {
+                    final currentDoctor = hProv.selectedDoctor;
+                    return HoverableActionButton(
+                      label: "Turno",
+                      icon: Icons.add_alarm,
+                      isPrimary: true,
+                      tooltip: "Crear nuevo turno",
+                      onTap: currentDoctor == null
                           ? () {}
                           : () async {
-                            final result = await showDialog(
-                              context: context,
-                              builder: (_) => const HorarioModal(),
-                            );
-                            if (context.mounted) {
-                              _handleScheduleResult(result);
-                            }
-                          },
+                              final result = await showDialog(
+                                context: context,
+                                builder: (_) => const HorarioModal(),
+                              );
+                              if (context.mounted) {
+                                _handleScheduleResult(result);
+                              }
+                            },
+                    );
+                  },
                 ),
               ],
             ),
@@ -179,30 +181,30 @@ class _ScheduleViewState extends State<ScheduleView> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Horarios
+                // Horarios (Aislado reactivamente con Skeleton)
                 Expanded(
                   flex: 1,
                   child: Align(
                     alignment: Alignment.topCenter,
-                    child:
-                        provider.isLoading
-                            ? const Center(child: CircularProgressIndicator())
-                            : ListView.builder(
-                              padding: const EdgeInsets.only(
-                                top: 0,
-                                bottom: 40,
-                                right: 10,
-                              ),
-                              itemCount: 7,
-                              itemBuilder: (context, index) {
-                                final diaNum = index + 1;
-                                final nombreDia = _getDiaNombre(diaNum);
-                                final turnosDelDia =
-                                    currentDoctor == null
-                                        ? []
-                                        : provider.horarios
-                                            .where((h) => h.diaSemana == diaNum)
-                                            .toList();
+                    child: Consumer<HorariosProvider>(
+                      builder: (context, hProv, _) {
+                        final currentDoctor = hProv.selectedDoctor;
+                        final doctoresList = hProv.doctores;
+                        return ListView.builder(
+                          padding: const EdgeInsets.only(
+                            top: 0,
+                            bottom: 40,
+                            right: 10,
+                          ),
+                          itemCount: 7,
+                          itemBuilder: (context, index) {
+                            final diaNum = index + 1;
+                            final nombreDia = _getDiaNombre(diaNum);
+                            final turnosDelDia = currentDoctor == null
+                                ? []
+                                : hProv.horarios
+                                    .where((h) => h.diaSemana == diaNum)
+                                    .toList();
 
                                 if (turnosDelDia.isNotEmpty) {
                                   turnosDelDia.sort(
@@ -334,7 +336,36 @@ class _ScheduleViewState extends State<ScheduleView> {
                                           ],
                                         ),
                                         const SizedBox(height: 10),
-                                        if (doctoresList.isEmpty)
+                                        if (hProv.isLoading)
+                                          Shimmer.fromColors(
+                                            baseColor: Colors.grey.shade200,
+                                            highlightColor: Colors.grey.shade50,
+                                            child: Wrap(
+                                              spacing: 8,
+                                              runSpacing: 8,
+                                              children: [
+                                                Container(
+                                                  width: 105,
+                                                  height: 28,
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.white,
+                                                    borderRadius:
+                                                        BorderRadius.circular(16),
+                                                  ),
+                                                ),
+                                                Container(
+                                                  width: 105,
+                                                  height: 28,
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.white,
+                                                    borderRadius:
+                                                        BorderRadius.circular(16),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          )
+                                        else if (doctoresList.isEmpty)
                                           const Text(
                                             "No hay personal activo",
                                             style: TextStyle(
@@ -415,7 +446,7 @@ class _ScheduleViewState extends State<ScheduleView> {
                                                         if (confirm != true) return;
 
                                                         final messenger = ScaffoldMessenger.of(context);
-                                                        final err = await provider.deleteHorario(turno.idHorario);
+                                                        final err = await hProv.deleteHorario(turno.idHorario);
 
                                                         if (err == null) {
                                                           if (context.mounted) {
@@ -445,24 +476,34 @@ class _ScheduleViewState extends State<ScheduleView> {
                                   ),
                                 );
                               },
-                            ),
+                            );
+                          },
+                    ),
                   ),
                 ),
                 const SizedBox(width: 20),
 
-                // Calendario
+                // Calendario (Aislado reactivamente)
                 Expanded(
                   flex: 1,
                   child: Align(
                     alignment: Alignment.topCenter,
-                    child: Card(
-                      margin: EdgeInsets.zero,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        side: BorderSide(color: Colors.grey.shade300),
-                      ),
-                      child: Padding(
+                    child: Consumer2<HorariosProvider, AgendaBloqueoProvider>(
+                      builder: (context, hProv, bProv, _) {
+                        final currentDoctor = hProv.selectedDoctor;
+                        final doctoresList = hProv.doctores;
+                        final mesesAfectados = _getMesesConBloqueos(
+                          bProv.bloqueos,
+                          currentDoctor?.idUsuario,
+                        );
+                        return Card(
+                          margin: EdgeInsets.zero,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: BorderSide(color: Colors.grey.shade300),
+                          ),
+                          child: Padding(
                         padding: const EdgeInsets.only(
                           top: 10,
                           bottom: 10,
@@ -592,7 +633,7 @@ class _ScheduleViewState extends State<ScheduleView> {
                                               return _buildMonthMiniature(
                                                 mesesAfectados[index],
                                                 _visualizerYear,
-                                                bloqueosProvider.bloqueos,
+                                                bProv.bloqueos,
                                                 currentDoctor?.idUsuario,
                                               );
                                             },
@@ -603,16 +644,18 @@ class _ScheduleViewState extends State<ScheduleView> {
                           ],
                         ),
                       ),
-                    ),
-                  ),
+                    );
+                  },
                 ),
-              ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
-    );
-  }
+    ],
+  ),
+);
+}
 
   // Optener el nombre del dia
   String _getDiaNombre(int dia) {
