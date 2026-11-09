@@ -114,20 +114,23 @@ class AuthProvider extends ChangeNotifier {
   
   // Cerrar sesión
   void logout(BuildContext context) async {
-    // 1. Purgado de disco físico
-    await LocalStorage.deleteToken();
-    role = null;
+    // 1º) Cambio de estado inmediato: expulsa al usuario desmontando el Dashboard de memoria
+    authStatus = AuthStatus.notAuthenticated;
+    notifyListeners();
 
-    // 2. Purgado profundo silencioso de toda la RAM de providers
+    // 2º) Esperar al siguiente ciclo para garantizar el desmontaje total de listeners y vistas
+    await Future.delayed(const Duration(milliseconds: 100));
+
+    // 3º) Purgado profundo silencioso de toda la RAM de providers
     try {
       importProviders(context);
     } catch (e) {
       debugPrint('Error purgando providers: $e');
     }
 
-    // 3. Cambio de estado final: expulsa al usuario desmontando el Dashboard de memoria
-    authStatus = AuthStatus.notAuthenticated;
-    notifyListeners();
+    // 4º) Destrucción de credenciales en almacenamiento físico
+    await LocalStorage.deleteToken();
+    role = null;
   }
 
   void importProviders(BuildContext context) {

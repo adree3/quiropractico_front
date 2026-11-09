@@ -2,7 +2,7 @@ name: quiropractico_front
 description: "A new Flutter project."
 publish_to: 'none' 
 
-version: 1.0.0+1
+version: 2.1.0
 
 environment:
   sdk: ^3.7.2
@@ -47,6 +47,7 @@ dependencies:
   # Firma digital
   signature: ^5.5.0
   desktop_drop: ^0.8.4
+  package_info_plus: ^9.0.1
 
 dev_dependencies:
   flutter_test:

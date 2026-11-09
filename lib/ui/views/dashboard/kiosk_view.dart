@@ -1,5 +1,7 @@
 import 'dart:convert';
+import 'dart:html' as html;
 import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:signature/signature.dart';
@@ -138,6 +140,12 @@ class _KioskViewState extends State<KioskView> {
       ),
     );
     _stompClient?.activate();
+
+    if (kIsWeb) {
+      html.window.onBeforeUnload.listen((event) {
+        _stompClient?.deactivate();
+      });
+    }
   }
 
   void _onConnect(StompFrame frame) {

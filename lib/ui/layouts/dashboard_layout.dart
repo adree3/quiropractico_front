@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'package:quiropractico_front/providers/users_provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:quiropractico_front/ui/widgets/user_avatar_widget.dart';
+import 'package:quiropractico_front/ui/widgets/app_version_indicator.dart';
 
 class DashboardLayout extends StatelessWidget {
   final Widget child;
@@ -55,97 +56,108 @@ class DashboardLayout extends StatelessWidget {
                   )
                   : null,
 
-          body: Row(
+          body: Stack(
             children: [
-              // Sidebar: expandido en > 1100px, colapsado en 700-1100px
-              if (!isMobile)
-                Sidebar(
-                  key: ValueKey(isMedium ? 'medium' : 'large'),
-                  initialCollapsed: isMedium,
-                ),
+              Row(
+                children: [
+                  // Sidebar: expandido en > 1100px, colapsado en 700-1100px
+                  if (!isMobile)
+                    Sidebar(
+                      key: ValueKey(isMedium ? 'medium' : 'large'),
+                      initialCollapsed: isMedium,
+                    ),
 
-              // Contenido principal
-              Expanded(
-                child: Column(
-                  children: [
-                    // Topbar
-                    if (!isMobile)
-                      Consumer<UsersProvider>(
-                        builder: (context, usersProvider, child) {
-                          final user = usersProvider.currentUser;
-                          final auth = context.read<AuthProvider>();
-                          if (user == null &&
-                              !usersProvider.isLoading &&
-                              !usersProvider.hasError &&
-                              auth.authStatus == AuthStatus.authenticated) {
-                            WidgetsBinding.instance.addPostFrameCallback((_) {
-                              if (context.mounted &&
-                                  context.read<AuthProvider>().authStatus == AuthStatus.authenticated) {
-                                usersProvider.getMe();
-                                context.read<AuthProvider>().refreshGlobalData(context);
+                  // Contenido principal
+                  Expanded(
+                    child: Column(
+                      children: [
+                        // Topbar
+                        if (!isMobile)
+                          Consumer<UsersProvider>(
+                            builder: (context, usersProvider, child) {
+                              final user = usersProvider.currentUser;
+                              final auth = context.read<AuthProvider>();
+                              if (user == null &&
+                                  !usersProvider.isLoading &&
+                                  !usersProvider.hasError &&
+                                  auth.authStatus == AuthStatus.authenticated) {
+                                WidgetsBinding.instance.addPostFrameCallback((_) {
+                                  if (context.mounted &&
+                                      context.read<AuthProvider>().authStatus == AuthStatus.authenticated) {
+                                    usersProvider.getMe();
+                                    context.read<AuthProvider>().refreshGlobalData(context);
+                                  }
+                                });
                               }
-                            });
-                          }
-                          return Container(
-                            height: 56,
-                            width: double.infinity,
-                            color: Colors.white,
-                            padding: const EdgeInsets.symmetric(horizontal: 20),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.end,
-                              children: [
-                                Material(
-                                  color: Colors.transparent,
-                                  child: InkWell(
-                                    onTap: () {
-                                      Navigator.of(context, rootNavigator: true).popUntil((route) => route is! PopupRoute);
-                                      context.push('/perfil');
-                                    },
-                                    borderRadius: BorderRadius.circular(10),
-                                    hoverColor: AppTheme.primaryColor.withOpacity(0.05),
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                      decoration: BoxDecoration(
+                              return Container(
+                                height: 56,
+                                width: double.infinity,
+                                color: Colors.white,
+                                padding: const EdgeInsets.symmetric(horizontal: 20),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.end,
+                                  children: [
+                                    Material(
+                                      color: Colors.transparent,
+                                      child: InkWell(
+                                        onTap: () {
+                                          Navigator.of(context, rootNavigator: true).popUntil((route) => route is! PopupRoute);
+                                          context.push('/perfil');
+                                        },
                                         borderRadius: BorderRadius.circular(10),
-                                        color: GoRouterState.of(context).uri.toString() == '/perfil' ? AppTheme.primaryColor.withOpacity(0.08) : Colors.transparent,
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          UserAvatarWidget(
-                                            usuario: user,
-                                            profilePictureVersion: usersProvider.profilePictureVersion,
-                                            radius: 16,
-                                            fontSize: 14,
+                                        hoverColor: AppTheme.primaryColor.withOpacity(0.05),
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                          decoration: BoxDecoration(
+                                            borderRadius: BorderRadius.circular(10),
+                                            color: GoRouterState.of(context).uri.toString() == '/perfil' ? AppTheme.primaryColor.withOpacity(0.08) : Colors.transparent,
                                           ),
-                                          const SizedBox(width: 10),
-                                          Text(
-                                            user?.nombreCompleto ?? "Cargando...",
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.w600,
-                                              fontSize: 14,
-                                            ),
+                                          child: Row(
+                                            children: [
+                                              UserAvatarWidget(
+                                                usuario: user,
+                                                profilePictureVersion: usersProvider.profilePictureVersion,
+                                                radius: 16,
+                                                fontSize: 14,
+                                              ),
+                                              const SizedBox(width: 10),
+                                              Text(
+                                                user?.nombreCompleto ?? "Cargando...",
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.w600,
+                                                  fontSize: 14,
+                                                ),
+                                              ),
+                                            ],
                                           ),
-                                        ],
+                                        ),
                                       ),
                                     ),
-                                  ),
+                                  ],
                                 ),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
+                              );
+                            },
+                          ),
 
-                    Expanded(
-                      child: Padding(
-                        padding: GoRouterState.of(context).uri.toString().startsWith('/configuracion')
-                            ? EdgeInsets.zero
-                            : const EdgeInsets.all(20),
-                        child: child,
-                      ),
+                        Expanded(
+                          child: Padding(
+                            padding: GoRouterState.of(context).uri.toString().startsWith('/configuracion')
+                                ? EdgeInsets.zero
+                                : const EdgeInsets.all(20),
+                            child: child,
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+                ],
+              ),
+
+              // Indicador de versión flotante y copiable
+              const Positioned(
+                bottom: 8,
+                right: 8,
+                child: AppVersionIndicator(),
               ),
             ],
           ),

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:html' as html;
 import 'package:flutter/foundation.dart';
 import 'package:quiropractico_front/config/api_config.dart';
 import 'package:quiropractico_front/services/local_storage.dart';
@@ -49,6 +50,12 @@ class StompService {
 
     _stompClient!.activate();
     _isActivated = true;
+
+    if (kIsWeb) {
+      html.window.onBeforeUnload.listen((event) {
+        _stompClient?.deactivate();
+      });
+    }
   }
 
   void _onConnect(StompFrame frame) {
