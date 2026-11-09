@@ -1246,8 +1246,10 @@ class _VacacionesCalendarViewState extends State<VacacionesCalendarView> {
     final messenger = ScaffoldMessenger.of(context);
     String msg = "";
 
-    if (action == 'create_forced') {
-      msg = "Conflictos resueltos y bloqueo creado";
+    if (action == 'create_forced' || action == 'update_forced') {
+      msg = action == 'update_forced'
+          ? "Conflictos resueltos y bloqueo actualizado"
+          : "Conflictos resueltos y bloqueo creado";
     } else {
       if (isGlobal) {
         msg =

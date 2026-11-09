@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:quiropractico_front/models/bloqueo_agenda.dart';
 import 'package:quiropractico_front/config/api_config.dart';
 import 'package:quiropractico_front/utils/error_handler.dart';
+import 'package:quiropractico_front/exceptions/bloqueo_conflict_exception.dart';
 
 class AgendaBloqueoProvider extends ChangeNotifier {
   
@@ -43,13 +44,31 @@ class AgendaBloqueoProvider extends ChangeNotifier {
         "idQuiropractico": idQuiro
       };
 
-      await ApiService.dio.post(
-        '$_baseUrl/agenda/bloqueos', 
+      String url = '$_baseUrl/agenda/bloqueos';
+      if (force) {
+        url += url.contains('?') ? '&force=true' : '?force=true';
+      }
+
+      final response = await ApiService.dio.post(
+        url, 
         data: data
       );
       await loadBloqueos();
+      if (response.data != null && response.data is Map<String, dynamic>) {
+        return BloqueoAgenda.fromJson(response.data);
+      }
       return null;
     } catch (e) {
+      if (e is DioException && e.response?.statusCode == 409) {
+        final data = e.response?.data;
+        if (data != null && data is Map) {
+          final code = data['errorType'] ?? data['code'];
+          final message = data['message'];
+          if (code != null && message != null) {
+            throw BloqueoConflictException(code.toString(), message.toString());
+          }
+        }
+      }
       return ErrorHandler.extractMessage(e);
     }
   }
@@ -67,7 +86,8 @@ class AgendaBloqueoProvider extends ChangeNotifier {
     }
   }
   
-  Future<String?> editarBloqueo(int idBloqueo, DateTime inicio, DateTime fin, String motivo, int? idUsuario) async {
+  // EDITAR
+  Future<String?> editarBloqueo(int idBloqueo, DateTime inicio, DateTime fin, String motivo, int? idUsuario, {bool force = false}) async {
     try {
       final data = {
         "fechaInicio": inicio.toIso8601String(),
@@ -76,8 +96,13 @@ class AgendaBloqueoProvider extends ChangeNotifier {
         "idQuiropractico": idUsuario
       };
       
+      String url = '$_baseUrl/agenda/bloqueos/$idBloqueo';
+      if (force) {
+        url += url.contains('?') ? '&force=true' : '?force=true';
+      }
+
       await ApiService.dio.put(
-        '$_baseUrl/agenda/bloqueos/$idBloqueo', 
+        url, 
         data: data
       );
       
@@ -85,6 +110,16 @@ class AgendaBloqueoProvider extends ChangeNotifier {
       return null;
     } catch (e) {
       if (e is DioException) {
+        if (e.response?.statusCode == 409) {
+          final data = e.response?.data;
+          if (data != null && data is Map) {
+            final code = data['errorType'] ?? data['code'];
+            final message = data['message'];
+            if (code != null && message != null) {
+              throw BloqueoConflictException(code.toString(), message.toString());
+            }
+          }
+        }
         return e.response?.data['message'] ?? "Error al editar bloqueo";
       }
       return "Error de conexión";

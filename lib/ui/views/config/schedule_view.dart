@@ -1171,8 +1171,10 @@ class _ScheduleViewState extends State<ScheduleView> {
     final String? fechasStr = result['fechasStr'];
 
     String mensaje = "";
-    if (action == 'create_forced') {
-      mensaje = "Conflictos resueltos y bloqueo creado";
+    if (action == 'create_forced' || action == 'update_forced') {
+      mensaje = action == 'update_forced'
+          ? "Conflictos resueltos y bloqueo actualizado"
+          : "Conflictos resueltos y bloqueo creado";
     } else {
       if (isGlobal) {
         mensaje =

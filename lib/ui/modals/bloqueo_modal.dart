@@ -520,25 +520,42 @@ class _BloqueoModalState extends State<BloqueoModal> {
 
                   if (confirm == true && context.mounted) {
                     try {
-                      // Reintentar con force=true
-                      final result = await bloqueoProvider.crearBloqueo(
-                        fechaInicioReal,
-                        fechaFinReal,
-                        motivoCtrl.text,
-                        selectedQuiro?.idUsuario,
-                        force: true,
-                      );
+                      BloqueoAgenda? bloqueoResultado;
+
+                      if (esEdicion) {
+                        final err = await bloqueoProvider.editarBloqueo(
+                          widget.bloqueoEditar!.idBloqueo,
+                          fechaInicioReal,
+                          fechaFinReal,
+                          motivoCtrl.text,
+                          selectedQuiro?.idUsuario,
+                          force: true,
+                        );
+                        if (err != null) {
+                          throw Exception(err);
+                        }
+                        bloqueoResultado = widget.bloqueoEditar;
+                      } else {
+                        final result = await bloqueoProvider.crearBloqueo(
+                          fechaInicioReal,
+                          fechaFinReal,
+                          motivoCtrl.text,
+                          selectedQuiro?.idUsuario,
+                          force: true,
+                        );
+                        if (result is BloqueoAgenda) {
+                          bloqueoResultado = result;
+                        } else if (result is String) {
+                          throw Exception(result);
+                        }
+                      }
 
                       if (context.mounted) {
-                        BloqueoAgenda? nuevoGlobal;
-                        if (result is BloqueoAgenda) {
-                          nuevoGlobal = result;
-                        }
-
                         Navigator.pop(context, {
-                          'action': 'create_forced',
+                          'action': esEdicion ? 'update_forced' : 'create_forced',
                           'success': true,
-                          'bloqueo': nuevoGlobal,
+                          'bloqueo': bloqueoResultado,
+                          'backup': esEdicion ? widget.bloqueoEditar : null,
                           'conflicting':
                               conflicting, // Para restaurar si deshacen
                           'isGlobal': selectedQuiro == null,
